@@ -230,6 +230,10 @@ module.exports = {
             commandLowerCase.startsWith(`${prefix}${client.intlGet(guildId, 'commandSyntaxRaid')}`)) {
             rustplus.sendInGameMessage(rustplus.getCommandRaidCost(command));
         }
+        else if (commandLowerCase === `${prefix}${client.intlGet('en', 'commandSyntaxSay')}` ||
+            commandLowerCase === `${prefix}${client.intlGet(guildId, 'commandSyntaxSay')}`) {
+            rustplus.sendInGameMessage(rustplus.getCommandSay(command, callerName));
+        }
         else {
             /* Maybe a custom command? */
 
