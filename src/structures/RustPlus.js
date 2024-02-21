@@ -3298,20 +3298,20 @@ class RustPlus extends RustPlusLib {
             trackerId: targetTrackerId
         });
     }    
-    getCommandSay(command, callerName) {
+    async getCommandSay(command, callerName) {
         const prefix = this.generalSettings.prefix;
         const commandSay = `${prefix}${Client.client.intlGet(this.guildId, 'commandSyntaxSay')}`;
         const commandSayEn = `${prefix}${Client.client.intlGet('en', 'commandSyntaxSay')}`;
 
         let text = null;
-        if (command.toLowerCase().startsWith(`${commandTTS}`)) {
+        if (command.toLowerCase().startsWith(`${commandSay}`)) {
             text = command.slice(`${commandSay} `.length).trim();
         }
         else {
             text = command.slice(`${commandSayEn} `.length).trim();
         }
-        const str = `${callerName} ${Client.client.intlGet(this.guildId, 'says')} ${text}`
-        DiscordVoice.sendDiscordVoiceMessage(this.guildId, str)
+        const str = `${callerName} ${Client.client.intlGet(this.guildId, 'says')} ${text}`;
+        await DiscordVoice.sendDiscordVoiceMessage(this.guildId, str);
         return Client.client.intlGet(this.guildId, 'sentVoiceSay');
     }
 }
