@@ -2759,7 +2759,7 @@ class RustPlus extends RustPlusLib {
         }
 
         const durability = Durability.getDurabilityData(command, null, Client.client, this.guildId);
-        let raidCosts = "";
+        let raidCosts = `${durability[1]}: `;
 
         if(!durability) {
             return Client.client.intlGet(this.guildId, 'noItemWithNameFound', {
@@ -2776,7 +2776,7 @@ class RustPlus extends RustPlusLib {
             raidCosts += `${item[0].itemName} ${item[0].timeString} (${item[0].quantity}) ${item[0].sulfur}, `;
         }
 
-        return raidCosts;
+        return raidCosts.trim().trim(",");
     }
     async getCommandVoice(callerSteamId, command = null) {
         try {
