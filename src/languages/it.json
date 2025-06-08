@@ -139,6 +139,7 @@
     "commandSyntaxNotes": "note",
     "commandSyntaxOff": "spento",
     "commandSyntaxOffline": "offline",
+    "commandSyntaxOfflinePattern": "schemaoffline",
     "commandSyntaxOn": "acceso",
     "commandSyntaxOnline": "online",
     "commandSyntaxPlayer": "giocatore",

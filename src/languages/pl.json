@@ -139,6 +139,7 @@
     "commandSyntaxNotes": "notes",
     "commandSyntaxOff": "wyłączony",
     "commandSyntaxOffline": "w trybie offline",
+    "commandSyntaxOfflinePattern": "wzórofflajnowy",
     "commandSyntaxOn": "włączony",
     "commandSyntaxOnline": "online",
     "commandSyntaxPlayer": "gracz",

@@ -127,6 +127,10 @@ module.exports = {
             commandLowerCase === `${prefix}${client.intlGet(guildId, 'commandSyntaxOffline')}`) {
             rustplus.sendInGameMessage(rustplus.getCommandOffline());
         }
+        else if (commandLowerCase.startsWith(`${prefix}${client.intlGet('en', 'commandSyntaxOfflinePattern')}`) ||
+            commandLowerCase.startsWith(`${prefix}${client.intlGet(guildId, 'commandSyntaxOfflinePattern')}`)) {
+            rustplus.sendInGameMessage(rustplus.getCommandOfflinePattern(command));
+        }
         else if (commandLowerCase === `${prefix}${client.intlGet('en', 'commandSyntaxOnline')}` ||
             commandLowerCase === `${prefix}${client.intlGet(guildId, 'commandSyntaxOnline')}`) {
             rustplus.sendInGameMessage(rustplus.getCommandOnline());

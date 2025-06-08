@@ -139,6 +139,7 @@
     "commandSyntaxNotes": "notas",
     "commandSyntaxOff": "desligado",
     "commandSyntaxOffline": "offline",
+    "commandSyntaxOfflinePattern": "padraooffline",
     "commandSyntaxOn": "ligado",
     "commandSyntaxOnline": "online",
     "commandSyntaxPlayer": "jogador",

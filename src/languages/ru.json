@@ -139,6 +139,7 @@
     "commandSyntaxNotes": "notes",
     "commandSyntaxOff": "выкл",
     "commandSyntaxOffline": "offline",
+    "commandSyntaxOfflinePattern": "шаблоноффлайн",
     "commandSyntaxOn": "вкл",
     "commandSyntaxOnline": "online",
     "commandSyntaxPlayer": "player",

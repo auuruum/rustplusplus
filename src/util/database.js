@@ -210,6 +210,21 @@ class PlayerActivityDB {
     }
     
     /**
+     * Get offline patterns for a player
+     */
+    getOfflinePatterns(steamId, serverId, guildId) {
+        try {
+            const playerId = this.getPlayerIdStmt.get(steamId, serverId, guildId);
+            if (!playerId) return [];
+            
+            return this.getOfflinePatternStmt.all(playerId.id);
+        } catch (error) {
+            console.error('Error getting offline patterns:', error);
+            return [];
+        }
+    }
+    
+    /**
      * Get info about a player
      */
     getPlayerInfo(steamId, serverId, guildId) {

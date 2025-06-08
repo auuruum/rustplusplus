@@ -139,6 +139,7 @@
     "commandSyntaxNotes": "poznámky",
     "commandSyntaxOff": "vypnout",
     "commandSyntaxOffline": "offline",
+    "commandSyntaxOfflinePattern": "offlinevzor",
     "commandSyntaxOn": "zapnout",
     "commandSyntaxOnline": "online",
     "commandSyntaxPlayer": "hráč",
