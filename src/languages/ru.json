@@ -811,5 +811,20 @@
     "wipeDetected": "Обнаружен Wipe!",
     "yield": "Урожай",
     "youAreAlreadyLeader": "Вы уже лидер.",
-    "youAreNotPairedWithServer": "Команда лидера не работает, потому что вы не подключены к серверу."
+    "youAreNotPairedWithServer": "Команда лидера не работает, потому что вы не подключены к серверу.",
+    "commandsOfflinePatternDesc": "Анализ времени, когда игроки, скорее всего, будут офлайн.",
+    "commandsOfflinePatternPlayerDesc": "Поиск игрока по имени для анализа его офлайн-шаблонов.",
+    "commandsOfflinePatternPlayerIdDesc": "Поиск игрока по ID для анализа его офлайн-шаблонов.",
+    "offlinePatternFor": "Офлайн-шаблон для",
+    "offlinePatternAnalysis": "Анализ офлайн-шаблонов",
+    "bestRaidTimes": "Лучшее время для рейда",
+    "recentActivity": "Недавняя активность",
+    "noOfflinePatternData": "Нет данных офлайн-шаблонов для {name}.",
+    "noActivityData": "Нет данных об активности.",
+    "notEnoughData": "Недостаточно данных для анализа шаблонов.",
+    "displayingOfflinePatterns": "Отображение офлайн-шаблонов.",
+    "displayingPlayerSearchResults": "Отображение результатов поиска игроков.",
+    "duration": "Продолжительность",
+    "confidence": "Уверенность",
+    "hours": "часов"
 }

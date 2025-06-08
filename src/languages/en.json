@@ -827,5 +827,20 @@
     "wipeDetected": "Wipe detected!",
     "yield": "Yield",
     "youAreAlreadyLeader": "You are already leader.",
-    "youAreNotPairedWithServer": "Leader command does not work because you're not paired with the server."
+    "youAreNotPairedWithServer": "Leader command does not work because you're not paired with the server.",
+    "commandsOfflinePatternDesc": "Analyze when players are most likely to be offline.",
+    "commandsOfflinePatternPlayerDesc": "Search for a player by name to analyze their offline patterns.",
+    "commandsOfflinePatternPlayerIdDesc": "Search for a player by ID to analyze their offline patterns.",
+    "offlinePatternFor": "Offline Pattern For",
+    "offlinePatternAnalysis": "Offline Pattern Analysis",
+    "bestRaidTimes": "Best Raid Times",
+    "recentActivity": "Recent Activity",
+    "noOfflinePatternData": "No offline pattern data available for {name}.",
+    "noActivityData": "No activity data available.",
+    "notEnoughData": "Not enough data to analyze patterns.",
+    "displayingOfflinePatterns": "Displaying offline patterns.",
+    "displayingPlayerSearchResults": "Displaying player search results.",
+    "duration": "Duration",
+    "confidence": "Confidence",
+    "hours": "hours"
 }

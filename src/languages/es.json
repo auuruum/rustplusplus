@@ -797,5 +797,20 @@
     "wipeDetected": "¡Wipe detectado!",
     "yield": "Yield",
     "youAreAlreadyLeader": "Ya eres líder.",
-    "youAreNotPairedWithServer": "El comando líder no funciona porque no está emparejado con el servidor."
+    "youAreNotPairedWithServer": "El comando líder no funciona porque no está emparejado con el servidor.",
+    "commandsOfflinePatternDesc": "Analiza cuándo es más probable que los jugadores estén desconectados.",
+    "commandsOfflinePatternPlayerDesc": "Busca un jugador por nombre para analizar sus patrones de desconexión.",
+    "commandsOfflinePatternPlayerIdDesc": "Busca un jugador por ID para analizar sus patrones de desconexión.",
+    "offlinePatternFor": "Patrón de desconexión para",
+    "offlinePatternAnalysis": "Análisis de patrón de desconexión",
+    "bestRaidTimes": "Mejores horas para raid",
+    "recentActivity": "Actividad reciente",
+    "noOfflinePatternData": "No hay datos de patrones de desconexión disponibles para {name}.",
+    "noActivityData": "No hay datos de actividad disponibles.",
+    "notEnoughData": "No hay suficientes datos para analizar patrones.",
+    "displayingOfflinePatterns": "Mostrando patrones de desconexión.",
+    "displayingPlayerSearchResults": "Mostrando resultados de búsqueda de jugadores.",
+    "duration": "Duración",
+    "confidence": "Confianza",
+    "hours": "horas"
 }

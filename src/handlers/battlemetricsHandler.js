@@ -21,6 +21,7 @@
 const Constants = require('../util/constants.js');
 const DiscordMessages = require('../discordTools/discordMessages.js');
 const DiscordTools = require('../discordTools/discordTools.js');
+const PlayerActivityDB = require('../util/database.js');
 const Scrape = require('../util/scrape.js');
 
 module.exports = {
@@ -127,6 +128,11 @@ module.exports = {
                         if (rustplus && (rustplus.serverId === content.serverId) && content.inGame) {
                             rustplus.sendInGameMessage(str);
                         }
+                        
+                        // Record login in database for battlemetrics
+                        if (player.steamId) {
+                            PlayerActivityDB.recordLogin(player.steamId, player.name, content.serverId, guildId);
+                        }
                     }
                 }
 
@@ -144,6 +150,11 @@ module.exports = {
                             content.everyone);
                         if (rustplus && (rustplus.serverId === content.serverId) && content.inGame) {
                             rustplus.sendInGameMessage(str);
+                        }
+                        
+                        // Record login in database for battlemetrics
+                        if (player.steamId) {
+                            PlayerActivityDB.recordLogin(player.steamId, player.name, content.serverId, guildId);
                         }
                     }
                 }
@@ -163,6 +174,11 @@ module.exports = {
                             content.everyone);
                         if (rustplus && (rustplus.serverId === content.serverId) && content.inGame) {
                             rustplus.sendInGameMessage(str);
+                        }
+                        
+                        // Record logout in database for battlemetrics
+                        if (player.steamId) {
+                            PlayerActivityDB.recordLogout(player.steamId, player.name, content.serverId, guildId);
                         }
                     }
                 }
