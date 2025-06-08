@@ -181,21 +181,7 @@ class PlayerActivityDB {
         return player ? player.id : null;
     }
     
-    /**
-     * Get a player's offline patterns
-     * Returns hours when the player is most commonly offline
-     */
-    getOfflinePatterns(bmId, serverId, guildId) {
-        try {
-            const player = this.getPlayerIdStmt.get(bmId, serverId, guildId);
-            if (!player) return null;
-            
-            return this.getOfflinePatternStmt.all(player.id);
-        } catch (error) {
-            console.error('Error getting offline patterns:', error);
-            return null;
-        }
-    }
+
     
     /**
      * Get a player's activity history

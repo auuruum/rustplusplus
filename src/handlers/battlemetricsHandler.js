@@ -372,11 +372,9 @@ module.exports = {
             }
 
             if(bmInstance.logoutPlayers.length !== 0) {
-                console.log(rustplus.playerConnections);
                 for (const playerId of bmInstance.logoutPlayers) {
                     // Record logout in database for battlemetrics
                     const player = bmInstance.players[playerId];
-                    console.log(`Recording logout for player ${player.name} (${playerId}) on server ${rustplus.serverId} in guild ${guildId}`);
                     if (playerId) {
                         PlayerActivityDB.recordLogout(playerId, player.name, rustplus.serverId, guildId);
                     }
@@ -384,11 +382,9 @@ module.exports = {
             }
 
             if(bmInstance.loginPlayers.length !== 0 || bmInstance.newPlayers.length !== 0) {
-                console.log(rustplus.playerConnections);
                 for (const playerId of bmInstance.loginPlayers) {
                     // Record logout in database for battlemetrics
                     const player = bmInstance.players[playerId];
-                    console.log(`Recording login for player ${player.name} (${playerId}) on server ${rustplus.serverId} in guild ${guildId}`);
                     if (playerId) {
                         PlayerActivityDB.recordLogin(playerId, player.name, rustplus.serverId, guildId);
                     }
@@ -396,7 +392,6 @@ module.exports = {
                 for (const playerId of bmInstance.newPlayers) {
                     // Record logout in database for battlemetrics
                     const player = bmInstance.players[playerId];
-                    console.log(`Recording login for player ${player.name} (${playerId}) on server ${rustplus.serverId} in guild ${guildId}`);
                     if (playerId) {
                         PlayerActivityDB.recordLogin(playerId, player.name, rustplus.serverId, guildId);
                     }
