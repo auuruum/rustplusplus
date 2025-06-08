@@ -797,5 +797,20 @@
     "wipeDetected": "Wipe detecté!",
     "yield": "Rendement",
     "youAreAlreadyLeader": "Vous êtes déjà le chef du groupe.",
-    "youAreNotPairedWithServer": "La commande Leader ne fonctionne pas car n'est pas associé au serveur."
+    "youAreNotPairedWithServer": "La commande Leader ne fonctionne pas car n'est pas associé au serveur.",
+    "commandsOfflinePatternDesc": "Analysez quand les joueurs sont le plus susceptibles d'être hors ligne.",
+    "commandsOfflinePatternPlayerDesc": "Recherchez un joueur par nom pour analyser ses modèles de déconnexion.",
+    "commandsOfflinePatternPlayerIdDesc": "Recherchez un joueur par ID pour analyser ses modèles de déconnexion.",
+    "offlinePatternFor": "Modèle de déconnexion pour",
+    "offlinePatternAnalysis": "Analyse des modèles de déconnexion",
+    "bestRaidTimes": "Meilleurs moments pour raid",
+    "recentActivity": "Activité récente",
+    "noOfflinePatternData": "Aucune donnée de modèle de déconnexion disponible pour {name}.",
+    "noActivityData": "Aucune donnée d'activité disponible.",
+    "notEnoughData": "Pas assez de données pour analyser les modèles.",
+    "displayingOfflinePatterns": "Affichage des modèles de déconnexion.",
+    "displayingPlayerSearchResults": "Affichage des résultats de recherche de joueurs.",
+    "duration": "Durée",
+    "confidence": "Confiance",
+    "hours": "heures"
 }

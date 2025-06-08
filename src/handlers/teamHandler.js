@@ -20,6 +20,7 @@
 
 const Constants = require('../util/constants.js');
 const DiscordMessages = require('../discordTools/discordMessages.js');
+const PlayerActivityDB = require('../util/database.js');
 
 module.exports = {
     handler: async function (rustplus, client, teamInfo) {
@@ -112,6 +113,9 @@ module.exports = {
                                 server: server.title
                             }));
                         rustplus.updateConnections(player.steamId, str);
+                        
+                        // Record login in the database
+                        PlayerActivityDB.recordLogin(player.steamId, player.name, serverId, guildId);
                     }
 
                     if (player.isGoneOffline(playerUpdated)) {
@@ -125,6 +129,9 @@ module.exports = {
                                 server: server.title
                             }));
                         rustplus.updateConnections(player.steamId, str);
+                        
+                        // Record logout in the database
+                        PlayerActivityDB.recordLogout(player.steamId, player.name, serverId, guildId);
                     }
                     break;
                 }
