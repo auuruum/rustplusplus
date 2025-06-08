@@ -139,6 +139,7 @@
     "commandSyntaxNotes": "notizen",
     "commandSyntaxOff": "aus",
     "commandSyntaxOffline": "offline",
+    "commandSyntaxOfflinePattern": "offlinemuster",
     "commandSyntaxOn": "ein",
     "commandSyntaxOnline": "online",
     "commandSyntaxPlayer": "player",

@@ -139,6 +139,7 @@
     "commandSyntaxNotes": "notes",
     "commandSyntaxOff": "désactiver",
     "commandSyntaxOffline": "hors ligne",
+    "commandSyntaxOfflinePattern": "modèlehorsligne",
     "commandSyntaxOn": "activé",
     "commandSyntaxOnline": "en ligne",
     "commandSyntaxPlayer": "joueur",

@@ -139,6 +139,7 @@
     "commandSyntaxNotes": "notes",
     "commandSyntaxOff": "off",
     "commandSyntaxOffline": "offline",
+    "commandSyntaxOfflinePattern": "offlinepattern",
     "commandSyntaxOn": "on",
     "commandSyntaxOnline": "online",
     "commandSyntaxPlayer": "player",
@@ -797,5 +798,19 @@
     "wipeDetected": "Rensning upptäcktes!",
     "yield": "Yield",
     "youAreAlreadyLeader": "Du är redan lagledare.",
-    "youAreNotPairedWithServer": "Leader-kommandot fungerar inte eftersom du inte är parad med servern."
+    "youAreNotPairedWithServer": "Leader-kommandot fungerar inte eftersom du inte är parad med servern.",
+    "commandsOfflinePatternDesc": "Analysera när spelare mest sannolikt är offline.",
+    "commandsOfflinePatternPlayerDesc": "Sök efter en spelare med namn för att analysera deras offline-mönster.",
+    "commandsOfflinePatternPlayerIdDesc": "Sök efter en spelare med ID för att analysera deras offline-mönster.",
+    "offlinePatternFor": "Offline-mönster för",
+    "offlinePatternAnalysis": "Analys av offline-mönster",
+    "bestRaidTimes": "Bästa raid-tider",
+    "recentActivity": "Senaste aktivitet",
+    "noOfflinePatternData": "Ingen offline-mönsterdata tillgänglig för {name}.",
+    "noActivityData": "Ingen aktivitetsdata tillgänglig.",
+    "notEnoughData": "Inte tillräckligt med data för att analysera mönster.",
+    "displayingOfflinePatterns": "Visar offline-mönster.",
+    "duration": "Varaktighet",
+    "confidence": "Tillförlitlighet",
+    "hours": "timmar"
 }

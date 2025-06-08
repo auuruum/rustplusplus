@@ -153,6 +153,7 @@
     "commandSyntaxNotes": "notes",
     "commandSyntaxOff": "off",
     "commandSyntaxOffline": "offline",
+    "commandSyntaxOfflinePattern": "offlinepattern",
     "commandSyntaxOn": "on",
     "commandSyntaxOnline": "online",
     "commandSyntaxPlayer": "player",
