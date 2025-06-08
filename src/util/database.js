@@ -50,11 +50,11 @@ class PlayerActivityDB {
             this.db.exec(`
                 CREATE TABLE IF NOT EXISTS players (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    steam_id TEXT NOT NULL,
+                    bm_id TEXT NOT NULL,
                     name TEXT NOT NULL,
                     server_id TEXT NOT NULL,
                     guild_id TEXT NOT NULL,
-                    UNIQUE(steam_id, server_id, guild_id)
+                    UNIQUE(bm_id, server_id, guild_id)
                 );
                 
                 CREATE TABLE IF NOT EXISTS activity_events (
@@ -71,16 +71,16 @@ class PlayerActivityDB {
             
             // Prepare statements
             this.insertPlayerStmt = this.db.prepare(`
-                INSERT OR IGNORE INTO players (steam_id, name, server_id, guild_id) 
+                INSERT OR IGNORE INTO players (bm_id, name, server_id, guild_id) 
                 VALUES (?, ?, ?, ?)
             `);
             
             this.getPlayerIdStmt = this.db.prepare(`
-                SELECT id FROM players WHERE steam_id = ? AND server_id = ? AND guild_id = ?
+                SELECT id FROM players WHERE bm_id = ? AND server_id = ? AND guild_id = ?
             `);
             
             this.updatePlayerNameStmt = this.db.prepare(`
-                UPDATE players SET name = ? WHERE steam_id = ? AND server_id = ? AND guild_id = ?
+                UPDATE players SET name = ? WHERE bm_id = ? AND server_id = ? AND guild_id = ?
             `);
             
             this.insertActivityEventStmt = this.db.prepare(`
@@ -105,19 +105,19 @@ class PlayerActivityDB {
                     p.name
                 FROM activity_events e
                 JOIN players p ON e.player_id = p.id
-                WHERE p.steam_id = ? AND p.server_id = ? AND p.guild_id = ?
+                WHERE p.bm_id = ? AND p.server_id = ? AND p.guild_id = ?
                 ORDER BY e.timestamp DESC
                 LIMIT ?
             `);
             
             this.getPlayerInfoStmt = this.db.prepare(`
-                SELECT * FROM players WHERE steam_id = ? AND server_id = ? AND guild_id = ?
+                SELECT * FROM players WHERE bm_id = ? AND server_id = ? AND guild_id = ?
             `);
 
             this.getRecentActivityStmt = this.db.prepare(`
                 SELECT 
                     p.name,
-                    p.steam_id,
+                    p.bm_id,
                     e.event_type,
                     e.timestamp
                 FROM activity_events e
@@ -135,14 +135,14 @@ class PlayerActivityDB {
 
     /**
      * Record a player login event
-     * @param {string} steamId - Player's Steam ID
+     * @param {string} bmId - Player's Battlemetrics ID
      * @param {string} name - Player's name
      * @param {string} serverId - Server ID
      * @param {string} guildId - Discord Guild ID
      */
-    recordLogin(steamId, name, serverId, guildId) {
+    recordLogin(bmId, name, serverId, guildId) {
         try {
-            const playerId = this.getOrCreatePlayer(steamId, name, serverId, guildId);
+            const playerId = this.getOrCreatePlayer(bmId, name, serverId, guildId);
             this.insertActivityEventStmt.run(playerId, 'online', Date.now());
         } catch (error) {
             console.error('Error recording login:', error);
@@ -151,14 +151,14 @@ class PlayerActivityDB {
 
     /**
      * Record a player logout event
-     * @param {string} steamId - Player's Steam ID
+     * @param {string} bmId - Player's Battlemetrics ID
      * @param {string} name - Player's name
      * @param {string} serverId - Server ID
      * @param {string} guildId - Discord Guild ID
      */
-    recordLogout(steamId, name, serverId, guildId) {
+    recordLogout(bmId, name, serverId, guildId) {
         try {
-            const playerId = this.getOrCreatePlayer(steamId, name, serverId, guildId);
+            const playerId = this.getOrCreatePlayer(bmId, name, serverId, guildId);
             this.insertActivityEventStmt.run(playerId, 'offline', Date.now());
         } catch (error) {
             console.error('Error recording logout:', error);
@@ -169,15 +169,15 @@ class PlayerActivityDB {
      * Get or create a player record
      * @private
      */
-    getOrCreatePlayer(steamId, name, serverId, guildId) {
+    getOrCreatePlayer(bmId, name, serverId, guildId) {
         // Insert player if not exists
-        this.insertPlayerStmt.run(steamId, name, serverId, guildId);
+        this.insertPlayerStmt.run(bmId, name, serverId, guildId);
         
         // Update name if it changed
-        this.updatePlayerNameStmt.run(name, steamId, serverId, guildId);
+        this.updatePlayerNameStmt.run(name, bmId, serverId, guildId);
         
         // Get player ID
-        const player = this.getPlayerIdStmt.get(steamId, serverId, guildId);
+        const player = this.getPlayerIdStmt.get(bmId, serverId, guildId);
         return player ? player.id : null;
     }
     
@@ -185,9 +185,9 @@ class PlayerActivityDB {
      * Get a player's offline patterns
      * Returns hours when the player is most commonly offline
      */
-    getOfflinePatterns(steamId, serverId, guildId) {
+    getOfflinePatterns(bmId, serverId, guildId) {
         try {
-            const player = this.getPlayerIdStmt.get(steamId, serverId, guildId);
+            const player = this.getPlayerIdStmt.get(bmId, serverId, guildId);
             if (!player) return null;
             
             return this.getOfflinePatternStmt.all(player.id);
@@ -200,9 +200,9 @@ class PlayerActivityDB {
     /**
      * Get a player's activity history
      */
-    getPlayerHistory(steamId, serverId, guildId, limit = 20) {
+    getPlayerHistory(bmId, serverId, guildId, limit = 20) {
         try {
-            return this.getPlayerHistoryStmt.all(steamId, serverId, guildId, limit);
+            return this.getPlayerHistoryStmt.all(bmId, serverId, guildId, limit);
         } catch (error) {
             console.error('Error getting player history:', error);
             return [];
@@ -212,9 +212,9 @@ class PlayerActivityDB {
     /**
      * Get offline patterns for a player
      */
-    getOfflinePatterns(steamId, serverId, guildId) {
+    getOfflinePatterns(bmId, serverId, guildId) {
         try {
-            const playerId = this.getPlayerIdStmt.get(steamId, serverId, guildId);
+            const playerId = this.getPlayerIdStmt.get(bmId, serverId, guildId);
             if (!playerId) return [];
             
             return this.getOfflinePatternStmt.all(playerId.id);
@@ -227,9 +227,9 @@ class PlayerActivityDB {
     /**
      * Get info about a player
      */
-    getPlayerInfo(steamId, serverId, guildId) {
+    getPlayerInfo(bmId, serverId, guildId) {
         try {
-            return this.getPlayerInfoStmt.get(steamId, serverId, guildId);
+            return this.getPlayerInfoStmt.get(bmId, serverId, guildId);
         } catch (error) {
             console.error('Error getting player info:', error);
             return null;
@@ -252,9 +252,9 @@ class PlayerActivityDB {
      * Analyze when a player is most likely to be offline
      * Returns the best time ranges to raid a player
      */
-    analyzeOfflinePatterns(steamId, serverId, guildId) {
+    analyzeOfflinePatterns(bmId, serverId, guildId) {
         try {
-            const patterns = this.getOfflinePatterns(steamId, serverId, guildId);
+            const patterns = this.getOfflinePatterns(bmId, serverId, guildId);
             if (!patterns || patterns.length === 0) return null;
             
             // Group consecutive hours to find time ranges

@@ -128,11 +128,6 @@ module.exports = {
                         if (rustplus && (rustplus.serverId === content.serverId) && content.inGame) {
                             rustplus.sendInGameMessage(str);
                         }
-                        
-                        // Record login in database for battlemetrics
-                        if (player.steamId) {
-                            PlayerActivityDB.recordLogin(player.steamId, player.name, content.serverId, guildId);
-                        }
                     }
                 }
 
@@ -150,11 +145,6 @@ module.exports = {
                             content.everyone);
                         if (rustplus && (rustplus.serverId === content.serverId) && content.inGame) {
                             rustplus.sendInGameMessage(str);
-                        }
-                        
-                        // Record login in database for battlemetrics
-                        if (player.steamId) {
-                            PlayerActivityDB.recordLogin(player.steamId, player.name, content.serverId, guildId);
                         }
                     }
                 }
@@ -174,11 +164,6 @@ module.exports = {
                             content.everyone);
                         if (rustplus && (rustplus.serverId === content.serverId) && content.inGame) {
                             rustplus.sendInGameMessage(str);
-                        }
-                        
-                        // Record logout in database for battlemetrics
-                        if (player.steamId) {
-                            PlayerActivityDB.recordLogout(player.steamId, player.name, content.serverId, guildId);
                         }
                     }
                 }
@@ -200,6 +185,7 @@ module.exports = {
     handleBattlemetricsChanges: async function (client, guildId) {
         const instance = client.getInstance(guildId);
         const settings = instance.generalSettings;
+        const rustplus = client.rustplusInstances[guildId];
 
         const activeServer = instance.activeServer;
         const server = instance.serverList[activeServer];
@@ -383,6 +369,38 @@ module.exports = {
 
                 await DiscordMessages.sendBattlemetricsEventMessage(guildId, battlemetricsId, title,
                     description, outPutFields);
+            }
+
+            if(bmInstance.logoutPlayers.length !== 0) {
+                console.log(rustplus.playerConnections);
+                for (const playerId of bmInstance.logoutPlayers) {
+                    // Record logout in database for battlemetrics
+                    const player = bmInstance.players[playerId];
+                    console.log(`Recording logout for player ${player.name} (${playerId}) on server ${rustplus.serverId} in guild ${guildId}`);
+                    if (playerId) {
+                        PlayerActivityDB.recordLogout(playerId, player.name, rustplus.serverId, guildId);
+                    }
+                }
+            }
+
+            if(bmInstance.loginPlayers.length !== 0 || bmInstance.newPlayers.length !== 0) {
+                console.log(rustplus.playerConnections);
+                for (const playerId of bmInstance.loginPlayers) {
+                    // Record logout in database for battlemetrics
+                    const player = bmInstance.players[playerId];
+                    console.log(`Recording login for player ${player.name} (${playerId}) on server ${rustplus.serverId} in guild ${guildId}`);
+                    if (playerId) {
+                        PlayerActivityDB.recordLogin(playerId, player.name, rustplus.serverId, guildId);
+                    }
+                }
+                for (const playerId of bmInstance.newPlayers) {
+                    // Record logout in database for battlemetrics
+                    const player = bmInstance.players[playerId];
+                    console.log(`Recording login for player ${player.name} (${playerId}) on server ${rustplus.serverId} in guild ${guildId}`);
+                    if (playerId) {
+                        PlayerActivityDB.recordLogin(playerId, player.name, rustplus.serverId, guildId);
+                    }
+                }
             }
 
             /* Players that just logged out */
