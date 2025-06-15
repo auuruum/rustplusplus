@@ -23,7 +23,7 @@ const Fs = require('fs');
 const Path = require('path');
 
 const DiscordBot = require('./src/structures/DiscordBot');
-const ApiServer = require('./src/api').default;
+const ApiServer = require('./src/util/api').default;
 
 createMissingDirectories();
 
