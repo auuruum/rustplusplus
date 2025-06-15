@@ -23,6 +23,7 @@ const Fs = require('fs');
 const Path = require('path');
 
 const DiscordBot = require('./src/structures/DiscordBot');
+const ApiServer = require('./src/api').default;
 
 createMissingDirectories();
 
@@ -39,6 +40,10 @@ const client = new DiscordBot({
 });
 
 client.build();
+
+// Start the API server
+const apiServer = new ApiServer();
+apiServer.start();
 
 function createMissingDirectories() {
     if (!Fs.existsSync(Path.join(__dirname, 'logs'))) {
