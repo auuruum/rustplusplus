@@ -31,6 +31,52 @@ class ApiServer {
             res.json({ status: 'ok' });
         });
 
+        // Get time info by guild ID
+        this.app.get('/:guildId/time', (async (req: Request, res: Response) => {
+            try {
+                const { guildId } = req.params;
+                
+                // Get rustplus instance from the client exports
+                const client = require('../../index').client;
+                const rustplus = client?.rustplusInstances?.[guildId];
+                
+                if (!rustplus) {
+                    return res.status(404).json({
+                        error: 'RustPlus instance not found for this guild'
+                    });
+                }
+
+                // Check if time is available
+                if (!rustplus.time) {
+                    return res.status(503).json({
+                        error: 'Time data not yet available',
+                        details: 'The server connection is established but time data has not been received yet'
+                    });
+                }
+
+                const time = rustplus.time;
+
+                // Safely get time data with null checks
+                const timeData = {
+                    currentTime: time.time || null,
+                    isDay: typeof time.isDay === 'function' ? time.isDay() : null,
+                    timeTillChange: typeof time.getTimeTillDayOrNight === 'function' ? time.getTimeTillDayOrNight() : null,
+                    sunrise: time.sunrise || null,
+                    sunset: time.sunset || null,
+                    dayLengthMinutes: time.dayLengthMinutes || null,
+                    timeScale: time.timeScale || null
+                };
+                
+                return res.json(timeData);
+            } catch (error) {
+                console.error('Error in time endpoint:', error);
+                res.status(500).json({
+                    error: 'Internal server error',
+                    details: error instanceof Error ? error.message : String(error)
+                });
+            }
+        }) as RequestHandler);
+
         // Get server info by guild ID
         this.app.get('/:guildId', (async (req: Request, res: Response) => {
             try {
@@ -78,7 +124,7 @@ class ApiServer {
 
     public start(): void {
         this.app.listen(this.port, () => {
-            console.log(`API server running on http://localhost:${this.port}`);
+            console.log(`API server listening on port ${this.port}`);
         });
     }
 }
