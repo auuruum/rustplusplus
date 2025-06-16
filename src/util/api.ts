@@ -127,6 +127,73 @@ class ApiServer {
             }
         }) as RequestHandler);
 
+        // Get current events by guild ID
+        this.app.get('/:guildId/events', (async (req: Request, res: Response) => {
+            try {
+                const { guildId } = req.params;
+                
+                // Get rustplus instance from the client exports
+                const client = require('../../index').client;
+                const rustplus = client?.rustplusInstances?.[guildId];
+                
+                if (!rustplus) {
+                    return res.status(404).json({
+                        error: 'RustPlus instance not found for this guild'
+                    });
+                }
+
+                // Get all possible events
+                const events = [];
+
+                // Check for Bradley APC
+                if (rustplus.bradleyAPC) {
+                    events.push('Bradley APC active');
+                }
+
+                // Check for Cargo Ship
+                if (rustplus.cargoShip) {
+                    const status = rustplus.cargoShip.isEgressing ? 'leaving the island' : 'on the island';
+                    events.push(`Cargo Ship ${status}`);
+                }
+
+                // Check for Patrol Helicopter
+                if (rustplus.patrol_helicopter) {
+                    events.push('Patrol Helicopter active');
+                }
+
+                // Check for Small Oil Rig
+                if (rustplus.smallOilRig?.hasLockedCrate) {
+                    events.push('Small Oil Rig has locked crate');
+                }
+
+                // Check for Large Oil Rig
+                if (rustplus.largeOilRig?.hasLockedCrate) {
+                    events.push('Large Oil Rig has locked crate');
+                }
+
+                // Check for CH47
+                if (rustplus.ch47) {
+                    events.push('CH47 active');
+                }
+
+                // Format response
+                const response = {
+                    events: events,
+                    message: events.length > 0 ? 
+                        `Current events:\n${events.join('\n')}` : 
+                        'No registered events at this time.'
+                };
+                
+                return res.json(response);
+            } catch (error) {
+                console.error('Error in events endpoint:', error);
+                res.status(500).json({
+                    error: 'Internal server error',
+                    details: error instanceof Error ? error.message : String(error)
+                });
+            }
+        }) as RequestHandler);
+
         // Get server info by guild ID
         this.app.get('/:guildId', (async (req: Request, res: Response) => {
             try {
