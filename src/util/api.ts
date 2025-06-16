@@ -87,6 +87,46 @@ class ApiServer {
             }
         }) as RequestHandler);
 
+        // Get server population info by guild ID
+        this.app.get('/:guildId/pop', (async (req: Request, res: Response) => {
+            try {
+                const { guildId } = req.params;
+                
+                // Get rustplus instance from the client exports
+                const client = require('../../index').client;
+                const rustplus = client?.rustplusInstances?.[guildId];
+                
+                if (!rustplus) {
+                    return res.status(404).json({
+                        error: 'rustplusplus instance not found for this guild'
+                    });
+                }
+
+                // Check if server info is available
+                if (!rustplus.info) {
+                    return res.status(503).json({
+                        error: 'Server info not yet available',
+                        details: 'The server connection is established but server info has not been received yet'
+                    });
+                }
+
+                // Get population data
+                const popData = {
+                    currentPlayers: rustplus.info.players || 0,
+                    maxPlayers: rustplus.info.maxPlayers || 0,
+                    queuedPlayers: rustplus.info.queuedPlayers || 0
+                };
+                
+                return res.json(popData);
+            } catch (error) {
+                console.error('Error in population endpoint:', error);
+                res.status(500).json({
+                    error: 'Internal server error',
+                    details: error instanceof Error ? error.message : String(error)
+                });
+            }
+        }) as RequestHandler);
+
         // Get server info by guild ID
         this.app.get('/:guildId', (async (req: Request, res: Response) => {
             try {
