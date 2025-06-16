@@ -42,7 +42,7 @@ class ApiServer {
                 
                 if (!rustplus) {
                     return res.status(404).json({
-                        error: 'RustPlus instance not found for this guild'
+                        error: 'rustplusplus instance not found for this guild'
                     });
                 }
 
@@ -56,13 +56,23 @@ class ApiServer {
 
                 const time = rustplus.time;
 
+                // Helper function to format time from decimal to HH:MM
+                const formatTime = (decimalTime: number): string => {
+                    const hours = Math.floor(decimalTime);
+                    const minutes = Math.floor((decimalTime - hours) * 60);
+                    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+                };
+
                 // Safely get time data with null checks
                 const timeData = {
                     currentTime: time.time || null,
+                    currentTimeFormatted: time.time ? formatTime(time.time) : null,
                     isDay: typeof time.isDay === 'function' ? time.isDay() : null,
                     timeTillChange: typeof time.getTimeTillDayOrNight === 'function' ? time.getTimeTillDayOrNight() : null,
                     sunrise: time.sunrise || null,
+                    sunriseFormatted: time.sunrise ? formatTime(time.sunrise) : null,
                     sunset: time.sunset || null,
+                    sunsetFormatted: time.sunset ? formatTime(time.sunset) : null,
                     dayLengthMinutes: time.dayLengthMinutes || null,
                     timeScale: time.timeScale || null
                 };
