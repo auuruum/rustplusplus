@@ -192,6 +192,80 @@ class ApiServer {
                     details: error instanceof Error ? error.message : String(error)
                 });
             }
+        }) as RequestHandler);        // Get switches info by guild ID - shows connected server switches or active server switches if not connected
+        this.app.get('/:guildId/switches', (async (req: Request, res: Response): Promise<void> => {
+            try {
+                const { guildId } = req.params;
+                
+                // Get rustplus instance from the client exports
+                const client = require('../../index').client;
+                const rustplus = client?.rustplusInstances?.[guildId];
+                let switches = {};
+                
+                if (!rustplus) {
+                    res.status(404).json({
+                        error: 'RustPlus instance not found for this guild'
+                    });
+                    return;
+                }
+
+                if (rustplus.connected && rustplus.switches) {
+                    // If connected, use live switches data
+                    switches = rustplus.switches;
+                } else {
+                    // If not connected, read from instance file
+                    try {
+                        const filePath = path.join(process.cwd(), 'instances', `${guildId}.json`);
+                        const fileContent = await fs.readFile(filePath, 'utf-8');
+                        const instanceData = JSON.parse(fileContent);
+                        
+                        // Get active server switches
+                        const activeServer = instanceData.activeServer;
+                        if (activeServer && instanceData.serverList?.[activeServer]?.switches) {
+                            switches = instanceData.serverList[activeServer].switches;
+                        }
+                    } catch (fileError) {
+                        console.error('Error reading instance file:', fileError);
+                        res.status(500).json({ 
+                            error: 'Error reading instance data',
+                            details: fileError instanceof Error ? fileError.message : String(fileError)
+                        });
+                        return;
+                    }
+                }
+
+                // Format switches data
+                const formattedSwitches = Object.entries(switches).map(([id, switchData]: [string, any]) => ({
+                    id,
+                    name: switchData.name,
+                    active: switchData.active,
+                    reachable: switchData.reachable,
+                    location: switchData.location,
+                    coordinates: {
+                        x: switchData.x,
+                        y: switchData.y
+                    },
+                    command: switchData.command,
+                    autoDayNightOnOff: switchData.autoDayNightOnOff,
+                    server: switchData.server,
+                    proximity: switchData.proximity,
+                    messageId: switchData.messageId
+                }));
+                
+                // Return the switches info
+                res.json({
+                    total: formattedSwitches.length,
+                    connected: rustplus.connected || false,
+                    switches: formattedSwitches
+                });
+                
+            } catch (error) {
+                console.error('Error in switches endpoint:', error);
+                res.status(500).json({
+                    error: 'Internal server error',
+                    details: error instanceof Error ? error.message : String(error)
+                });
+            }
         }) as RequestHandler);
 
         // Get server info by guild ID
