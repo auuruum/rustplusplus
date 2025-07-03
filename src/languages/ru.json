@@ -228,6 +228,7 @@
     "commandsRecycleQuantityDesc": "Количество предметов для переработки.",
     "commandsRecycleRecyclerTypeDesc": "Тип переработчика (переработчик, измельчитель, переработчик безопасной зоны).",
     "commandsResearchDesc": "Отображение стоимости для исследования предмета.",
+    "commandsRaidDesc": "Показать стоимость уничтожения предмета.",
     "commandsResetAlarmsDesc": "Сбросить тревожный канал.",
     "commandsResetDesc": "Перезагрузка каналов Discord",
     "commandsResetInformationDesc": "Сбросить информационный канал.",
