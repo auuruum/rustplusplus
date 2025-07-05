@@ -1815,7 +1815,7 @@ class RustPlus extends RustPlusLib {
             let str = '';
             for (const name in this.markers) str += `${name} [${this.markers[name].location}], `;
 
-            return str !== '' ? str.slice(0, -2) : Client.client.intlGet(this.guildId, 'noRegisteredMarkers');
+            return str !== '' ? `${str.slice(0, -2)}.` : Client.client.intlGet(this.guildId, 'noRegisteredMarkers');
         }
 
         if (command.toLowerCase().startsWith(`${commandMarker} `)) {
@@ -1919,7 +1919,7 @@ class RustPlus extends RustPlusLib {
         const commandUnsub = `${Client.client.intlGet(this.guildId, 'commandSyntaxUnsubscribe')}`;
         const commandUnsubEn = `${Client.client.intlGet('en', 'commandSyntaxUnsubscribe')}`;
         const commandList = `${Client.client.intlGet(this.guildId, 'commandSyntaxList')}`;
-        const commandListEn = `${Client.client.intlGet('en', 'commandSyntaxList')}`;
+        const commandListEn = `${prefix}${Client.client.intlGet('en', 'commandSyntaxList')}`;
 
         if (command.toLowerCase().startsWith(`${commandMarket} `)) {
             command = command.slice(`${commandMarket} `.length).trim();
@@ -2846,7 +2846,7 @@ class RustPlus extends RustPlusLib {
         const commandTr = `${prefix}${Client.client.intlGet(this.guildId, 'commandSyntaxTranslateTo')}`;
         const commandTrEn = `${prefix}${Client.client.intlGet('en', 'commandSyntaxTranslateTo')}`;
         const commandLanguage = `${Client.client.intlGet(this.guildId, 'commandSyntaxLanguage')}`;
-        const commandLanguageEn = `${Client.client.intlGet('en', 'commandSyntaxLanguage')}`;
+        const commandLanguageEn = `${prefix}${Client.client.intlGet('en', 'commandSyntaxLanguage')}`;
 
         if (command.toLowerCase().startsWith(`${commandTr} ${commandLanguage} `) ||
             command.toLowerCase().startsWith(`${commandTrEn} ${commandLanguageEn} `)) {
@@ -3280,14 +3280,13 @@ class RustPlus extends RustPlusLib {
         }
 
         const durability = Durability.getDurabilityData(command, null, Client.client, this.guildId);
-        let raidCosts = `${durability[1]}: `;
-
         if(!durability) {
             return Client.client.intlGet(this.guildId, 'noItemWithNameFound', {
                 name: command
             });
         }
-    
+        let raidCosts = `${durability[1]}: `;
+
         const sortedItems = Object.values(durability[3].explosive).sort((a, b) => {
             const sulfurA = a[0].sulfur === null ? Infinity : Number(a[0].sulfur);
             const sulfurB = b[0].sulfur === null ? Infinity : Number(b[0].sulfur);
@@ -3298,6 +3297,24 @@ class RustPlus extends RustPlusLib {
         }
 
         return raidCosts.trim().trim(",");
+    }
+
+    async getCommandSay(command, callerName) {
+        const prefix = this.generalSettings.prefix;
+        const commandSay = `${prefix}${Client.client.intlGet(this.guildId, 'commandSyntaxSay')}`;
+        const commandSayEn = `${prefix}${Client.client.intlGet('en', 'commandSyntaxSay')}`;
+
+        let text = null;
+        if (command.toLowerCase().startsWith(`${commandSay}`)) {
+            text = command.slice(`${commandSay} `.length).trim();
+        }
+        else {
+            text = command.slice(`${commandSayEn} `.length).trim();
+        }
+
+        const str = `${callerName} ${Client.client.intlGet(this.guildId, 'says')} ${text}`
+        await DiscordVoice.sendDiscordVoiceMessage(this.guildId, str)
+        return Client.client.intlGet(this.guildId, 'sentVoiceSay');
     }
 }
 

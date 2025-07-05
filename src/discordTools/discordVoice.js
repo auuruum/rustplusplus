@@ -21,6 +21,9 @@
 const { getVoiceConnection, createAudioPlayer, createAudioResource } = require('@discordjs/voice');
 const Actors = require('../staticFiles/actors.json');
 const Client = require('../../index.ts');
+const voice = require('../commands/voice');
+const InstanceUtils = require('../util/instanceUtils.js');
+const DiscordTools = require('../discordTools/discordTools.js');
 
 module.exports = {
     sendDiscordVoiceMessage: async function (guildId, text) {
@@ -48,5 +51,75 @@ module.exports = {
         else {
             return Actors[language]?.[gender];
         }
+    },
+
+    getSmartDeviceNotFoundVoice: async function (guildId, serverId, entityId) {
+        const instance = Client.client.getInstance(guildId);
+        const server = instance.serverList[serverId];
+        let _entity = null;
+    
+        // Check each possible source for the entity
+
+        if(server.alarms[entityId]){
+            _entity = entityId;
+        }
+        else if(server.storageMonitors[entityId]){
+            _entity = entityId;
+        }
+        else if(server.switches[entityId]){
+            _entity = entityId;
+        }
+
+        if (!entity) {
+            console.error(`Entity with ID ${entityId} not found in alarms, storagemonitors, or switches.`);
+            return;
+        }
+    
+        const credentials = InstanceUtils.readCredentialsFile(guildId);
+        const user = await DiscordTools.getUserById(guildId, credentials[server.steamId].discordUserId);
+        const grid = _entity.location !== null ? ` (${_entity.location})` : '';
+    
+        let voice = Client.client.intlGet(guildId, 'smartDeviceNotFound', {
+            device: `${_entity.name}${grid}`,
+            user: user.user.username
+        });
+        console.log(voice);
+        return voice;
+    },
+    
+
+    getSmartDeviceDisconnectedVoice: function (guildId, serverId, entityId) {
+        const instance = Client.client.getInstance(guildId);
+        const entity = instance.serverList[serverId].storageMonitors[entityId];
+        const grid = entity.location !== null ? ` (${entity.location})` : '';
+
+        let voice = Client.client.intlGet(guildId, 'isNoLongerConnected', {
+            device: `${entity.name}${grid}`
+        });
+        console.log(voice);
+        return voice;
+    },
+
+    getDecayingNotificationVoice: function (guildId, serverId, entityId) {
+        const instance = Client.client.getInstance(guildId);
+        const entity = instance.serverList[serverId].storageMonitors[entityId];
+        const grid = entity.location !== null ? ` (${entity.location})` : '';
+        console.log("logpoint 2")
+
+        let voice = Client.client.intlGet(guildId, 'isDecaying', {
+            device: `${entity.name}${grid}`
+        });
+        console.log(voice);
+        return voice;
+    },
+
+    getAlarmVoice: function (guildId, serverId, entityId) {
+        const instance = Client.client.getInstance(guildId);
+        const entity = instance.serverList[serverId].alarms[entityId];
+        const grid = entity.location !== null ? ` (${entity.location})` : '';
+
+        let voice = Client.client.intlGet(guildId, 'smartAlarmTriggered', { grid });
+        console.log(voice);
+        return voice;
     },
 }
