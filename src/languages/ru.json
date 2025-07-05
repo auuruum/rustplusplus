@@ -586,6 +586,7 @@
     "patrolHelicopterTakenDown": "Патрульный вертолет был сбит ({location}).",
     "percentSign": "Процент",
     "pipe": "Палка",
+    "playerAddedToTracker": "Игрок {name} ({id}) был добавлен в трекер {trackerId}.",
     "playerHasBeenAliveFor": "{name} прожил {time}.",
     "playerId": "ID игрока",
     "playerJoinedTheTeam": "{name} присоединился к команде.",
