@@ -21,6 +21,7 @@
 const Constants = require('../util/constants.js');
 const DiscordMessages = require('../discordTools/discordMessages.js');
 const DiscordTools = require('../discordTools/discordTools.js');
+const PlayerActivityDB = require('../util/database.js');
 const Scrape = require('../util/scrape.js');
 
 module.exports = {
@@ -184,6 +185,7 @@ module.exports = {
     handleBattlemetricsChanges: async function (client, guildId) {
         const instance = client.getInstance(guildId);
         const settings = instance.generalSettings;
+        const rustplus = client.rustplusInstances[guildId];
 
         const activeServer = instance.activeServer;
         const server = instance.serverList[activeServer];
@@ -367,6 +369,33 @@ module.exports = {
 
                 await DiscordMessages.sendBattlemetricsEventMessage(guildId, battlemetricsId, title,
                     description, outPutFields);
+            }
+
+            if(bmInstance.logoutPlayers.length !== 0) {
+                for (const playerId of bmInstance.logoutPlayers) {
+                    // Record logout in database for battlemetrics
+                    const player = bmInstance.players[playerId];
+                    if (playerId) {
+                        PlayerActivityDB.recordLogout(playerId, player.name, rustplus.serverId, guildId);
+                    }
+                }
+            }
+
+            if(bmInstance.loginPlayers.length !== 0 || bmInstance.newPlayers.length !== 0) {
+                for (const playerId of bmInstance.loginPlayers) {
+                    // Record logout in database for battlemetrics
+                    const player = bmInstance.players[playerId];
+                    if (playerId) {
+                        PlayerActivityDB.recordLogin(playerId, player.name, rustplus.serverId, guildId);
+                    }
+                }
+                for (const playerId of bmInstance.newPlayers) {
+                    // Record logout in database for battlemetrics
+                    const player = bmInstance.players[playerId];
+                    if (playerId) {
+                        PlayerActivityDB.recordLogin(playerId, player.name, rustplus.serverId, guildId);
+                    }
+                }
             }
 
             /* Players that just logged out */
