@@ -268,6 +268,82 @@ class ApiServer {
             }
         }) as RequestHandler);
 
+        // Get alarms info by guild ID - shows connected server alarms or active server alarms if not connected
+        this.app.get('/:guildId/alarms', (async (req: Request, res: Response): Promise<void> => {
+            try {
+                const { guildId } = req.params;
+
+                // Get rustplus instance from the client exports
+                const client = require('../../index').client;
+                const rustplus = client?.rustplusInstances?.[guildId];
+                let alarms: any = {};
+
+                if (!rustplus) {
+                    res.status(404).json({
+                        error: 'RustPlus instance not found for this guild'
+                    });
+                    return;
+                }
+
+                if (rustplus.connected && rustplus.alarms) {
+                    // If connected, use live alarms data
+                    alarms = rustplus.alarms;
+                } else {
+                    // If not connected, read from instance file
+                    try {
+                        const filePath = path.join(process.cwd(), 'instances', `${guildId}.json`);
+                        const fileContent = await fs.readFile(filePath, 'utf-8');
+                        const instanceData = JSON.parse(fileContent);
+
+                        // Get active server alarms
+                        const activeServer = instanceData.activeServer;
+                        if (activeServer && instanceData.serverList?.[activeServer]?.alarms) {
+                            alarms = instanceData.serverList[activeServer].alarms;
+                        }
+                    } catch (fileError) {
+                        console.error('Error reading instance file:', fileError);
+                        res.status(500).json({ 
+                            error: 'Error reading instance data',
+                            details: fileError instanceof Error ? fileError.message : String(fileError)
+                        });
+                        return;
+                    }
+                }
+
+                // Format alarms data
+                const formattedAlarms = Object.entries(alarms).map(([id, alarmData]: [string, any]) => ({
+                    id,
+                    name: alarmData.name,
+                    active: alarmData.active,
+                    reachable: alarmData.reachable,
+                    message: alarmData.message,
+                    everyone: alarmData.everyone,
+                    lastTrigger: alarmData.lastTrigger,
+                    location: alarmData.location,
+                    coordinates: {
+                        x: alarmData.x,
+                        y: alarmData.y
+                    },
+                    command: alarmData.command,
+                    server: alarmData.server
+                }));
+
+                // Return the alarms info
+                res.json({
+                    total: formattedAlarms.length,
+                    connected: rustplus.connected || false,
+                    alarms: formattedAlarms
+                });
+
+            } catch (error) {
+                console.error('Error in alarms endpoint:', error);
+                res.status(500).json({
+                    error: 'Internal server error',
+                    details: error instanceof Error ? error.message : String(error)
+                });
+            }
+        }) as RequestHandler);
+
         // Get server info by guild ID
         this.app.get('/:guildId', (async (req: Request, res: Response) => {
             try {
