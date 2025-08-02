@@ -240,6 +240,7 @@ class ApiServer {
                     name: switchData.name,
                     active: switchData.active,
                     reachable: switchData.reachable,
+                    image: switchData.image,
                     location: switchData.location,
                     coordinates: {
                         x: switchData.x,
@@ -261,6 +262,83 @@ class ApiServer {
                 
             } catch (error) {
                 console.error('Error in switches endpoint:', error);
+                res.status(500).json({
+                    error: 'Internal server error',
+                    details: error instanceof Error ? error.message : String(error)
+                });
+            }
+        }) as RequestHandler);
+
+        // Get alarms info by guild ID - shows connected server alarms or active server alarms if not connected
+        this.app.get('/:guildId/alarms', (async (req: Request, res: Response): Promise<void> => {
+            try {
+                const { guildId } = req.params;
+
+                // Get rustplus instance from the client exports
+                const client = require('../../index').client;
+                const rustplus = client?.rustplusInstances?.[guildId];
+                let alarms: any = {};
+
+                if (!rustplus) {
+                    res.status(404).json({
+                        error: 'RustPlus instance not found for this guild'
+                    });
+                    return;
+                }
+
+                if (rustplus.connected && rustplus.alarms) {
+                    // If connected, use live alarms data
+                    alarms = rustplus.alarms;
+                } else {
+                    // If not connected, read from instance file
+                    try {
+                        const filePath = path.join(process.cwd(), 'instances', `${guildId}.json`);
+                        const fileContent = await fs.readFile(filePath, 'utf-8');
+                        const instanceData = JSON.parse(fileContent);
+
+                        // Get active server alarms
+                        const activeServer = instanceData.activeServer;
+                        if (activeServer && instanceData.serverList?.[activeServer]?.alarms) {
+                            alarms = instanceData.serverList[activeServer].alarms;
+                        }
+                    } catch (fileError) {
+                        console.error('Error reading instance file:', fileError);
+                        res.status(500).json({ 
+                            error: 'Error reading instance data',
+                            details: fileError instanceof Error ? fileError.message : String(fileError)
+                        });
+                        return;
+                    }
+                }
+
+                // Format alarms data
+                const formattedAlarms = Object.entries(alarms).map(([id, alarmData]: [string, any]) => ({
+                    id,
+                    name: alarmData.name,
+                    active: alarmData.active,
+                    reachable: alarmData.reachable,
+                    image: alarmData.image,
+                    message: alarmData.message,
+                    everyone: alarmData.everyone,
+                    lastTrigger: alarmData.lastTrigger,
+                    location: alarmData.location,
+                    coordinates: {
+                        x: alarmData.x,
+                        y: alarmData.y
+                    },
+                    command: alarmData.command,
+                    server: alarmData.server
+                }));
+
+                // Return the alarms info
+                res.json({
+                    total: formattedAlarms.length,
+                    connected: rustplus.connected || false,
+                    alarms: formattedAlarms
+                });
+
+            } catch (error) {
+                console.error('Error in alarms endpoint:', error);
                 res.status(500).json({
                     error: 'Internal server error',
                     details: error instanceof Error ? error.message : String(error)
@@ -311,6 +389,68 @@ class ApiServer {
                 res.status(500).json({ error: 'Internal server error' });
             }
         }) as RequestHandler);
+
+        // Toggle smart switch state by switch ID
+        this.app.post('/:guildId/switches/:switchId/toggle', (async (req: Request, res: Response) => {
+            try {
+                const { guildId, switchId } = req.params;
+                const client = require('../../index').client;
+                const rustplus = client?.rustplusInstances?.[guildId];
+
+                if (!rustplus) {
+                    return res.status(404).json({ error: 'RustPlus instance not found for this guild' });
+                }
+
+                const instance = client.getInstance(guildId);
+                const serverId = rustplus.serverId;
+
+                if (!instance.serverList.hasOwnProperty(serverId)) {
+                    return res.status(404).json({ error: 'Server not found in instance' });
+                }
+
+                const switchData = instance.serverList[serverId].switches[switchId];
+
+                if (!switchData) {
+                    return res.status(404).json({ error: 'Switch not found' });
+                }
+
+                // Toggle the switch active state
+                const newActiveState = !switchData.active;
+
+                let response;
+                if (newActiveState) {
+                    response = await rustplus.turnSmartSwitchOnAsync(switchId);
+                } else {
+                    response = await rustplus.turnSmartSwitchOffAsync(switchId);
+                }
+
+                if (!(await rustplus.isResponseValid(response))) {
+                    if (switchData.reachable) {
+                        const DiscordMessages = require('../discordTools/discordMessages.js');
+                        await DiscordMessages.sendSmartSwitchNotFoundMessage(guildId, serverId, switchId);
+                    }
+                    instance.serverList[serverId].switches[switchId].reachable = false;
+                    client.setInstance(guildId, instance);
+                    return res.status(500).json({ error: 'Failed to toggle switch' });
+                }
+
+                instance.serverList[serverId].switches[switchId].active = newActiveState;
+                instance.serverList[serverId].switches[switchId].reachable = true;
+                client.setInstance(guildId, instance);
+
+                const DiscordMessages = require('../discordTools/discordMessages.js');
+                await DiscordMessages.sendSmartSwitchMessage(guildId, serverId, switchId);
+
+                res.json({
+                    switchId,
+                    newActiveState
+                });
+            } catch (error) {
+                console.error('Error toggling switch:', error);
+                res.status(500).json({ error: 'Internal server error', details: error instanceof Error ? error.message : String(error) });
+            }
+        }) as RequestHandler);
+
     }
 
     public start(): void {
