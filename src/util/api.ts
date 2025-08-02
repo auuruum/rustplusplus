@@ -311,6 +311,68 @@ class ApiServer {
                 res.status(500).json({ error: 'Internal server error' });
             }
         }) as RequestHandler);
+
+        // Toggle smart switch state by switch ID
+        this.app.post('/:guildId/switches/:switchId/toggle', (async (req: Request, res: Response) => {
+            try {
+                const { guildId, switchId } = req.params;
+                const client = require('../../index').client;
+                const rustplus = client?.rustplusInstances?.[guildId];
+
+                if (!rustplus) {
+                    return res.status(404).json({ error: 'RustPlus instance not found for this guild' });
+                }
+
+                const instance = client.getInstance(guildId);
+                const serverId = rustplus.serverId;
+
+                if (!instance.serverList.hasOwnProperty(serverId)) {
+                    return res.status(404).json({ error: 'Server not found in instance' });
+                }
+
+                const switchData = instance.serverList[serverId].switches[switchId];
+
+                if (!switchData) {
+                    return res.status(404).json({ error: 'Switch not found' });
+                }
+
+                // Toggle the switch active state
+                const newActiveState = !switchData.active;
+
+                let response;
+                if (newActiveState) {
+                    response = await rustplus.turnSmartSwitchOnAsync(switchId);
+                } else {
+                    response = await rustplus.turnSmartSwitchOffAsync(switchId);
+                }
+
+                if (!(await rustplus.isResponseValid(response))) {
+                    if (switchData.reachable) {
+                        const DiscordMessages = require('../handlers/discordTools/discordMessages.js');
+                        await DiscordMessages.sendSmartSwitchNotFoundMessage(guildId, serverId, switchId);
+                    }
+                    instance.serverList[serverId].switches[switchId].reachable = false;
+                    client.setInstance(guildId, instance);
+                    return res.status(500).json({ error: 'Failed to toggle switch' });
+                }
+
+                instance.serverList[serverId].switches[switchId].active = newActiveState;
+                instance.serverList[serverId].switches[switchId].reachable = true;
+                client.setInstance(guildId, instance);
+
+                const DiscordMessages = require('../handlers/discordTools/discordMessages.js');
+                await DiscordMessages.sendSmartSwitchMessage(guildId, serverId, switchId);
+
+                res.json({
+                    switchId,
+                    newActiveState
+                });
+            } catch (error) {
+                console.error('Error toggling switch:', error);
+                res.status(500).json({ error: 'Internal server error', details: error instanceof Error ? error.message : String(error) });
+            }
+        }) as RequestHandler);
+
     }
 
     public start(): void {
