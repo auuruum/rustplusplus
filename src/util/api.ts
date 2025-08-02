@@ -348,7 +348,7 @@ class ApiServer {
 
                 if (!(await rustplus.isResponseValid(response))) {
                     if (switchData.reachable) {
-                        const DiscordMessages = require('../handlers/discordTools/discordMessages.js');
+                        const DiscordMessages = require('../discordTools/discordMessages.js');
                         await DiscordMessages.sendSmartSwitchNotFoundMessage(guildId, serverId, switchId);
                     }
                     instance.serverList[serverId].switches[switchId].reachable = false;
@@ -360,7 +360,7 @@ class ApiServer {
                 instance.serverList[serverId].switches[switchId].reachable = true;
                 client.setInstance(guildId, instance);
 
-                const DiscordMessages = require('../handlers/discordTools/discordMessages.js');
+                const DiscordMessages = require('../discordTools/discordMessages.js');
                 await DiscordMessages.sendSmartSwitchMessage(guildId, serverId, switchId);
 
                 res.json({
