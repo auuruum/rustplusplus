@@ -240,6 +240,7 @@ class ApiServer {
                     name: switchData.name,
                     active: switchData.active,
                     reachable: switchData.reachable,
+                    image: switchData.image,
                     location: switchData.location,
                     coordinates: {
                         x: switchData.x,
@@ -316,6 +317,7 @@ class ApiServer {
                     name: alarmData.name,
                     active: alarmData.active,
                     reachable: alarmData.reachable,
+                    image: alarmData.image,
                     message: alarmData.message,
                     everyone: alarmData.everyone,
                     lastTrigger: alarmData.lastTrigger,
