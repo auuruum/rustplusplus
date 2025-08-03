@@ -2800,12 +2800,14 @@ class RustPlus extends RustPlusLib {
                     const channelName = channel?.name || 'Unknown Channel';
                     
                     connection.destroy();
-                    this.log(Client.client.intlGet(null, 'infoCap'), 
-                        Client.client.intlGet(this.guildId, 'botLeftVoiceChannel', { channel: channelName }));
                     
-                    return Client.client.intlGet(this.guildId, 'leftVoiceChannel', { channel: channelName });
+                    // Log and return with direct string formatting since i18n keys might not exist
+                    this.log(Client.client.intlGet(null, 'infoCap'), 
+                        `Bot left voice channel ${channelName}`);
+                    
+                    return `Left voice channel ${channelName}`;
                 } else {
-                    return Client.client.intlGet(this.guildId, 'botNotInVoiceChannel');
+                    return Client.client.intlGet(this.guildId, 'botNotInVoiceChannel') || 'Bot is not in a voice channel.';
                 }
             }
             
@@ -2879,18 +2881,14 @@ class RustPlus extends RustPlusLib {
             const channelName = voiceState.channel?.name || 'unknown';
             const username = user?.username || 'unknown';
             
-            // Log the join with proper channel name
+            // Log the join with direct string formatting
             this.log(
                 Client.client.intlGet(null, 'infoCap'),
-                Client.client.intlGet(this.guildId, 'botJoinedVoiceChannel')
-                    .replace('{channel}', channelName)
-                    .replace('{user}', username)
+                `Bot joined voice channel ${channelName} for user ${username}`
             );
             
-            // Return the message with proper channel name
-            return Client.client.intlGet(this.guildId, 'joinedVoiceChannel')
-                .replace('{channel}', channelName)
-                .replace('{user}', username);
+            // Return the message with direct string formatting
+            return `Joined voice channel ${channelName} where ${username} is connected.`;
             
         } catch (error) {
             this.log(Client.client.intlGet(null, 'errorCap'), 
