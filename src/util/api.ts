@@ -518,6 +518,84 @@ class ApiServer {
             }
         }) as RequestHandler);
 
+        this.app.post('/:guildId/switchgroups/:groupId/on', (async (req: Request, res: Response) => {
+            try {
+                const { guildId, groupId } = req.params;
+                const client = require('../../index').client;
+                const rustplus = client?.rustplusInstances?.[guildId];
+
+                if (!rustplus) {
+                    return res.status(404).json({ error: 'RustPlus instance not found for this guild' });
+                }
+
+                const instance = client.getInstance(guildId);
+                const serverId = rustplus.serverId;
+
+                if (!instance.serverList.hasOwnProperty(serverId)) {
+                    return res.status(404).json({ error: 'Server not found in instance' });
+                }
+
+                const groupData = instance.serverList[serverId].switchGroups[groupId];
+
+                if (!groupData) {
+                    return res.status(404).json({ error: 'Switch group not found' });
+                }
+
+                // Use the existing TurnOnOffGroup function
+                const smartSwitchGroupHandler = require('../handlers/smartSwitchGroupHandler.js');
+                await smartSwitchGroupHandler.TurnOnOffGroup(client, rustplus, guildId, serverId, groupId, true);
+
+                res.json({
+                    groupId,
+                    action: 'on',
+                    groupName: groupData.name,
+                    switchCount: groupData.switches ? groupData.switches.length : 0
+                });
+            } catch (error) {
+                console.error('Error turning switch group on:', error);
+                res.status(500).json({ error: 'Internal server error', details: error instanceof Error ? error.message : String(error) });
+            }
+        }) as RequestHandler);
+
+        // Turn switch group OFF by group ID
+        this.app.post('/:guildId/switchgroups/:groupId/off', (async (req: Request, res: Response) => {
+            try {
+                const { guildId, groupId } = req.params;
+                const client = require('../../index').client;
+                const rustplus = client?.rustplusInstances?.[guildId];
+
+                if (!rustplus) {
+                    return res.status(404).json({ error: 'RustPlus instance not found for this guild' });
+                }
+
+                const instance = client.getInstance(guildId);
+                const serverId = rustplus.serverId;
+
+                if (!instance.serverList.hasOwnProperty(serverId)) {
+                    return res.status(404).json({ error: 'Server not found in instance' });
+                }
+
+                const groupData = instance.serverList[serverId].switchGroups[groupId];
+
+                if (!groupData) {
+                    return res.status(404).json({ error: 'Switch group not found' });
+                }
+
+                // Use the existing TurnOnOffGroup function
+                const smartSwitchGroupHandler = require('../handlers/smartSwitchGroupHandler.js');
+                await smartSwitchGroupHandler.TurnOnOffGroup(client, rustplus, guildId, serverId, groupId, false);
+
+                res.json({
+                    groupId,
+                    action: 'off',
+                    groupName: groupData.name,
+                    switchCount: groupData.switches ? groupData.switches.length : 0
+                });
+            } catch (error) {
+                console.error('Error turning switch group off:', error);
+                res.status(500).json({ error: 'Internal server error', details: error instanceof Error ? error.message : String(error) });
+            }
+        }) as RequestHandler);
     }
 
     public start(): void {
