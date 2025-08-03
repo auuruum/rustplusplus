@@ -17,7 +17,7 @@
     https://github.com/alexemanuelol/rustplusplus
 
 */
-
+//C:\Users\aurum\Documents\GitHub\rustplusplus\src\structures\RustPlus.js
 const Fs = require('fs');
 const Path = require('path');
 const RustPlusLib = require('@liamcottle/rustplus.js');
@@ -2745,6 +2745,159 @@ class RustPlus extends RustPlusLib {
         }
 
         return strings;
+    }
+    async getCommandVoice(callerSteamId, command = null) {
+        try {
+            // Parse the command to check for subcommands
+            let action = 'join'; // default action
+            
+            if (command) {
+                const prefix = this.generalSettings.prefix;
+                const commandVoice = `${prefix}${Client.client.intlGet(this.guildId, 'commandSyntaxVoice')}`;
+                const commandVoiceEn = `${prefix}${Client.client.intlGet('en', 'commandSyntaxVoice')}`;
+                
+                let subcommand = '';
+                if (command.toLowerCase().startsWith(`${commandVoice} `)) {
+                    subcommand = command.slice(`${commandVoice} `.length).trim().toLowerCase();
+                } else if (command.toLowerCase().startsWith(`${commandVoiceEn} `)) {
+                    subcommand = command.slice(`${commandVoiceEn} `.length).trim().toLowerCase();
+                }
+                
+                // Check for valid subcommands
+                const joinCommands = [
+                    Client.client.intlGet(this.guildId, 'commandSyntaxJoin')?.toLowerCase(),
+                    Client.client.intlGet('en', 'commandSyntaxJoin')?.toLowerCase(),
+                    'join'
+                ].filter(Boolean);
+                
+                const leaveCommands = [
+                    Client.client.intlGet(this.guildId, 'commandSyntaxLeave')?.toLowerCase(),
+                    Client.client.intlGet('en', 'commandSyntaxLeave')?.toLowerCase(),
+                    'leave'
+                ].filter(Boolean);
+                
+                if (joinCommands.includes(subcommand)) {
+                    action = 'join';
+                } else if (leaveCommands.includes(subcommand)) {
+                    action = 'leave';
+                } else if (subcommand !== '') {
+                    // Invalid subcommand
+                    return Client.client.intlGet(this.guildId, 'invalidVoiceSubcommand', {
+                        subcommand: subcommand
+                    });
+                }
+            }
+            
+            // Handle leave action
+            if (action === 'leave') {
+                const { getVoiceConnection } = require('@discordjs/voice');
+                const connection = getVoiceConnection(this.guildId);
+                
+                if (connection) {
+                    // Get the channel name before destroying the connection
+                    const guild = Client.client.guilds.cache.get(this.guildId);
+                    const channel = guild?.channels.cache.get(connection.joinConfig.channelId);
+                    const channelName = channel?.name || 'Unknown Channel';
+                    
+                    connection.destroy();
+                    this.log(Client.client.intlGet(null, 'infoCap'), 
+                        Client.client.intlGet(this.guildId, 'botLeftVoiceChannel', { channel: channelName }));
+                    
+                    return Client.client.intlGet(this.guildId, 'leftVoiceChannel', { channel: channelName });
+                } else {
+                    return Client.client.intlGet(this.guildId, 'botNotInVoiceChannel');
+                }
+            }
+            
+            // Handle join action (default)
+            // Read the credentials file for this guild
+            const credentials = InstanceUtils.readCredentialsFile(this.guildId);
+            
+            // Check if the caller's Steam ID exists in credentials
+            if (!(callerSteamId in credentials)) {
+                return Client.client.intlGet(this.guildId, 'userNotRegistered', {
+                    user: 'You'
+                });
+            }
+            
+            // Get the Discord user ID
+            const discordUserId = credentials[callerSteamId].discord_user_id;
+            
+            if (!discordUserId) {
+                return Client.client.intlGet(this.guildId, 'noDiscordIdFound');
+            }
+            
+            // Try to get the Discord user to verify the ID is valid
+            const user = await DiscordTools.getUserById(this.guildId, discordUserId);
+            
+            if (!user) {
+                return Client.client.intlGet(this.guildId, 'couldNotFindUser', {
+                    userId: discordUserId
+                });
+            }
+            
+            // Join the voice channel if the user is in one
+            const guild = Client.client.guilds.cache.get(this.guildId);
+            if (!guild) {
+                return Client.client.intlGet(this.guildId, 'guildNotFound');
+            }
+            
+            const member = guild.members.cache.get(discordUserId);
+            if (!member) {
+                return Client.client.intlGet(this.guildId, 'memberNotFound');
+            }
+            
+            const voiceState = member.voice;
+            if (!voiceState || !voiceState.channel) {
+                return Client.client.intlGet(this.guildId, 'userNotInVoiceChannel', {
+                    user: user.username
+                });
+            }
+            
+            // Check if bot is already in the same voice channel
+            const { getVoiceConnection, joinVoiceChannel } = require('@discordjs/voice');
+            const existingConnection = getVoiceConnection(this.guildId);
+            
+            if (existingConnection && existingConnection.joinConfig.channelId === voiceState.channel.id) {
+                return Client.client.intlGet(this.guildId, 'alreadyInVoiceChannel', {
+                    channel: voiceState.channel.name
+                });
+            }
+            
+            // Destroy existing connection if in different channel
+            if (existingConnection) {
+                existingConnection.destroy();
+            }
+            
+            // Join the voice channel
+            const connection = joinVoiceChannel({
+                channelId: voiceState.channel.id,
+                guildId: guild.id,
+                adapterCreator: guild.voiceAdapterCreator,
+            });
+            
+            const channelName = voiceState.channel?.name || 'unknown';
+            const username = user?.username || 'unknown';
+            
+            // Log the join with proper channel name
+            this.log(
+                Client.client.intlGet(null, 'infoCap'),
+                Client.client.intlGet(this.guildId, 'botJoinedVoiceChannel')
+                    .replace('{channel}', channelName)
+                    .replace('{user}', username)
+            );
+            
+            // Return the message with proper channel name
+            return Client.client.intlGet(this.guildId, 'joinedVoiceChannel')
+                .replace('{channel}', channelName)
+                .replace('{user}', username);
+            
+        } catch (error) {
+            this.log(Client.client.intlGet(null, 'errorCap'), 
+                `Voice command error: ${error.message}`, 'error');
+            
+            return Client.client.intlGet(this.guildId, 'voiceCommandError');
+        }
     }
 }
 

@@ -17,7 +17,7 @@
     https://github.com/alexemanuelol/rustplusplus
 
 */
-
+//C:\Users\aurum\Documents\GitHub\rustplusplus\src\handlers\inGameCommandHandler.js
 const SmartAlarmHandler = require('./smartAlarmHandler.js');
 const SmartSwitchGroupHandler = require('./smartSwitchGroupHandler.js');
 const SmartSwitchHandler = require('./smartSwitchHandler.js');
@@ -112,6 +112,10 @@ module.exports = {
         else if (commandLowerCase === `${prefix}${client.intlGet('en', 'commandSyntaxMute')}` ||
             commandLowerCase === `${prefix}${client.intlGet(guildId, 'commandSyntaxMute')}`) {
             rustplus.sendInGameMessage(rustplus.getCommandMute());
+        }
+        else if (commandLowerCase.startsWith(`${prefix}${client.intlGet('en', 'commandSyntaxVoice')}`) ||
+            commandLowerCase.startsWith(`${prefix}${client.intlGet(guildId, 'commandSyntaxVoice')}`)) {
+            rustplus.sendInGameMessage(await rustplus.getCommandVoice(callerSteamId, command));
         }
         else if ((commandLowerCase.startsWith(`${prefix}${client.intlGet('en', 'commandSyntaxNote')} `) ||
             commandLowerCase === `${prefix}${client.intlGet('en', 'commandSyntaxNotes')}`) ||

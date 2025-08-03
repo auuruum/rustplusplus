@@ -18,7 +18,7 @@
     https://github.com/alexemanuelol/rustplusplus
 
 */
-
+//C:\Users\aurum\Documents\GitHub\rustplusplus\src\commands\voice.js
 const Builder = require('@discordjs/builders');
 const { joinVoiceChannel, getVoiceConnection } = require('@discordjs/voice');
 
@@ -65,6 +65,7 @@ module.exports = {
                             id: voiceChannel && voiceChannel.id ? voiceChannel.id : client.intlGet(interaction.guildId, 'unknown'), 
                             guild: voiceChannel && voiceChannel.guild.name ? voiceChannel.guild.name : client.intlGet(interaction.guildId, 'unknown')}
                         ));
+                    client.log(client.intlGet(null, 'infoCap'), `Bot joined voice channel ${voiceChannel?.name || 'unknown'} for user ${interaction.user.tag}`);
                 }
                 else {
                     await DiscordMessages.sendVoiceMessage(interaction,
@@ -85,6 +86,7 @@ module.exports = {
                                 id: interaction.member.voice.channel.id,
                                 guild: interaction.member.guild.name
                             }));
+                    client.log(client.intlGet(null, 'infoCap'), `Bot left voice channel ${interaction.member.voice.channel?.name || 'unknown'}`);
                 }
             } break;
 
