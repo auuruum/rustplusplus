@@ -2829,16 +2829,7 @@ class RustPlus extends RustPlusLib {
                 return Client.client.intlGet(this.guildId, 'noDiscordIdFound');
             }
             
-            // Try to get the Discord user to verify the ID is valid
-            const user = await DiscordTools.getUserById(this.guildId, discordUserId);
-            
-            if (!user) {
-                return Client.client.intlGet(this.guildId, 'couldNotFindUser', {
-                    userId: discordUserId
-                });
-            }
-            
-            // Join the voice channel if the user is in one
+            // Get the guild and member first
             const guild = Client.client.guilds.cache.get(this.guildId);
             if (!guild) {
                 return Client.client.intlGet(this.guildId, 'guildNotFound');
@@ -2849,10 +2840,13 @@ class RustPlus extends RustPlusLib {
                 return Client.client.intlGet(this.guildId, 'memberNotFound');
             }
             
+            // Get username from the member object (this is more reliable)
+            const username = member.user?.username || member.user?.tag || member.displayName || 'unknown';
+            
             const voiceState = member.voice;
             if (!voiceState || !voiceState.channel) {
                 return Client.client.intlGet(this.guildId, 'userNotInVoiceChannel', {
-                    user: user.username
+                    user: username
                 });
             }
             
@@ -2879,15 +2873,14 @@ class RustPlus extends RustPlusLib {
             });
             
             const channelName = voiceState.channel?.name || 'unknown';
-            const username = user?.username || 'unknown';
             
-            // Log the join with direct string formatting
+            // Log the join with the correct username
             this.log(
                 Client.client.intlGet(null, 'infoCap'),
                 `Bot joined voice channel ${channelName} for user ${username}`
             );
             
-            // Return the message with direct string formatting
+            // Return the message with the correct username
             return `Joined voice channel ${channelName} where ${username} is connected.`;
             
         } catch (error) {
