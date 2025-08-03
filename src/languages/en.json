@@ -143,6 +143,7 @@
     "botLeftVoiceChannel": "Bot left voice channel '{channel}'",
     "leftVoiceChannel": "Left voice channel '{channel}'",
     "alreadyInVoiceChannel": "Bot already in a voice channel.",
+    "botNotInVoiceChannel": "Bot is not in a voice channel.",
     "commandSyntaxLeave": "leave",
     "commandSyntaxJoin": "join",
     "commandSyntaxNote": "note",
