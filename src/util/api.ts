@@ -2,6 +2,8 @@ import express, { Express, Request, Response, RequestHandler } from 'express';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { createServer } from 'http';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const Timer = require('./timer');
 import { WebSocketServer, WebSocket } from 'ws';
 
 interface WebSocketClient {
@@ -83,7 +85,7 @@ class ApiServer {
                 type: 'connected',
                 message: 'WebSocket connection established',
                 availableSubscriptions: [
-                    'time', 'pop', 'events', 'switches', 'alarms', 'switchgroups', 'server'
+                    'time', 'pop', 'events', 'switches', 'alarms', 'switchgroups', 'storagemonitors', 'server'
                 ]
             }));
         });
@@ -136,6 +138,68 @@ class ApiServer {
                     type: 'error',
                     message: 'Unknown message type'
                 }));
+        }
+    }
+
+    private async getStorageMonitorsData(guildId: string): Promise<any> {
+        try {
+            const client = require('../../index').client;
+            const rustplus = client?.rustplusInstances?.[guildId];
+            let storageMonitors: any = {};
+
+            if (!rustplus) {
+                return null;
+            }
+
+            if (rustplus && rustplus.storageMonitors && Object.keys(rustplus.storageMonitors).length) {
+                storageMonitors = rustplus.storageMonitors;
+            } else {
+                try {
+                    const filePath = path.join(process.cwd(), 'instances', `${guildId}.json`);
+                    const fileContent = await fs.readFile(filePath, 'utf-8');
+                    const instanceData = JSON.parse(fileContent);
+
+                    const activeServer = instanceData.activeServer;
+                    if (activeServer && instanceData.serverList?.[activeServer]?.storageMonitors) {
+                        storageMonitors = instanceData.serverList[activeServer].storageMonitors;
+                    }
+                } catch (fileError) {
+                    return null;
+                }
+            }
+
+            const formattedMonitors = Object.entries(storageMonitors).map(([id, monitorData]: [string, any]) => ({
+                id,
+                name: monitorData.name,
+                reachable: monitorData.reachable,
+                decaying: monitorData.decaying,
+                type: monitorData.type,
+                image: monitorData.image,
+                location: monitorData.location,
+                coordinates: {
+                    x: monitorData.x,
+                    y: monitorData.y
+                },
+                items: monitorData.items,
+                capacity: monitorData.capacity,
+                hasProtection: monitorData.hasProtection,
+                expiry: monitorData.expiry,
+                timeToDecaySeconds: (typeof monitorData.expiry === 'number' && monitorData.expiry > 0)
+                    ? Math.max(0, Math.floor(monitorData.expiry - Date.now() / 1000))
+                    : (monitorData.expiry === 0 ? 0 : null),
+                timeToDecay: (typeof monitorData.expiry === 'number' && monitorData.expiry > 0)
+                    ? Timer.secondsToFullScale(Math.max(0, Math.floor(monitorData.expiry - Date.now() / 1000)))
+                    : (monitorData.expiry === 0 ? '0s' : null),
+                server: monitorData.server
+            }));
+
+            return {
+                total: formattedMonitors.length,
+                connected: rustplus.connected || false,
+                storageMonitors: formattedMonitors
+            };
+        } catch (error) {
+            return null;
         }
     }
 
@@ -198,6 +262,9 @@ class ApiServer {
                         break;
                     case 'switchgroups':
                         data = await this.getSwitchGroupsData(guildId);
+                        break;
+                    case 'storagemonitors':
+                        data = await this.getStorageMonitorsData(guildId);
                         break;
                     case 'server':
                         data = await this.getServerData(guildId);
@@ -659,6 +726,29 @@ class ApiServer {
                 res.json(alarmsData);
             } catch (error) {
                 console.error('Error in alarms endpoint:', error);
+                res.status(500).json({
+                    error: 'Internal server error',
+                    details: error instanceof Error ? error.message : String(error)
+                });
+            }
+        }) as RequestHandler);
+
+        // Get storage monitors info by guild ID
+        this.app.get('/:guildId/storagemonitors', (async (req: Request, res: Response): Promise<void> => {
+            try {
+                const { guildId } = req.params;
+                const storageMonitorsData = await this.getStorageMonitorsData(guildId);
+
+                if (!storageMonitorsData) {
+                    res.status(404).json({
+                        error: 'RustPlus instance not found for this guild'
+                    });
+                    return;
+                }
+
+                res.json(storageMonitorsData);
+            } catch (error) {
+                console.error('Error in storage monitors endpoint:', error);
                 res.status(500).json({
                     error: 'Internal server error',
                     details: error instanceof Error ? error.message : String(error)
