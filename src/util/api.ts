@@ -168,30 +168,37 @@ class ApiServer {
                 }
             }
 
-            const formattedMonitors = Object.entries(storageMonitors).map(([id, monitorData]: [string, any]) => ({
-                id,
-                name: monitorData.name,
-                reachable: monitorData.reachable,
-                decaying: monitorData.decaying,
-                type: monitorData.type,
-                image: monitorData.image,
-                location: monitorData.location,
-                coordinates: {
-                    x: monitorData.x,
-                    y: monitorData.y
-                },
-                items: monitorData.items,
-                capacity: monitorData.capacity,
-                hasProtection: monitorData.hasProtection,
-                expiry: monitorData.expiry,
-                timeToDecaySeconds: (typeof monitorData.expiry === 'number' && monitorData.expiry > 0)
-                    ? Math.max(0, Math.floor(monitorData.expiry - Date.now() / 1000))
-                    : (monitorData.expiry === 0 ? 0 : null),
-                timeToDecay: (typeof monitorData.expiry === 'number' && monitorData.expiry > 0)
-                    ? Timer.secondsToFullScale(Math.max(0, Math.floor(monitorData.expiry - Date.now() / 1000)))
-                    : (monitorData.expiry === 0 ? '0s' : null),
-                server: monitorData.server
-            }));
+            const instanceData = client.getInstance ? client.getInstance(guildId) : null;
+            const activeServerId = rustplus?.serverId ?? instanceData?.activeServer;
+
+            const formattedMonitors = Object.entries(storageMonitors).map(([id, monitorData]: [string, any]) => {
+                const instanceMonitor = instanceData?.serverList?.[activeServerId]?.storageMonitors?.[id] ?? {};
+                return {
+                    id,
+                    name: instanceMonitor.name ?? monitorData.name,
+                    reachable: instanceMonitor.reachable ?? monitorData.reachable,
+                    decaying: instanceMonitor.decaying ?? monitorData.decaying,
+                    type: instanceMonitor.type ?? monitorData.type,
+                    image: instanceMonitor.image ?? monitorData.image,
+                    location: instanceMonitor.location ?? monitorData.location,
+                    coordinates: {
+                        x: instanceMonitor.x ?? monitorData.x,
+                        y: instanceMonitor.y ?? monitorData.y
+                    },
+                    items: monitorData.items,
+                    capacity: monitorData.capacity ?? instanceMonitor.capacity,
+                    upkeep: instanceMonitor.upkeep ?? monitorData.upkeep ?? null,
+                    hasProtection: monitorData.hasProtection ?? instanceMonitor.hasProtection,
+                    expiry: monitorData.expiry,
+                    timeToDecaySeconds: (typeof monitorData.expiry === 'number' && monitorData.expiry > 0)
+                        ? Math.max(0, Math.floor(monitorData.expiry - Date.now() / 1000))
+                        : (monitorData.expiry === 0 ? 0 : null),
+                    timeToDecay: (typeof monitorData.expiry === 'number' && monitorData.expiry > 0)
+                        ? Timer.secondsToFullScale(Math.max(0, Math.floor(monitorData.expiry - Date.now() / 1000)))
+                        : (monitorData.expiry === 0 ? '0s' : null),
+                    server: instanceMonitor.server ?? monitorData.server
+                };
+            });
 
             return {
                 total: formattedMonitors.length,
