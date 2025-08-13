@@ -450,8 +450,17 @@ module.exports = async (client, interaction) => {
         }
 
         /* Create the rustplus instance */
-        const newRustplus = client.createRustplusInstance(
+        const newRustplus = await client.createRustplusInstance(
             guildId, server.serverIp, server.appPort, server.steamId, server.playerToken);
+
+        if (!newRustplus) {
+            // License invalid, connection blocked
+            await client.interactionEditReply(interaction, {
+                content: client.intlGet(guildId, 'licenseInvalidConnectionBlocked'),
+                ephemeral: true
+            });
+            return;
+        }
 
         await DiscordMessages.sendServerMessage(guildId, ids.serverId, null, interaction);
 

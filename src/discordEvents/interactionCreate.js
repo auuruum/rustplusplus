@@ -21,6 +21,7 @@
 const Discord = require('discord.js');
 
 const DiscordEmbeds = require('../discordTools/discordEmbeds');
+const LicenseService = require('../util/licenseService');
 
 module.exports = {
     name: 'interactionCreate',
@@ -52,6 +53,43 @@ module.exports = {
 
             /* If the command doesn't exist, return */
             if (!command) return;
+
+            /* License checking for all commands except license commands */
+            if (interaction.commandName !== 'license') {
+                try {
+                    const licenseStatus = await LicenseService.checkLicense(interaction.guildId);
+                    
+                    if (licenseStatus.status !== 'active') {
+                        /* License is not active - send inactive bot message */
+                        const inactiveMessage = LicenseService.getInactiveBotMessage(
+                            (guildId, key, vars) => client.intlGet(guildId, key, vars), 
+                            interaction.guildId
+                        );
+                        await interaction.reply({
+                            content: inactiveMessage,
+                            ephemeral: true
+                        });
+                        
+                        client.log(client.intlGet(null, 'warningCap'), 
+                            `Command ${interaction.commandName} blocked due to invalid license for guild ${interaction.guildId}`);
+                        return;
+                    }
+                } catch (licenseError) {
+                    client.log(client.intlGet(null, 'errorCap'), 
+                        `License check failed for guild ${interaction.guildId}: ${licenseError.message}`, 'error');
+                    
+                    /* If license check fails, send inactive message as fallback */
+                    const inactiveMessage = LicenseService.getInactiveBotMessage(
+                        (guildId, key, vars) => client.intlGet(guildId, key, vars), 
+                        interaction.guildId
+                    );
+                    await interaction.reply({
+                        content: inactiveMessage,
+                        ephemeral: true
+                    });
+                    return;
+                }
+            }
 
             try {
                 await command.execute(client, interaction);

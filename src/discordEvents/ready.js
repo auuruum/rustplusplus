@@ -77,6 +77,6 @@ module.exports = {
         BattlemetricsHandler.handler(client, true);
         client.battlemetricsIntervalId = setInterval(BattlemetricsHandler.handler, 60000, client, false);
 
-        client.createRustplusInstancesFromConfig();
+        await client.createRustplusInstancesFromConfig();
     },
 };

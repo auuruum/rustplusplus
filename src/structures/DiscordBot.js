@@ -28,6 +28,7 @@ const Cctv = require('./Cctv');
 const Config = require('../../config');
 const DiscordEmbeds = require('../discordTools/discordEmbeds.js');
 const DiscordTools = require('../discordTools/discordTools');
+const LicenseService = require('../util/licenseService');
 const InstanceUtils = require('../util/instanceUtils.js');
 const Items = require('./Items');
 const Logger = require('./Logger.js');
@@ -72,10 +73,14 @@ class DiscordBot extends Discord.Client {
 
         this.voiceLeaveTimeouts = new Object();
 
+        // License system initialization
+        this.licenseCheckInterval = null;
+
         this.loadDiscordCommands();
         this.loadDiscordEvents();
         this.loadEnIntl();
         this.loadBotIntl();
+        this.setupLicenseChecking();
     }
 
     loadDiscordCommands() {
@@ -299,7 +304,14 @@ class DiscordBot extends Discord.Client {
             Path.join(__dirname, '..', 'templates/generalSettingsTemplate.json'), 'utf8'));
     }
 
-    createRustplusInstance(guildId, serverIp, appPort, steamId, playerToken) {
+    async createRustplusInstance(guildId, serverIp, appPort, steamId, playerToken) {
+        // Check license before creating connection
+        const licenseStatus = await LicenseService.checkLicense(guildId);
+        if (licenseStatus.status !== 'active') {
+            this.log(this.intlGet(guildId, 'licenseInvalidConnectionBlocked'), 'warning');
+            return null;
+        }
+
         let rustplus = new RustPlus(guildId, serverIp, appPort, steamId, playerToken);
 
         /* Add rustplus instance to Object */
@@ -311,25 +323,25 @@ class DiscordBot extends Discord.Client {
         return rustplus;
     }
 
-    createRustplusInstancesFromConfig() {
+    async createRustplusInstancesFromConfig() {
         const files = Fs.readdirSync(Path.join(__dirname, '..', '..', 'instances'));
 
-        files.forEach(file => {
-            if (!file.endsWith('.json')) return;
+        for (const file of files) {
+            if (!file.endsWith('.json')) continue;
 
             const guildId = file.replace('.json', '');
             const instance = this.getInstance(guildId);
-            if (!instance) return;
+            if (!instance) continue;
 
             if (instance.activeServer !== null && instance.serverList.hasOwnProperty(instance.activeServer)) {
-                this.createRustplusInstance(
+                await this.createRustplusInstance(
                     guildId,
                     instance.serverList[instance.activeServer].serverIp,
                     instance.serverList[instance.activeServer].appPort,
                     instance.serverList[instance.activeServer].steamId,
                     instance.serverList[instance.activeServer].playerToken);
             }
-        });
+        }
     }
 
     resetRustplusVariables(guildId) {
@@ -546,6 +558,86 @@ class DiscordBot extends Discord.Client {
 
     isAdministrator(interaction) {
         return interaction.member.permissions.has(Discord.PermissionFlagsBits.Administrator);
+    }
+
+    /**
+     * Setup periodic license checking for all active guilds
+     * This ensures license status is checked every 5 minutes
+     */
+    setupLicenseChecking() {
+        // Clear any existing interval
+        if (this.licenseCheckInterval) {
+            clearInterval(this.licenseCheckInterval);
+        }
+
+        // Set up periodic license checking every 5 minutes (300,000 ms)
+        this.licenseCheckInterval = setInterval(async () => {
+            try {
+                // Check licenses for all active guilds
+                for (const guildId of this.guilds.cache.keys()) {
+                    try {
+                        // Force refresh license status from API
+                        const licenseStatus = await LicenseService.checkLicense(guildId, true);
+                        
+                        // If license is expired or invalid, disconnect from Rust server
+                        if (licenseStatus.status !== 'active') {
+                            await this.disconnectFromRustServer(guildId, licenseStatus.status);
+                        }
+                        
+                        this.log(this.intlGet(null, 'infoCap'), 
+                            this.intlGet(null, 'licensePeriodicCheckCompleted', { guildId: guildId }));
+                    } catch (error) {
+                        this.log(this.intlGet(null, 'warningCap'), 
+                            this.intlGet(null, 'licensePeriodicCheckFailed', { guildId: guildId, error: error.message }));
+                    }
+                }
+            } catch (error) {
+                this.log(this.intlGet(null, 'errorCap'), 
+                    `Error during periodic license checking: ${error.message}`, 'error');
+            }
+        }, 300000); // 5 minutes
+
+        this.log(this.intlGet(null, 'infoCap'), this.intlGet(null, 'licenseSystemInitialized'));
+    }
+
+    /**
+     * Disconnect from Rust server when license is invalid
+     * @param {string} guildId - The Discord guild ID
+     * @param {string} licenseStatus - The license status (expired, none, etc.)
+     */
+    async disconnectFromRustServer(guildId, licenseStatus) {
+        try {
+            // Check if there's an active RustPlus instance for this guild
+            if (this.rustplusInstances[guildId] && this.activeRustplusInstances[guildId]) {
+                const rustplus = this.rustplusInstances[guildId];
+                
+                // Disconnect from the Rust server
+                if (rustplus && rustplus.isConnected) {
+                    rustplus.disconnect();
+                    this.activeRustplusInstances[guildId] = false;
+                    
+                    this.log(this.intlGet(null, 'warningCap'), 
+                        this.intlGet(null, 'licenseExpiredDisconnected', { 
+                            guildId: guildId, 
+                            status: licenseStatus 
+                        }));
+                }
+            }
+        } catch (error) {
+            this.log(this.intlGet(null, 'errorCap'), 
+                `Failed to disconnect from Rust server for guild ${guildId}: ${error.message}`, 'error');
+        }
+    }
+
+    /**
+     * Stop periodic license checking (useful for cleanup)
+     */
+    stopLicenseChecking() {
+        if (this.licenseCheckInterval) {
+            clearInterval(this.licenseCheckInterval);
+            this.licenseCheckInterval = null;
+            this.log(this.intlGet(null, 'infoCap'), this.intlGet(null, 'licenseSystemStopped'));
+        }
     }
 }
 
