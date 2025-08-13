@@ -630,6 +630,31 @@ class DiscordBot extends Discord.Client {
     }
 
     /**
+     * Manually trigger license check for a specific guild
+     * @param {string} guildId - The Discord guild ID to check
+     */
+    async triggerLicenseCheck(guildId) {
+        try {
+            // Force refresh license status from API
+            const licenseStatus = await LicenseService.checkLicense(guildId, true);
+            
+            // If license is expired or invalid, disconnect from Rust server
+            if (licenseStatus.status !== 'active') {
+                await this.disconnectFromRustServer(guildId, licenseStatus.status);
+            }
+            
+            this.log(this.intlGet(null, 'infoCap'), 
+                this.intlGet(null, 'licensePeriodicCheckCompleted', { guildId: guildId }));
+            
+            return licenseStatus;
+        } catch (error) {
+            this.log(this.intlGet(null, 'warningCap'), 
+                this.intlGet(null, 'licensePeriodicCheckFailed', { guildId: guildId, error: error.message }));
+            throw error;
+        }
+    }
+
+    /**
      * Stop periodic license checking (useful for cleanup)
      */
     stopLicenseChecking() {

@@ -113,6 +113,14 @@ async function handleActivateCommand(client, interaction, guildId, verifyId) {
         const result = await LicenseService.activateLicense(guildId, licenseKey.trim());
         
         if (result.success) {
+            // Trigger periodic license check to update connection status immediately
+            try {
+                await client.triggerLicenseCheck(guildId);
+            } catch (checkError) {
+                client.log(client.intlGet(null, 'warningCap'), 
+                    `Failed to trigger license check after activation: ${checkError.message}`);
+            }
+            
             let successMsg;
             
             // Add expiry information if available
@@ -156,6 +164,14 @@ async function handleActivateCommand(client, interaction, guildId, verifyId) {
  */
 async function handleStatusCommand(client, interaction, guildId, verifyId) {
     try {
+        // Trigger periodic license check to ensure current status
+        try {
+            await client.triggerLicenseCheck(guildId);
+        } catch (checkError) {
+            client.log(client.intlGet(null, 'warningCap'), 
+                `Failed to trigger license check during status command: ${checkError.message}`);
+        }
+        
         // Get the current license status
         const statusMessage = await LicenseService.getLicenseStatusMessage(
             guildId, 
