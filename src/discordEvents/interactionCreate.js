@@ -42,9 +42,9 @@ module.exports = {
             }
         }
 
-        /* License checking for all interactions except license commands */
+        /* License checking for all interactions except license and help commands */
         const shouldCheckLicense = interaction.type === Discord.InteractionType.ApplicationCommand ? 
-            interaction.commandName !== 'license' : true;
+            interaction.commandName !== 'license' && interaction.commandName !== 'help' : true;
             
         if (shouldCheckLicense) {
             try {
