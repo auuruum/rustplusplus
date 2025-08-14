@@ -412,6 +412,7 @@
     "index": "Indice",
     "infoCap": "INFO",
     "inside": "Inside",
+    "interactionDeleteReplyFailed": "Eliminazione della risposta all'interazione fallita: {error}",
     "interactionEditReplyFailed": "Risposta alla modifica dell'interazione fallita: {error}",
     "interactionInvalidChannel": "Interazione da un canale non valido.",
     "interactionReplyFailed": "Risposta all'interazione fallita: {error}",

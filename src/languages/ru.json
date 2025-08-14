@@ -412,6 +412,7 @@
     "index": "Индекс",
     "infoCap": "ИНФО",
     "inside": "Внутри",
+    "interactionDeleteReplyFailed": "Взаимодействие с удалением ответа не удалось: {error}",
     "interactionEditReplyFailed": "Взаимодействие с редактированием не удалось: {error}",
     "interactionInvalidChannel": "Взаимодействие с каналом не удалось.",
     "interactionReplyFailed": "Взаимодействие с ответом не удалось: {error}",

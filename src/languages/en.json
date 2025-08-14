@@ -412,6 +412,7 @@
     "index": "Index",
     "infoCap": "INFO",
     "inside": "Inside",
+    "interactionDeleteReplyFailed": "Interaction delete reply failed: {error}",
     "interactionEditReplyFailed": "Interaction edit reply failed: {error}",
     "interactionInvalidChannel": "Interaction from an invalid channel.",
     "interactionReplyFailed": "Interaction reply failed: {error}",

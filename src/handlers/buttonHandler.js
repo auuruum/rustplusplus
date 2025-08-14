@@ -23,6 +23,7 @@ const Discord = require('discord.js');
 const Config = require('../../config');
 const DiscordMessages = require('../discordTools/discordMessages.js');
 const DiscordTools = require('../discordTools/discordTools.js');
+const DiscordEmbeds = require('../discordTools/discordEmbeds.js');
 const SmartSwitchGroupHandler = require('./smartSwitchGroupHandler.js');
 const DiscordButtons = require('../discordTools/discordButtons.js');
 const DiscordModals = require('../discordTools/discordModals.js');
@@ -434,6 +435,9 @@ module.exports = async (client, interaction) => {
             return;
         }
 
+        // Defer the interaction to allow for async operations
+        await interaction.deferReply({ ephemeral: true });
+
         client.resetRustplusVariables(guildId);
 
         if (instance.activeServer !== null) {
@@ -456,13 +460,15 @@ module.exports = async (client, interaction) => {
         if (!newRustplus) {
             // License invalid, connection blocked
             await client.interactionEditReply(interaction, {
-                content: client.intlGet(guildId, 'licenseInvalidConnectionBlocked'),
+                embeds: [DiscordEmbeds.getLicenseInvalidEmbed(guildId)],
                 ephemeral: true
             });
             return;
         }
 
-        await DiscordMessages.sendServerMessage(guildId, ids.serverId, null, interaction);
+        // Delete the deferred reply since we're updating the message instead
+        await client.interactionDeleteReply(interaction);
+        await DiscordMessages.sendServerMessage(guildId, ids.serverId, null);
 
         newRustplus.isNewConnection = true;
     }

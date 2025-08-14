@@ -1408,4 +1408,12 @@ module.exports = {
 
         return embed;
     },
+
+    getLicenseInvalidEmbed: function (guildId) {
+        return module.exports.getEmbed({
+            title: Client.client.intlGet(guildId, 'licenseInvalidConnectionBlocked'),
+            color: Constants.COLOR_INACTIVE,
+            timestamp: true
+        });
+    },
 }

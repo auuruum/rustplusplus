@@ -498,6 +498,18 @@ class DiscordBot extends Discord.Client {
         return undefined;
     }
 
+    async interactionDeleteReply(interaction) {
+        try {
+            return await interaction.deleteReply();
+        }
+        catch (e) {
+            this.log(this.intlGet(null, 'errorCap'),
+                this.intlGet(null, 'interactionDeleteReplyFailed', { error: e }), 'error');
+        }
+
+        return undefined;
+    }
+
     async messageEdit(message, content) {
         try {
             return await message.edit(content);
