@@ -792,6 +792,7 @@
     "botInactiveMessage": "❌ This bot is inactive on this server. Please activate with /license activate [license_key]",
     "licenseStatusActiveNoExpiry": "✅ License is active",
     "licenseActivated": "License activated until {expires_at} UTC",
+    "licenseStacked": "License time added! New expiry: {expires_at} UTC",
     "licenseActivationFailed": "❌ Activation failed: {error}",
     "licenseStatusActive": "License valid until {expires_at} UTC",
     "licenseStatusExpired": "❌ License expired",

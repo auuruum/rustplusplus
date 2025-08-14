@@ -27,7 +27,7 @@ const axios = require('axios');
 class LicenseService {
     constructor() {
         // Base URL for the license server API
-        this.baseUrl = 'http://127.0.0.1:8000';
+        this.baseUrl = 'http://0.0.0.0:8000';
         
         // Cache to store license status to avoid excessive API calls
         this.licenseCache = new Map();

@@ -109,6 +109,10 @@ async function handleActivateCommand(client, interaction, guildId, verifyId) {
         DiscordEmbeds.getActionInfoEmbed(0, '🔄 Activating license, please wait...'));
 
     try {
+        // Check if guild already has an active license (for stacking detection)
+        const currentLicense = await LicenseService.checkLicense(guildId);
+        const isStacking = currentLicense.status === 'active';
+        
         // Attempt to activate the license
         const result = await LicenseService.activateLicense(guildId, licenseKey.trim());
         
@@ -128,7 +132,13 @@ async function handleActivateCommand(client, interaction, guildId, verifyId) {
                 const expiryDate = new Date(result.data.expires_at);
                 const timestamp = Math.floor(expiryDate.getTime() / 1000);
                 const discordTimestamp = `<t:${timestamp}:f>`;
-                successMsg = client.intlGet(interaction.guildId, 'licenseActivated', { expires_at: discordTimestamp });
+                
+                // Use different message for stacking vs new activation
+                if (isStacking) {
+                    successMsg = client.intlGet(interaction.guildId, 'licenseStacked', { expires_at: discordTimestamp });
+                } else {
+                    successMsg = client.intlGet(interaction.guildId, 'licenseActivated', { expires_at: discordTimestamp });
+                }
             } else {
                 successMsg = client.intlGet(guildId, 'licenseActivated', { expires_at: 'indefinite' });
             }
@@ -136,8 +146,9 @@ async function handleActivateCommand(client, interaction, guildId, verifyId) {
             await client.interactionEditReply(interaction, 
                 DiscordEmbeds.getActionInfoEmbed(0, successMsg));
             
+            const logAction = isStacking ? 'stacked' : 'activated';
             client.log(client.intlGet(null, 'infoCap'), 
-                `License activated for guild ${guildId} by ${interaction.user.username}`);
+                `License ${logAction} for guild ${guildId} by ${interaction.user.username}`);
         } else {
             const errorMsg = client.intlGet(guildId, 'licenseActivationFailed', { error: result.error || 'Unknown error' });
             await client.interactionEditReply(interaction, 

@@ -7,12 +7,17 @@ import re
 
 app = FastAPI()
 
-LICENSE_FILE = "licenses.json"
+LICENSE_FILE = "licenses.json"  # Available license keys
+SERVERS_FILE = "servers.json"   # Activated guilds with expiry times
 
-# Если файл не существует — создаём пустой
+# Initialize files if they don't exist
 if not os.path.exists(LICENSE_FILE):
     with open(LICENSE_FILE, "w") as f:
         json.dump({"keys": []}, f)
+
+if not os.path.exists(SERVERS_FILE):
+    with open(SERVERS_FILE, "w") as f:
+        json.dump({"guilds": []}, f)
 
 
 class ActivateRequest(BaseModel):
@@ -55,47 +60,94 @@ def load_licenses():
     with open(LICENSE_FILE, "r") as f:
         return json.load(f)
 
-
 def save_licenses(data):
     with open(LICENSE_FILE, "w") as f:
+        json.dump(data, f, indent=4)
+
+def load_servers():
+    with open(SERVERS_FILE, "r") as f:
+        return json.load(f)
+
+def save_servers(data):
+    with open(SERVERS_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
 
 @app.get("/check")
 def check_license(guild_id: str):
-    data = load_licenses()
-    for lic in data["keys"]:
-        if lic.get("guild_id") == guild_id:
-            if datetime.utcnow() > datetime.fromisoformat(lic["expires_at"]):
-                return {"status": "expired"}
-            return {"status": "active", "expires_at": lic["expires_at"]}
+    servers_data = load_servers()
+    for guild in servers_data["guilds"]:
+        if guild["id"] == guild_id:
+            expires_at = datetime.fromisoformat(guild["expires_at"])
+            if datetime.utcnow() > expires_at:
+                return {"status": "expired", "expires_at": guild["expires_at"]}
+            
+            # Calculate remaining time
+            remaining = expires_at - datetime.utcnow()
+            remaining_seconds = int(remaining.total_seconds())
+            
+            return {
+                "status": "active", 
+                "expires_at": guild["expires_at"],
+                "remaining_seconds": remaining_seconds
+            }
     return {"status": "none"}
 
 
 @app.post("/activate")
 def activate_license(req: ActivateRequest):
-    data = load_licenses()
+    licenses_data = load_licenses()
+    servers_data = load_servers()
 
-    # Ищем ключ
-    for lic in data["keys"]:
-        if lic["key"] == req.key and "guild_id" not in lic:
-            # Привязываем ключ
-            lic["guild_id"] = req.guild_id
-
-            # Парсим время из строки и устанавливаем срок действия
-            try:
-                duration = parse_time_string(lic["duration"])
-                lic["expires_at"] = (datetime.utcnow() + duration).isoformat()
-            except ValueError as e:
-                raise HTTPException(status_code=400, detail=str(e))
-
-            save_licenses(data)
-            return {"status": "active", "expires_at": lic["expires_at"]}
-
-        elif lic["key"] == req.key and lic.get("guild_id"):
-            raise HTTPException(status_code=400, detail="Key already used")
-
-    raise HTTPException(status_code=404, detail="Invalid key")
+    # Find the key in available licenses
+    key_found = False
+    key_duration = None
+    
+    for i, lic in enumerate(licenses_data["keys"]):
+        if lic["key"] == req.key:
+            key_found = True
+            key_duration = lic["duration"]
+            # Remove the key from available licenses (consume it)
+            licenses_data["keys"].pop(i)
+            break
+    
+    if not key_found:
+        raise HTTPException(status_code=400, detail="Invalid key")
+    
+    # Parse the duration
+    try:
+        duration = parse_time_string(key_duration)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
+    # Check if guild already has an active license (for stacking)
+    existing_guild = None
+    for guild in servers_data["guilds"]:
+        if guild["id"] == req.guild_id:
+            existing_guild = guild
+            break
+    
+    if existing_guild:
+        # Guild exists - extend the license (stacking)
+        current_expiry = datetime.fromisoformat(existing_guild["expires_at"])
+        # If license is expired, start from now, otherwise extend from current expiry
+        start_time = max(datetime.utcnow(), current_expiry)
+        new_expiry = start_time + duration
+        existing_guild["expires_at"] = new_expiry.isoformat()
+    else:
+        # New guild - create new entry
+        new_expiry = datetime.utcnow() + duration
+        servers_data["guilds"].append({
+            "id": req.guild_id,
+            "expires_at": new_expiry.isoformat()
+        })
+    
+    # Save both files
+    save_licenses(licenses_data)
+    save_servers(servers_data)
+    
+    final_expiry = existing_guild["expires_at"] if existing_guild else new_expiry.isoformat()
+    return {"status": "active", "expires_at": final_expiry}
 
 
 # Для теста — добавить ключ вручную
@@ -111,3 +163,7 @@ def add_key(key: str, duration: str):
     data["keys"].append({"key": key, "duration": duration})
     save_licenses(data)
     return {"status": "ok"}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
