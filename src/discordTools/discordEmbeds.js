@@ -641,16 +641,44 @@ module.exports = {
         // Check if the string contains Discord timestamps
         const hasTimestamp = /<t:\d+:[fFdDtTR]>/.test(str);
         
-        return {
-            embeds: [module.exports.getEmbed({
-                color: color === 0 ? Constants.COLOR_DEFAULT : Constants.COLOR_INACTIVE,
-                description: hasTimestamp ? 
-                    `${(color === 0) ? '✅' : '❌'} ${str}` : 
-                    `\`\`\`diff\n${(color === 0) ? '+' : '-'} ${str}\n\`\`\``,
-                footer: footer !== null ? { text: footer } : null
-            })],
-            ephemeral: ephemeral
-        };
+        // Determine if this is a license status message
+        const isLicenseStatus = str.includes('License') || str.includes('license') || str.includes('expired') || str.includes('active');
+        
+        let title, description;
+        
+        if (isLicenseStatus) {
+            // Enhanced formatting for license status messages
+            if (color === 0) {
+                title = '✅ License Active';
+                description = str;
+            } else {
+                title = '❌ License Issue';
+                description = str;
+            }
+            
+            return {
+                embeds: [module.exports.getEmbed({
+                    title: title,
+                    color: color === 0 ? Constants.COLOR_ACTIVE : Constants.COLOR_INACTIVE,
+                    description: description,
+                    footer: footer !== null ? { text: footer } : null,
+                    timestamp: true
+                })],
+                ephemeral: ephemeral
+            };
+        } else {
+            // Original formatting for other messages
+            return {
+                embeds: [module.exports.getEmbed({
+                    color: color === 0 ? Constants.COLOR_DEFAULT : Constants.COLOR_INACTIVE,
+                    description: hasTimestamp ? 
+                        `${(color === 0) ? '✅' : '❌'} ${str}` : 
+                        `\`\`\`diff\n${(color === 0) ? '+' : '-'} ${str}\n\`\`\``,
+                    footer: footer !== null ? { text: footer } : null
+                })],
+                ephemeral: ephemeral
+            };
+        }
     },
 
     getServerChangedStateEmbed: function (guildId, serverId, state) {
@@ -1447,16 +1475,42 @@ module.exports = {
 
     getLicenseInvalidEmbed: function (guildId) {
         return module.exports.getEmbed({
-            title: Client.client.intlGet(guildId, 'licenseInvalidConnectionBlocked'),
+            title: '⚠️ License Invalid',
+            description: Client.client.intlGet(guildId, 'licenseInvalidConnectionBlocked'),
             color: Constants.COLOR_INACTIVE,
+            fields: [
+                {
+                    name: '🔄 What to do',
+                    value: 'Please check your license status and activate a valid license.',
+                    inline: false
+                },
+                {
+                    name: '📞 Support',
+                    value: 'Contact support if you believe this is an error.',
+                    inline: false
+                }
+            ],
             timestamp: true
         });
     },
 
     getBotInactiveEmbed: function (guildId) {
         return module.exports.getEmbed({
-            title: Client.client.intlGet(guildId, 'botInactiveMessage'),
+            title: '🔒 Bot Inactive',
+            description: Client.client.intlGet(guildId, 'botInactiveMessage'),
             color: Constants.COLOR_INACTIVE,
+            fields: [
+                {
+                    name: '💡 How to activate',
+                    value: 'Use the command `/license activate [your_license_key]` to activate the bot.',
+                    inline: false
+                },
+                {
+                    name: '❓ Need help?',
+                    value: 'Contact support if you need assistance with your license.',
+                    inline: false
+                }
+            ],
             timestamp: true
         });
     },
