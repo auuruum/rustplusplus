@@ -1,14 +1,18 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header, Depends
 from pydantic import BaseModel
 from datetime import datetime, timedelta
 import json
 import os
 import re
+from typing import Optional
 
 app = FastAPI()
 
 LICENSE_FILE = "server_side/licenses.json"  # Available license keys
 SERVERS_FILE = "server_side/servers.json"   # Activated guilds with expiry times
+
+# Password for protected endpoints - change this to your desired password
+ADMIN_PASSWORD = "your_secure_password_here"
 
 # Initialize files if they don't exist
 if not os.path.exists(LICENSE_FILE):
@@ -23,6 +27,20 @@ if not os.path.exists(SERVERS_FILE):
 class ActivateRequest(BaseModel):
     guild_id: str
     key: str
+    password: str  # Added password field
+
+
+class AddKeyRequest(BaseModel):
+    key: str
+    duration: str
+    password: str  # Added password field
+
+
+def verify_password(password: str):
+    """Verify if the provided password is correct"""
+    if password != ADMIN_PASSWORD:
+        raise HTTPException(status_code=401, detail="Invalid password")
+    return True
 
 
 def parse_time_string(time_str: str) -> timedelta:
@@ -81,7 +99,10 @@ def save_servers(data):
 
 
 @app.get("/check")
-def check_license(guild_id: str):
+def check_license(guild_id: str, password: str):
+    # Verify password
+    verify_password(password)
+    
     servers_data = load_servers()
     for guild in servers_data["guilds"]:
         if guild["id"] == guild_id:
@@ -103,6 +124,9 @@ def check_license(guild_id: str):
 
 @app.post("/activate")
 def activate_license(req: ActivateRequest):
+    # Verify password
+    verify_password(req.password)
+    
     licenses_data = load_licenses()
     servers_data = load_servers()
 
@@ -160,25 +184,31 @@ def activate_license(req: ActivateRequest):
     return {"status": "activated", "expires_at": final_expiry, "message": "License key has been consumed"}
 
 
-# Для теста — добавить ключ вручную
 @app.post("/add_key")
-def add_key(key: str, duration: str):
+def add_key(req: AddKeyRequest):
+    # Verify password
+    verify_password(req.password)
+    
     # Validate duration format
     try:
-        parse_time_string(duration)
+        parse_time_string(req.duration)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
     data = load_licenses()
-    data["keys"].append({"key": key, "duration": duration})
+    data["keys"].append({"key": req.key, "duration": req.duration})
     save_licenses(data)
     return {"status": "ok"}
 
-# Optional: Get list of available keys (for admin purposes)
+
 @app.get("/keys")
-def list_keys():
+def list_keys(password: str):
+    # Verify password
+    verify_password(password)
+    
     data = load_licenses()
     return {"available_keys": len(data["keys"]), "keys": data["keys"]}
+
 
 if __name__ == "__main__":
     import uvicorn

@@ -19,6 +19,7 @@
 */
 
 const axios = require('axios');
+const Config = require('../../config');
 
 /**
  * License Service - Handles all license-related operations
@@ -27,7 +28,7 @@ const axios = require('axios');
 class LicenseService {
     constructor() {
         // Base URL for the license server API
-        this.baseUrl = 'http://0.0.0.0:8000';
+        this.baseUrl = Config.license.serverUrl;
         
         // Cache to store license status to avoid excessive API calls
         this.licenseCache = new Map();
@@ -60,7 +61,10 @@ class LicenseService {
 
             // Make API request to check license status
             const response = await axios.get(`${this.baseUrl}/check`, {
-                params: { guild_id: guildId },
+                params: { 
+                    guild_id: guildId,
+                    password: Config.license.password
+                },
                 timeout: 10000 // 10 second timeout
             });
 
@@ -96,7 +100,8 @@ class LicenseService {
             // Make API request to activate license
             const response = await axios.post(`${this.baseUrl}/activate`, {
                 guild_id: guildId,
-                key: licenseKey
+                key: licenseKey,
+                password: Config.license.password
             }, {
                 timeout: 15000, // 15 second timeout for activation
                 headers: {
