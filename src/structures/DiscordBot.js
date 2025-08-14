@@ -610,6 +610,7 @@ class DiscordBot extends Discord.Client {
             // Check if there's an active RustPlus instance for this guild
             if (this.rustplusInstances[guildId] && this.activeRustplusInstances[guildId]) {
                 const rustplus = this.rustplusInstances[guildId];
+                const serverId = rustplus.serverId;
                 
                 // Disconnect from the Rust server
                 if (rustplus && rustplus.isConnected) {
@@ -621,6 +622,10 @@ class DiscordBot extends Discord.Client {
                             guildId: guildId, 
                             status: licenseStatus 
                         }));
+                    
+                    // Update Discord server message to reflect disconnection
+                    const DiscordMessages = require('../discordTools/discordMessages.js');
+                    await DiscordMessages.sendServerMessage(guildId, serverId, 0);
                 }
             }
         } catch (error) {
