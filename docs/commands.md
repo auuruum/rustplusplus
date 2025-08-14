@@ -393,6 +393,7 @@ In-Game Command | Description
 [**prox**](commands.md#prox) | Get the distance to the three closest teammates.
 [**recycle**](commands.md#recycle-ingame) | Display the output of recycling an item.
 [**research**](commands.md#research-ingame) | Display the cost to research an item.
+[**say**](commands.md#say) | Send a text-to-speech message to Discord voice channel.
 [**send**](commands.md#send) | Send a message to a discord user.
 [**small**](commands.md#small) | Get information about Small Oil Rig (Time till crate unlocks, time since last trigger).
 [**steamid**](commands.md#steamid) | Get the steamid of a teammate.
@@ -645,6 +646,15 @@ Subcommand | Description | Required
 <br>Command: `!research rocket`
 
 ![In-Game Command research Image](images/ingame_commands/research_ingame.png)
+
+
+## **say**
+
+> **Send a text-to-speech message to Discord voice channel.** The bot must be connected to a voice channel for this command to work.
+<br>Command: `!say <message>`
+<br>Command: `!say Hello everyone!`
+
+![In-Game Command say Image](images/ingame_commands/say_ingame.png)
 
 
 ## **send**
