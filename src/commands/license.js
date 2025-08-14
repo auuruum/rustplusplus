@@ -127,7 +127,8 @@ async function handleActivateCommand(client, interaction, guildId, verifyId) {
             if (result.data && result.data.expires_at) {
                 const expiryDate = new Date(result.data.expires_at);
                 const timestamp = Math.floor(expiryDate.getTime() / 1000);
-                successMsg = client.intlGet(guildId, 'licenseActivated', { expires_at: `<t:${timestamp}:f>` });
+                const discordTimestamp = `<t:${timestamp}:f>`;
+                successMsg = client.intlGet(interaction.guildId, 'licenseActivated', { expires_at: discordTimestamp });
             } else {
                 successMsg = client.intlGet(guildId, 'licenseActivated', { expires_at: 'indefinite' });
             }
@@ -173,13 +174,14 @@ async function handleStatusCommand(client, interaction, guildId, verifyId) {
         }
         
         // Get the current license status
+        const licenseStatus = await LicenseService.checkLicense(guildId);
         const statusMessage = await LicenseService.getLicenseStatusMessage(
             guildId, 
             (guildId, key, vars) => client.intlGet(guildId, key, vars)
         );
         
-        // Determine embed color based on status
-        const embedType = statusMessage.startsWith('✅') ? 0 : 1;
+        // Determine embed color based on license status
+        const embedType = (licenseStatus.status === 'active') ? 0 : 1;
         
         await client.interactionEditReply(interaction, 
             DiscordEmbeds.getActionInfoEmbed(embedType, statusMessage));

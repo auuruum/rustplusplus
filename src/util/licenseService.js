@@ -155,7 +155,8 @@ class LicenseService {
                 if (licenseStatus.expires_at) {
                      const expiryDate = new Date(licenseStatus.expires_at);
                      const timestamp = Math.floor(expiryDate.getTime() / 1000);
-                     return intlGet(guildId, 'licenseStatusActive', { expires_at: `<t:${timestamp}:f>` });
+                     const discordTimestamp = `<t:${timestamp}:f>`;
+                     return intlGet(guildId, 'licenseStatusActive', { expires_at: discordTimestamp });
                  } else {
                      return intlGet(guildId, 'licenseStatusActiveNoExpiry');
                  }
