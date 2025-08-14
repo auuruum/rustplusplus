@@ -19,6 +19,7 @@ Slash Command | Description
 [**/help**](commands.md#help) | Display help message.
 [**/item**](commands.md#item) | Get the details of an item.
 [**/leader**](commands.md#leader) | Give or take the leadership from/to a team member.
+[**/license**](commands.md#license) | License management commands.
 [**/map**](commands.md#map) | Get the currently connected server map image.
 [**/market**](commands.md#market) | Operations for In-Game Vending Machines.
 [**/players**](commands.md#players) | Get player/players information based on battlemetrics.
@@ -167,6 +168,17 @@ Subcommand | Options | Description | Required
 &nbsp; | `member` | The name of the team member. | `True`
 
 ![Discord Slash Command leader Image](images/slash_commands/leader.png)
+
+
+## **/license**
+
+> **License management commands.**
+
+Subcommand | Options | Description | Required
+---------- | ------- | ----------- | --------
+`activate` | &nbsp; | Activate a license key for this server. | &nbsp;
+&nbsp; | `key` | The license key to activate. | `True`
+`status` | &nbsp; | Check the current license status for this server. | &nbsp;
 
 
 ## **/map**
