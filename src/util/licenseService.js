@@ -182,23 +182,31 @@ class LicenseService {
     async getLicenseStatusMessage(guildId, intlGet) {
         const licenseStatus = await this.checkLicense(guildId);
         
+        let statusMessage;
         switch (licenseStatus.status) {
             case 'active':
                 if (licenseStatus.expires_at) {
                      const expiryDate = new Date(licenseStatus.expires_at);
                      const timestamp = Math.floor(expiryDate.getTime() / 1000);
                      const discordTimestamp = `<t:${timestamp}:f>`;
-                     return intlGet(guildId, 'licenseStatusActive', { expires_at: discordTimestamp });
+                     statusMessage = intlGet(guildId, 'licenseStatusActive', { expires_at: discordTimestamp });
                  } else {
-                     return intlGet(guildId, 'licenseStatusActiveNoExpiry');
+                     statusMessage = intlGet(guildId, 'licenseStatusActiveNoExpiry');
                  }
+                break;
             case 'expired':
-                return intlGet(guildId, 'licenseStatusExpired');
+                statusMessage = intlGet(guildId, 'licenseStatusExpired');
+                break;
             case 'none':
-                return intlGet(guildId, 'licenseStatusNone');
+                statusMessage = intlGet(guildId, 'licenseStatusNone');
+                break;
             default:
-                return intlGet(guildId, 'licenseCheckFailed');
+                statusMessage = intlGet(guildId, 'licenseCheckFailed');
+                break;
         }
+        
+        // Append guild ID to the status message
+        return `${statusMessage}\n\n**Guild ID:** \`${guildId}\``;
     }
 
     /**
