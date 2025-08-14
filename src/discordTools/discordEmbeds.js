@@ -637,10 +637,15 @@ module.exports = {
     },
 
     getActionInfoEmbed: function (color, str, footer = null, ephemeral = true) {
+        // Check if the string contains Discord timestamps
+        const hasTimestamp = /<t:\d+:[fFdDtTR]>/.test(str);
+        
         return {
             embeds: [module.exports.getEmbed({
                 color: color === 0 ? Constants.COLOR_DEFAULT : Constants.COLOR_INACTIVE,
-                description: `\`\`\`diff\n${(color === 0) ? '+' : '-'} ${str}\n\`\`\``,
+                description: hasTimestamp ? 
+                    `${(color === 0) ? '✅' : '❌'} ${str}` : 
+                    `\`\`\`diff\n${(color === 0) ? '+' : '-'} ${str}\n\`\`\``,
                 footer: footer !== null ? { text: footer } : null
             })],
             ephemeral: ephemeral

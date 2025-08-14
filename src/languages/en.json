@@ -793,7 +793,7 @@
     "licenseStatusActiveNoExpiry": "✅ License is active",
     "licenseActivated": "✅ License activated until {expires_at}",
     "licenseActivationFailed": "❌ Activation failed: {error}",
-    "licenseStatusActive": "✅ License valid until {expires_at}",
+    "licenseStatusActive": "License valid until {expires_at}",
     "licenseStatusExpired": "❌ License expired",
     "licenseStatusNone": "❌ No license found",
     "licenseCheckFailed": "⚠️ Unable to verify license status. Please try again later.",
