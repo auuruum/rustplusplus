@@ -28,6 +28,7 @@ const Cctv = require('./Cctv');
 const Config = require('../../config');
 const DiscordEmbeds = require('../discordTools/discordEmbeds.js');
 const DiscordTools = require('../discordTools/discordTools');
+const LicenseService = require('../util/licenseService');
 const InstanceUtils = require('../util/instanceUtils.js');
 const Items = require('./Items');
 const Logger = require('./Logger.js');
@@ -72,10 +73,14 @@ class DiscordBot extends Discord.Client {
 
         this.voiceLeaveTimeouts = new Object();
 
+        // License system initialization
+        this.licenseCheckInterval = null;
+
         this.loadDiscordCommands();
         this.loadDiscordEvents();
         this.loadEnIntl();
         this.loadBotIntl();
+        this.setupLicenseChecking();
     }
 
     loadDiscordCommands() {
@@ -299,7 +304,14 @@ class DiscordBot extends Discord.Client {
             Path.join(__dirname, '..', 'templates/generalSettingsTemplate.json'), 'utf8'));
     }
 
-    createRustplusInstance(guildId, serverIp, appPort, steamId, playerToken) {
+    async createRustplusInstance(guildId, serverIp, appPort, steamId, playerToken) {
+        // Check license before creating connection
+        const licenseStatus = await LicenseService.checkLicense(guildId);
+        if (licenseStatus.status !== 'active') {
+            this.log(this.intlGet(guildId, 'licenseInvalidConnectionBlocked'), 'warning');
+            return null;
+        }
+
         let rustplus = new RustPlus(guildId, serverIp, appPort, steamId, playerToken);
 
         /* Add rustplus instance to Object */
@@ -311,25 +323,25 @@ class DiscordBot extends Discord.Client {
         return rustplus;
     }
 
-    createRustplusInstancesFromConfig() {
+    async createRustplusInstancesFromConfig() {
         const files = Fs.readdirSync(Path.join(__dirname, '..', '..', 'instances'));
 
-        files.forEach(file => {
-            if (!file.endsWith('.json')) return;
+        for (const file of files) {
+            if (!file.endsWith('.json')) continue;
 
             const guildId = file.replace('.json', '');
             const instance = this.getInstance(guildId);
-            if (!instance) return;
+            if (!instance) continue;
 
             if (instance.activeServer !== null && instance.serverList.hasOwnProperty(instance.activeServer)) {
-                this.createRustplusInstance(
+                await this.createRustplusInstance(
                     guildId,
                     instance.serverList[instance.activeServer].serverIp,
                     instance.serverList[instance.activeServer].appPort,
                     instance.serverList[instance.activeServer].steamId,
                     instance.serverList[instance.activeServer].playerToken);
             }
-        });
+        }
     }
 
     resetRustplusVariables(guildId) {
@@ -517,6 +529,18 @@ class DiscordBot extends Discord.Client {
         return undefined;
     }
 
+    async interactionDeleteReply(interaction) {
+        try {
+            return await interaction.deleteReply();
+        }
+        catch (e) {
+            this.log(this.intlGet(null, 'errorCap'),
+                this.intlGet(null, 'interactionDeleteReplyFailed', { error: e }), 'error');
+        }
+
+        return undefined;
+    }
+
     async messageEdit(message, content) {
         try {
             return await message.edit(content);
@@ -577,6 +601,221 @@ class DiscordBot extends Discord.Client {
 
     isAdministrator(interaction) {
         return interaction.member.permissions.has(Discord.PermissionFlagsBits.Administrator);
+    }
+
+    /**
+     * Setup periodic license checking for all active guilds
+     * This ensures license status is checked every 5 minutes
+     */
+    setupLicenseChecking() {
+        // Clear any existing interval
+        if (this.licenseCheckInterval) {
+            clearInterval(this.licenseCheckInterval);
+        }
+
+        // Initialize tracking for expiration warnings to avoid spam
+        this.expirationWarningsSent = new Set();
+
+        // Set up periodic license checking every 5 minutes (300,000 ms)
+        this.licenseCheckInterval = setInterval(async () => {
+            try {
+                // Check licenses for all active guilds
+                for (const guildId of this.guilds.cache.keys()) {
+                    try {
+                        // Force refresh license status from API
+                        const licenseStatus = await LicenseService.checkLicense(guildId, true);
+                        
+                        // If license is expired or invalid, disconnect from Rust server
+                        if (licenseStatus.status !== 'active') {
+                            await this.disconnectFromRustServer(guildId, licenseStatus.status);
+                            // Remove from warning tracking since license is no longer active
+                            this.expirationWarningsSent.delete(guildId);
+                        } else {
+                            // Check if license is expiring soon and send warning if needed
+                            await this.checkAndSendExpirationWarning(guildId);
+                        }
+                        
+                        this.log(this.intlGet(null, 'infoCap'), 
+                            this.intlGet(null, 'licensePeriodicCheckCompleted', { guildId: guildId }));
+                    } catch (error) {
+                        this.log(this.intlGet(null, 'warningCap'), 
+                            this.intlGet(null, 'licensePeriodicCheckFailed', { guildId: guildId, error: error.message }));
+                    }
+                }
+            } catch (error) {
+                this.log(this.intlGet(null, 'errorCap'), 
+                    `Error during periodic license checking: ${error.message}`, 'error');
+            }
+        }, 300000); // 5 minutes
+
+        this.log(this.intlGet(null, 'infoCap'), this.intlGet(null, 'licenseSystemInitialized'));
+    }
+
+    /**
+     * Disconnect from Rust server when license is invalid
+     * @param {string} guildId - The Discord guild ID
+     * @param {string} licenseStatus - The license status (expired, none, etc.)
+     */
+    async disconnectFromRustServer(guildId, licenseStatus) {
+        try {
+            // Check if there's an active RustPlus instance for this guild
+            if (this.rustplusInstances[guildId] && this.activeRustplusInstances[guildId]) {
+                const rustplus = this.rustplusInstances[guildId];
+                const serverId = rustplus.serverId;
+                
+                // Disconnect from the Rust server
+                if (rustplus && rustplus.isConnected) {
+                    rustplus.disconnect();
+                    this.activeRustplusInstances[guildId] = false;
+                    
+                    this.log(this.intlGet(null, 'warningCap'), 
+                        this.intlGet(null, 'licenseExpiredDisconnected', { 
+                            guildId: guildId, 
+                            status: licenseStatus 
+                        }));
+                    
+                    // Update Discord server message to reflect disconnection
+                    const DiscordMessages = require('../discordTools/discordMessages.js');
+                    await DiscordMessages.sendServerMessage(guildId, serverId, 0);
+                }
+            }
+        } catch (error) {
+            this.log(this.intlGet(null, 'errorCap'), 
+                `Failed to disconnect from Rust server for guild ${guildId}: ${error.message}`, 'error');
+        }
+    }
+
+    /**
+     * Check if a license is expiring soon and send warning message if needed
+     * @param {string} guildId - The Discord guild ID to check
+     */
+    async checkAndSendExpirationWarning(guildId) {
+        try {
+            // Skip if we've already sent a warning for this guild
+            if (this.expirationWarningsSent.has(guildId)) {
+                return;
+            }
+
+            const expirationInfo = await LicenseService.isLicenseExpiringSoon(guildId);
+            
+            if (expirationInfo.isExpiringSoon) {
+                // Mark that we've sent a warning for this guild
+                this.expirationWarningsSent.add(guildId);
+                
+                // Send warning message to the guild
+                await this.sendExpirationWarningMessage(guildId, expirationInfo);
+                
+                this.log(this.intlGet(null, 'warningCap'), 
+                    `License expiration warning sent to guild ${guildId} (${expirationInfo.timeRemaining} hours remaining)`);
+            }
+        } catch (error) {
+            this.log(this.intlGet(null, 'errorCap'), 
+                `Failed to check/send expiration warning for guild ${guildId}: ${error.message}`, 'error');
+        }
+    }
+
+    /**
+     * Send license expiration warning message to a guild
+     * @param {string} guildId - The Discord guild ID
+     * @param {Object} expirationInfo - Expiration information object
+     */
+    async sendExpirationWarningMessage(guildId, expirationInfo) {
+        try {
+            const guild = this.guilds.cache.get(guildId);
+            if (!guild) {
+                this.log(this.intlGet(null, 'warningCap'), 
+                    `Cannot send expiration warning: Guild ${guildId} not found`);
+                return;
+            }
+
+            const instance = this.getInstance(guildId);
+            if (!instance || !instance.channelId.general) {
+                this.log(this.intlGet(null, 'warningCap'), 
+                    `Cannot send expiration warning: No general channel configured for guild ${guildId}`);
+                return;
+            }
+
+            const channel = guild.channels.cache.get(instance.channelId.general);
+            if (!channel) {
+                this.log(this.intlGet(null, 'warningCap'), 
+                    `Cannot send expiration warning: General channel not found for guild ${guildId}`);
+                return;
+            }
+
+            // Format expiry date for display
+            const expiryDate = new Date(expirationInfo.expiryDate);
+            const timestamp = Math.floor(expiryDate.getTime() / 1000);
+            const discordTimestamp = `<t:${timestamp}:f>`;
+
+            // Create warning embed
+            const DiscordEmbeds = require('../discordTools/discordEmbeds.js');
+            const embed = DiscordEmbeds.getActionInfoEmbed(
+                1, // Warning color (orange/yellow)
+                this.intlGet(guildId, 'licenseExpiringSoonWarning', {
+                    hours: expirationInfo.timeRemaining,
+                    expires_at: discordTimestamp
+                }),
+                this.intlGet(guildId, 'licenseExpiringSoonTitle')
+            );
+
+            // Add description field
+            embed.addFields({
+                name: '\u200B', // Invisible character for spacing
+                value: this.intlGet(guildId, 'licenseExpiringSoonDescription'),
+                inline: false
+            });
+
+            await channel.send({ embeds: [embed] });
+        } catch (error) {
+            this.log(this.intlGet(null, 'errorCap'), 
+                `Failed to send expiration warning message to guild ${guildId}: ${error.message}`, 'error');
+        }
+    }
+
+    /**
+     * Manually trigger license check for a specific guild
+     * @param {string} guildId - The Discord guild ID to check
+     */
+    async triggerLicenseCheck(guildId) {
+        try {
+            // Force refresh license status from API
+            const licenseStatus = await LicenseService.checkLicense(guildId, true);
+            
+            // If license is expired or invalid, disconnect from Rust server
+            if (licenseStatus.status !== 'active') {
+                await this.disconnectFromRustServer(guildId, licenseStatus.status);
+                // Remove from warning tracking since license is no longer active
+                this.expirationWarningsSent.delete(guildId);
+            } else {
+                // Check if license is expiring soon and send warning if needed
+                await this.checkAndSendExpirationWarning(guildId);
+            }
+            
+            this.log(this.intlGet(null, 'infoCap'), 
+                this.intlGet(null, 'licensePeriodicCheckCompleted', { guildId: guildId }));
+            
+            return licenseStatus;
+        } catch (error) {
+            this.log(this.intlGet(null, 'warningCap'), 
+                this.intlGet(null, 'licensePeriodicCheckFailed', { guildId: guildId, error: error.message }));
+            throw error;
+        }
+    }
+
+    /**
+     * Stop periodic license checking (useful for cleanup)
+     */
+    stopLicenseChecking() {
+        if (this.licenseCheckInterval) {
+            clearInterval(this.licenseCheckInterval);
+            this.licenseCheckInterval = null;
+            this.log(this.intlGet(null, 'infoCap'), this.intlGet(null, 'licenseSystemStopped'));
+        }
+        
+        // Clear expiration warnings tracking
+        if (this.expirationWarningsSent) {
+            this.expirationWarningsSent.clear();
+        }
     }
 }
 

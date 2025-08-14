@@ -638,10 +638,15 @@ module.exports = {
     },
 
     getActionInfoEmbed: function (color, str, footer = null, ephemeral = true) {
+        // Check if the string contains Discord timestamps
+        const hasTimestamp = /<t:\d+:[fFdDtTR]>/.test(str);
+        
         return {
             embeds: [module.exports.getEmbed({
                 color: color === 0 ? Constants.COLOR_DEFAULT : Constants.COLOR_INACTIVE,
-                description: `\`\`\`diff\n${(color === 0) ? '+' : '-'} ${str}\n\`\`\``,
+                description: hasTimestamp ? 
+                    `${(color === 0) ? '✅' : '❌'} ${str}` : 
+                    `\`\`\`diff\n${(color === 0) ? '+' : '-'} ${str}\n\`\`\``,
                 footer: footer !== null ? { text: footer } : null
             })],
             ephemeral: ephemeral
@@ -1438,5 +1443,21 @@ module.exports = {
         }
 
         return embed;
+    },
+
+    getLicenseInvalidEmbed: function (guildId) {
+        return module.exports.getEmbed({
+            title: Client.client.intlGet(guildId, 'licenseInvalidConnectionBlocked'),
+            color: Constants.COLOR_INACTIVE,
+            timestamp: true
+        });
+    },
+
+    getBotInactiveEmbed: function (guildId) {
+        return module.exports.getEmbed({
+            title: Client.client.intlGet(guildId, 'botInactiveMessage'),
+            color: Constants.COLOR_INACTIVE,
+            timestamp: true
+        });
     },
 }

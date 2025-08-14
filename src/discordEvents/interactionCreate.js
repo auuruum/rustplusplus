@@ -21,6 +21,7 @@
 const Discord = require('discord.js');
 
 const DiscordEmbeds = require('../discordTools/discordEmbeds');
+const LicenseService = require('../util/licenseService');
 
 module.exports = {
     name: 'interactionCreate',
@@ -38,6 +39,66 @@ module.exports = {
                     client.log(client.intlGet(null, 'errorCap'),
                         client.intlGet(null, 'couldNotDeferInteraction'), 'error');
                 }
+            }
+        }
+
+        /* License checking for all interactions except license commands */
+        const shouldCheckLicense = interaction.type === Discord.InteractionType.ApplicationCommand ? 
+            interaction.commandName !== 'license' : true;
+            
+        if (shouldCheckLicense) {
+            try {
+                const licenseStatus = await LicenseService.checkLicense(interaction.guildId);
+                
+                if (licenseStatus.status !== 'active') {
+                    /* License is not active - send inactive bot message */
+                    const inactiveEmbed = DiscordEmbeds.getBotInactiveEmbed(interaction.guildId);
+                    
+                    if (interaction.isButton() || interaction.isStringSelectMenu()) {
+                        await interaction.reply({
+                            embeds: [inactiveEmbed],
+                            ephemeral: true
+                        });
+                    } else if (interaction.type === Discord.InteractionType.ModalSubmit) {
+                        await interaction.reply({
+                            embeds: [inactiveEmbed],
+                            ephemeral: true
+                        });
+                    } else {
+                        await interaction.reply({
+                            embeds: [inactiveEmbed],
+                            ephemeral: true
+                        });
+                    }
+                    
+                    client.log(client.intlGet(null, 'warningCap'), 
+                        `Interaction ${interaction.customId || interaction.commandName} blocked due to invalid license for guild ${interaction.guildId}`);
+                    return;
+                }
+            } catch (licenseError) {
+                client.log(client.intlGet(null, 'errorCap'), 
+                    `License check failed for guild ${interaction.guildId}: ${licenseError.message}`, 'error');
+                
+                /* If license check fails, send inactive message as fallback */
+                const inactiveEmbed = DiscordEmbeds.getBotInactiveEmbed(interaction.guildId);
+                
+                if (interaction.isButton() || interaction.isStringSelectMenu()) {
+                    await interaction.reply({
+                        embeds: [inactiveEmbed],
+                        ephemeral: true
+                    });
+                } else if (interaction.type === Discord.InteractionType.ModalSubmit) {
+                    await interaction.reply({
+                        embeds: [inactiveEmbed],
+                        ephemeral: true
+                    });
+                } else {
+                    await interaction.reply({
+                        embeds: [inactiveEmbed],
+                        ephemeral: true
+                    });
+                }
+                return;
             }
         }
 
