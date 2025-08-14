@@ -511,12 +511,19 @@ module.exports = {
                 module.exports.getButton({
                     style: Discord.ButtonStyle.Link,
                     label: 'DOCUMENTATION',
-                    url: 'https://github.com/alexemanuelol/rustplusplus/blob/master/docs/documentation.md'
+                    url: 'https://github.com/auuruum/rustplusplus/blob/production/docs/documentation.md'
                 }),
                 module.exports.getButton({
                     style: Discord.ButtonStyle.Link,
                     label: 'CREDENTIALS',
-                    url: 'https://github.com/alexemanuelol/rustplusplus-Credential-Application/releases/v1.4.0'
+                    url: 'https://github.com/auuruum/rustplusplus/blob/production/docs/credentials_web_version.md'
+                })
+            ),
+            new Discord.ActionRowBuilder().addComponents(
+                module.exports.getButton({
+                    style: Discord.ButtonStyle.Link,
+                    label: 'SUPPORT',
+                    url: 'https://discord.com/invite/vwUknhSh4b'
                 })
             )];
     },

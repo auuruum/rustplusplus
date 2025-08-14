@@ -1078,10 +1078,12 @@ module.exports = {
     },
 
     getHelpEmbed: function (guildId) {
-        const repository = 'https://github.com/alexemanuelol/rustplusplus';
-        const credentials = `${repository}/blob/master/docs/credentials.md`;
-        const pairServer = `${repository}/blob/master/docs/pair_and_connect_to_server.md`;
-        const commands = `${repository}/blob/master/docs/commands.md`;
+        const repositoryBase = 'https://github.com/auuruum/rustplusplus';
+        const branch = 'production';
+
+        const credentials = `${repositoryBase}/blob/${branch}/docs/credentials_web_version.md`;
+        const pairServer = `${repositoryBase}/blob/${branch}/docs/pair_and_connect_to_server.md`;
+        const commands = `${repositoryBase}/blob/${branch}/docs/commands.md`;
 
         const description =
             `→ [${Client.client.intlGet(guildId, 'commandsHelpHowToCredentials')}](${credentials})\n` +
