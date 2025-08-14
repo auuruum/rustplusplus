@@ -565,17 +565,12 @@ Subcommand | Description | Required
 ## **move**
 
 > **Move users between voice channels.** Use this to move yourself or other users to a specified voice channel.
+<br>Command: `!move <target_channel>`
+<br>Command: `!move <user1> <user2> <target_channel>`
+<br>Command: `!move General`
+<br>Command: `!move Alle Gaming`
 
-<br>Command format: `!move [user1] [user2] [...]  <target_channel> `
-
-* `target_channel`: Name or ID of the destination voice channel (**required**)
-* `user1`, `user2`, ... : Mention or ID of the users to move (**optional**). If not specified, it moves **you**.
-
-### **Examples**
-
-* `!move General` – Moves **you** to the **General** voice channel
-* `!move Alle Gaming` – Moves **Alle** to the **Gaming** channel
-* `!move 123456789012345678` – Moves **you** to the voice channel with that **ID**
+![In-Game Command move Image](images/ingame_commands/move_ingame.png)
 
 ## **note/notes**
 
