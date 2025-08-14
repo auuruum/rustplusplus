@@ -7,8 +7,8 @@ import re
 
 app = FastAPI()
 
-LICENSE_FILE = "licenses.json"  # Available license keys
-SERVERS_FILE = "servers.json"   # Activated guilds with expiry times
+LICENSE_FILE = "server_side/licenses.json"  # Available license keys
+SERVERS_FILE = "server_side/servers.json"   # Activated guilds with expiry times
 
 # Initialize files if they don't exist
 if not os.path.exists(LICENSE_FILE):
@@ -27,33 +27,40 @@ class ActivateRequest(BaseModel):
 
 def parse_time_string(time_str: str) -> timedelta:
     """
-    Parse time string like '1m', '2h', '30d', '1y' into timedelta object
+    Parse time string like '1m', '2h', '30d', '1y' or compound formats like '24h 10m' into timedelta object
     Supported units: s (seconds), m (minutes), h (hours), d (days), w (weeks), y (years)
     """
     time_str = time_str.lower().strip()
     
-    # Regular expression to match number + unit
-    match = re.match(r'^(\d+)([smhdwy])$', time_str)
-    if not match:
-        raise ValueError(f"Invalid time format: {time_str}. Use format like '1m', '2h', '30d', etc.")
+    # Split by spaces to handle compound formats like "24h 10m"
+    parts = time_str.split()
+    total_delta = timedelta()
     
-    amount, unit = match.groups()
-    amount = int(amount)
+    for part in parts:
+        # Regular expression to match number + unit
+        match = re.match(r'^(\d+)([smhdwy])$', part)
+        if not match:
+            raise ValueError(f"Invalid time format: {part}. Use format like '1m', '2h', '30d', etc.")
+        
+        amount, unit = match.groups()
+        amount = int(amount)
+        
+        if unit == 's':  # seconds
+            total_delta += timedelta(seconds=amount)
+        elif unit == 'm':  # minutes
+            total_delta += timedelta(minutes=amount)
+        elif unit == 'h':  # hours
+            total_delta += timedelta(hours=amount)
+        elif unit == 'd':  # days
+            total_delta += timedelta(days=amount)
+        elif unit == 'w':  # weeks
+            total_delta += timedelta(weeks=amount)
+        elif unit == 'y':  # years (approximate)
+            total_delta += timedelta(days=amount * 365)
+        else:
+            raise ValueError(f"Unsupported time unit: {unit}")
     
-    if unit == 's':  # seconds
-        return timedelta(seconds=amount)
-    elif unit == 'm':  # minutes
-        return timedelta(minutes=amount)
-    elif unit == 'h':  # hours
-        return timedelta(hours=amount)
-    elif unit == 'd':  # days
-        return timedelta(days=amount)
-    elif unit == 'w':  # weeks
-        return timedelta(weeks=amount)
-    elif unit == 'y':  # years (approximate)
-        return timedelta(days=amount * 365)
-    else:
-        raise ValueError(f"Unsupported time unit: {unit}")
+    return total_delta
 
 
 def load_licenses():
@@ -103,12 +110,10 @@ def activate_license(req: ActivateRequest):
     key_found = False
     key_duration = None
     
-    for i, lic in enumerate(licenses_data["keys"]):
+    for lic in licenses_data["keys"]:
         if lic["key"] == req.key:
             key_found = True
             key_duration = lic["duration"]
-            # Remove the key from available licenses (consume it)
-            licenses_data["keys"].pop(i)
             break
     
     if not key_found:
@@ -142,8 +147,7 @@ def activate_license(req: ActivateRequest):
             "expires_at": new_expiry.isoformat()
         })
     
-    # Save both files
-    save_licenses(licenses_data)
+    # Save servers data
     save_servers(servers_data)
     
     final_expiry = existing_guild["expires_at"] if existing_guild else new_expiry.isoformat()

@@ -6,3 +6,5 @@ maps
 logs
 temp
 *.pyc
+server_side/servers.json
+server_side/licenses.json

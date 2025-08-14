@@ -142,6 +142,38 @@ class LicenseService {
     }
 
     /**
+     * Check if a license is expiring soon (within 24 hours)
+     * @param {string} guildId - The Discord guild ID
+     * @returns {Promise<Object>} Object with isExpiringSoon boolean and timeRemaining in hours
+     */
+    async isLicenseExpiringSoon(guildId) {
+        try {
+            const licenseStatus = await this.checkLicense(guildId);
+            
+            if (licenseStatus.status !== 'active' || !licenseStatus.expires_at) {
+                return { isExpiringSoon: false, timeRemaining: null };
+            }
+
+            const expiryDate = new Date(licenseStatus.expires_at);
+            const now = new Date();
+            const timeDiff = expiryDate.getTime() - now.getTime();
+            const hoursRemaining = Math.floor(timeDiff / (1000 * 60 * 60));
+            
+            // Consider license expiring soon if less than 24 hours remain
+            const isExpiringSoon = hoursRemaining <= 24 && hoursRemaining > 0;
+            
+            return {
+                isExpiringSoon,
+                timeRemaining: hoursRemaining,
+                expiryDate: licenseStatus.expires_at
+            };
+        } catch (error) {
+            console.error(`[License Service] Error checking expiration for guild ${guildId}:`, error.message);
+            return { isExpiringSoon: false, timeRemaining: null };
+        }
+    }
+
+    /**
      * Get formatted license status message for Discord
      * @param {string} guildId - The Discord guild ID
      * @param {Function} intlGet - Internationalization function

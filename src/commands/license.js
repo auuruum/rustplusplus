@@ -117,6 +117,11 @@ async function handleActivateCommand(client, interaction, guildId, verifyId) {
         const result = await LicenseService.activateLicense(guildId, licenseKey.trim());
         
         if (result.success) {
+            // Reset expiration warning tracking since license was renewed/activated
+            if (client.expirationWarningsSent) {
+                client.expirationWarningsSent.delete(guildId);
+            }
+            
             // Trigger periodic license check to update connection status immediately
             try {
                 await client.triggerLicenseCheck(guildId);

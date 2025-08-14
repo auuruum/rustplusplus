@@ -582,6 +582,9 @@ class DiscordBot extends Discord.Client {
             clearInterval(this.licenseCheckInterval);
         }
 
+        // Initialize tracking for expiration warnings to avoid spam
+        this.expirationWarningsSent = new Set();
+
         // Set up periodic license checking every 5 minutes (300,000 ms)
         this.licenseCheckInterval = setInterval(async () => {
             try {
@@ -594,6 +597,11 @@ class DiscordBot extends Discord.Client {
                         // If license is expired or invalid, disconnect from Rust server
                         if (licenseStatus.status !== 'active') {
                             await this.disconnectFromRustServer(guildId, licenseStatus.status);
+                            // Remove from warning tracking since license is no longer active
+                            this.expirationWarningsSent.delete(guildId);
+                        } else {
+                            // Check if license is expiring soon and send warning if needed
+                            await this.checkAndSendExpirationWarning(guildId);
                         }
                         
                         this.log(this.intlGet(null, 'infoCap'), 
@@ -647,6 +655,93 @@ class DiscordBot extends Discord.Client {
     }
 
     /**
+     * Check if a license is expiring soon and send warning message if needed
+     * @param {string} guildId - The Discord guild ID to check
+     */
+    async checkAndSendExpirationWarning(guildId) {
+        try {
+            // Skip if we've already sent a warning for this guild
+            if (this.expirationWarningsSent.has(guildId)) {
+                return;
+            }
+
+            const expirationInfo = await LicenseService.isLicenseExpiringSoon(guildId);
+            
+            if (expirationInfo.isExpiringSoon) {
+                // Mark that we've sent a warning for this guild
+                this.expirationWarningsSent.add(guildId);
+                
+                // Send warning message to the guild
+                await this.sendExpirationWarningMessage(guildId, expirationInfo);
+                
+                this.log(this.intlGet(null, 'warningCap'), 
+                    `License expiration warning sent to guild ${guildId} (${expirationInfo.timeRemaining} hours remaining)`);
+            }
+        } catch (error) {
+            this.log(this.intlGet(null, 'errorCap'), 
+                `Failed to check/send expiration warning for guild ${guildId}: ${error.message}`, 'error');
+        }
+    }
+
+    /**
+     * Send license expiration warning message to a guild
+     * @param {string} guildId - The Discord guild ID
+     * @param {Object} expirationInfo - Expiration information object
+     */
+    async sendExpirationWarningMessage(guildId, expirationInfo) {
+        try {
+            const guild = this.guilds.cache.get(guildId);
+            if (!guild) {
+                this.log(this.intlGet(null, 'warningCap'), 
+                    `Cannot send expiration warning: Guild ${guildId} not found`);
+                return;
+            }
+
+            const instance = this.getInstance(guildId);
+            if (!instance || !instance.channelId.general) {
+                this.log(this.intlGet(null, 'warningCap'), 
+                    `Cannot send expiration warning: No general channel configured for guild ${guildId}`);
+                return;
+            }
+
+            const channel = guild.channels.cache.get(instance.channelId.general);
+            if (!channel) {
+                this.log(this.intlGet(null, 'warningCap'), 
+                    `Cannot send expiration warning: General channel not found for guild ${guildId}`);
+                return;
+            }
+
+            // Format expiry date for display
+            const expiryDate = new Date(expirationInfo.expiryDate);
+            const timestamp = Math.floor(expiryDate.getTime() / 1000);
+            const discordTimestamp = `<t:${timestamp}:f>`;
+
+            // Create warning embed
+            const DiscordEmbeds = require('../discordTools/discordEmbeds.js');
+            const embed = DiscordEmbeds.getActionInfoEmbed(
+                1, // Warning color (orange/yellow)
+                this.intlGet(guildId, 'licenseExpiringSoonWarning', {
+                    hours: expirationInfo.timeRemaining,
+                    expires_at: discordTimestamp
+                }),
+                this.intlGet(guildId, 'licenseExpiringSoonTitle')
+            );
+
+            // Add description field
+            embed.addFields({
+                name: '\u200B', // Invisible character for spacing
+                value: this.intlGet(guildId, 'licenseExpiringSoonDescription'),
+                inline: false
+            });
+
+            await channel.send({ embeds: [embed] });
+        } catch (error) {
+            this.log(this.intlGet(null, 'errorCap'), 
+                `Failed to send expiration warning message to guild ${guildId}: ${error.message}`, 'error');
+        }
+    }
+
+    /**
      * Manually trigger license check for a specific guild
      * @param {string} guildId - The Discord guild ID to check
      */
@@ -658,6 +753,11 @@ class DiscordBot extends Discord.Client {
             // If license is expired or invalid, disconnect from Rust server
             if (licenseStatus.status !== 'active') {
                 await this.disconnectFromRustServer(guildId, licenseStatus.status);
+                // Remove from warning tracking since license is no longer active
+                this.expirationWarningsSent.delete(guildId);
+            } else {
+                // Check if license is expiring soon and send warning if needed
+                await this.checkAndSendExpirationWarning(guildId);
             }
             
             this.log(this.intlGet(null, 'infoCap'), 
@@ -679,6 +779,11 @@ class DiscordBot extends Discord.Client {
             clearInterval(this.licenseCheckInterval);
             this.licenseCheckInterval = null;
             this.log(this.intlGet(null, 'infoCap'), this.intlGet(null, 'licenseSystemStopped'));
+        }
+        
+        // Clear expiration warnings tracking
+        if (this.expirationWarningsSent) {
+            this.expirationWarningsSent.clear();
         }
     }
 }
