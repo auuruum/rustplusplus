@@ -33,6 +33,8 @@ module.exports = {
     },
     license: {
         serverUrl: process.env.RPP_LICENSE_SERVER_URL || 'http://0.0.0.0:8000',
-        password: process.env.RPP_LICENSE_PASSWORD || 'your_secure_password_here',
+        password: process.env.RPP_LICENSE_PASSWORD || '',
+        webhookUrl: process.env.RPP_LICENSE_WEBHOOK_URL || '',
+        alertRoleId: process.env.RPP_LICENSE_ALERT_ROLE_ID || '',
     }
 };

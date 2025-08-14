@@ -36,6 +36,12 @@ class LicenseService {
         // Cache expiry time in milliseconds (5 minutes)
         this.cacheExpiry = 5 * 60 * 1000;
         
+        // Track webhook notifications to prevent spam (guild_id -> timestamp)
+        this.webhookNotificationsSent = new Map();
+        
+        // Webhook notification cooldown in milliseconds (30 minutes)
+        this.webhookCooldown = 30 * 60 * 1000;
+        
         // Set up periodic license checking every 5 minutes
         this.setupPeriodicCheck();
     }
@@ -80,6 +86,11 @@ class LicenseService {
         } catch (error) {
             console.error(`[License Service] Error checking license for guild ${guildId}:`, error.message);
             
+            // Check if this is a connection refused error and send webhook notification
+            if (error.code === 'ECONNREFUSED' || error.message.includes('ECONNREFUSED')) {
+                await this.sendLicenseServerDownNotification(guildId, error.message);
+            }
+            
             // Return a default "none" status if API is unreachable
             // This prevents the bot from being completely unusable if license server is down
             return {
@@ -120,6 +131,11 @@ class LicenseService {
             };
         } catch (error) {
             console.error(`[License Service] Error activating license for guild ${guildId}:`, error.message);
+            
+            // Check if this is a connection refused error and send webhook notification
+            if (error.code === 'ECONNREFUSED' || error.message.includes('ECONNREFUSED')) {
+                await this.sendLicenseServerDownNotification(guildId, error.message);
+            }
             
             // Extract error message from API response if available
             let errorMessage = 'Activation failed';
@@ -253,6 +269,70 @@ class LicenseService {
      */
     clearAllCache() {
         this.licenseCache.clear();
+    }
+
+    /**
+     * Send webhook notification when license server is down
+     * @param {string} guildId - The Discord guild ID
+     * @param {string} errorMessage - The error message
+     */
+    async sendLicenseServerDownNotification(guildId, errorMessage) {
+        try {
+            // Check if we've already sent a notification for this guild recently
+            const now = Date.now();
+            const lastNotification = this.webhookNotificationsSent.get(guildId);
+            
+            if (lastNotification && (now - lastNotification) < this.webhookCooldown) {
+                console.log(`[License Service] Webhook notification for guild ${guildId} skipped due to cooldown`);
+                return;
+            }
+            
+            const webhookUrl = Config.license.webhookUrl;
+            const roleId = Config.license.alertRoleId;
+            
+            const embed = {
+                title: '🚨 License Server Down',
+                description: `The license server is not accessible for guild \`${guildId}\`.\n\n**Error:** ${errorMessage}`,
+                color: 0xFF0000, // Red color
+                timestamp: new Date().toISOString(),
+                fields: [
+                    {
+                        name: 'Guild ID',
+                        value: guildId,
+                        inline: true
+                    },
+                    {
+                        name: 'Error Type',
+                        value: 'ECONNREFUSED',
+                        inline: true
+                    },
+                    {
+                        name: 'Next Notification',
+                        value: `<t:${Math.floor((now + this.webhookCooldown) / 1000)}:R>`,
+                        inline: true
+                    }
+                ]
+            };
+
+            const payload = {
+                content: `<@&${roleId}>`,
+                embeds: [embed]
+            };
+
+            await axios.post(webhookUrl, payload, {
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                timeout: 5000
+            });
+
+            // Record the notification timestamp
+            this.webhookNotificationsSent.set(guildId, now);
+            
+            console.log(`[License Service] Webhook notification sent for guild ${guildId}`);
+        } catch (webhookError) {
+            console.error(`[License Service] Failed to send webhook notification:`, webhookError.message);
+        }
     }
 }
 
