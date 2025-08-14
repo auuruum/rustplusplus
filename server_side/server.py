@@ -109,11 +109,13 @@ def activate_license(req: ActivateRequest):
     # Find the key in available licenses
     key_found = False
     key_duration = None
+    key_index = None
     
-    for lic in licenses_data["keys"]:
+    for i, lic in enumerate(licenses_data["keys"]):
         if lic["key"] == req.key:
             key_found = True
             key_duration = lic["duration"]
+            key_index = i
             break
     
     if not key_found:
@@ -147,11 +149,15 @@ def activate_license(req: ActivateRequest):
             "expires_at": new_expiry.isoformat()
         })
     
-    # Save servers data
+    # Remove the used key from available licenses
+    licenses_data["keys"].pop(key_index)
+    
+    # Save both files
+    save_licenses(licenses_data)
     save_servers(servers_data)
     
     final_expiry = existing_guild["expires_at"] if existing_guild else new_expiry.isoformat()
-    return {"status": "active", "expires_at": final_expiry}
+    return {"status": "activated", "expires_at": final_expiry, "message": "License key has been consumed"}
 
 
 # Для теста — добавить ключ вручную
@@ -167,6 +173,12 @@ def add_key(key: str, duration: str):
     data["keys"].append({"key": key, "duration": duration})
     save_licenses(data)
     return {"status": "ok"}
+
+# Optional: Get list of available keys (for admin purposes)
+@app.get("/keys")
+def list_keys():
+    data = load_licenses()
+    return {"available_keys": len(data["keys"]), "keys": data["keys"]}
 
 if __name__ == "__main__":
     import uvicorn
