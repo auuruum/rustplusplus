@@ -1416,4 +1416,12 @@ module.exports = {
             timestamp: true
         });
     },
+
+    getBotInactiveEmbed: function (guildId) {
+        return module.exports.getEmbed({
+            title: Client.client.intlGet(guildId, 'botInactiveMessage'),
+            color: Constants.COLOR_INACTIVE,
+            timestamp: true
+        });
+    },
 }
