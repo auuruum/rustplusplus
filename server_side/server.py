@@ -10,7 +10,7 @@ app = FastAPI()
 
 # Get the server_side directory (where this script is located)
 SERVER_SIDE_DIR = os.path.dirname(__file__)
-LICENSE_FILE = os.path.join(SERVER_SIDE_DIR, "licenses.json")  # Available license keys
+LICENSES_DIR = os.path.join(SERVER_SIDE_DIR, "licenses")  # Directory containing license JSON files
 SERVERS_FILE = os.path.join(SERVER_SIDE_DIR, "servers.json")   # Activated guilds with expiry times
 
 # Load admin password from config
@@ -32,10 +32,9 @@ def load_admin_password():
 
 ADMIN_PASSWORD = load_admin_password()
 
-# Initialize files if they don't exist
-if not os.path.exists(LICENSE_FILE):
-    with open(LICENSE_FILE, "w") as f:
-        json.dump({"keys": []}, f)
+# Initialize directories and files if they don't exist
+if not os.path.exists(LICENSES_DIR):
+    os.makedirs(LICENSES_DIR)
 
 if not os.path.exists(SERVERS_FILE):
     with open(SERVERS_FILE, "w") as f:
@@ -100,12 +99,33 @@ def parse_time_string(time_str: str) -> timedelta:
 
 
 def load_licenses():
-    with open(LICENSE_FILE, "r") as f:
-        return json.load(f)
+    """Load all licenses from JSON files in the licenses directory and subdirectories"""
+    all_keys = []
+    
+    if not os.path.exists(LICENSES_DIR):
+        return {"keys": []}
+    
+    # Recursively scan all JSON files in the licenses directory
+    for root, dirs, files in os.walk(LICENSES_DIR):
+        for filename in files:
+            if filename.endswith('.json'):
+                file_path = os.path.join(root, filename)
+                try:
+                    with open(file_path, "r") as f:
+                        data = json.load(f)
+                        if "keys" in data and isinstance(data["keys"], list):
+                            all_keys.extend(data["keys"])
+                except (json.JSONDecodeError, IOError) as e:
+                    print(f"Error reading {filename}: {e}")
+                    continue
+    
+    return {"keys": all_keys}
 
 def save_licenses(data):
-    with open(LICENSE_FILE, "w") as f:
-        json.dump(data, f, indent=4)
+    """Note: This function is kept for compatibility but doesn't save to individual files"""
+    # Since we're reading from multiple JSON files, we don't implement saving here
+    # Individual license files should be managed manually or through admin interface
+    pass
 
 def load_servers():
     with open(SERVERS_FILE, "r") as f:
