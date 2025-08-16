@@ -9,3 +9,4 @@ database
 *.pyc
 server_side/servers.json
 /server_side/licenses
+server_side/generator.json
