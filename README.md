@@ -3,29 +3,13 @@
 </p>
 
 <p align="center">
-<a href="https://discord.gg/vcrKbKVAbc"><img src="https://img.shields.io/badge/Discord-Alexemanuel-%237289DA?style=flat&logo=discord" alt="discord"/></a>
-<a href="https://www.reddit.com/user/Alexemanuelol"><img src="https://img.shields.io/badge/Reddit-Alexemanuelol-FF4500?style=flat&logo=reddit" alt="reddit"/></a>
-<a href="https://ko-fi.com/alexemanuelol"><img src="https://img.shields.io/badge/Donate%20a%20Coffee-alexemanuelol-yellow?style=flat&logo=buy-me-a-coffee" alt="donate on ko-fi"/></a>
-
-<p align="center">
 <a href="https://crowdin.com/project/rustplusplus"><img src="https://badges.crowdin.net/rustplusplus/localized.svg" alt="donate on ko-fi"/></a>
-</p>
-
-<p align="center">
-    <a href="https://discord.gg/vcrKbKVAbc">
-        <img src="./join_discord.png" width="250">
-    </a>
 </p>
 
 <h1 align="center"><em><b>rustplusplus</b> ~ Rust+ Discord Bot</em></h1>
 </p>
 
 A NodeJS Discord Bot that uses the [rustplus.js](https://github.com/liamcottle/rustplus.js) library to utilize the power of the [Rust+ Companion App](https://rust.facepunch.com/companion) with additional Quality-of-Life features.
-
-
-## **How-to Setup Video**
-
-[![Image of setup video](https://www.youtube.com/s/desktop/4a88d8c6/img/favicon_144x144.png)](https://youtu.be/GX03brJiMZg)
 
 ## **Features**
 
@@ -42,43 +26,21 @@ A NodeJS Discord Bot that uses the [rustplus.js](https://github.com/liamcottle/r
 
 ## **Documentation**
 
-> Documentation can be found [here](https://github.com/alexemanuelol/rustplusplus/blob/master/docs/documentation.md). The documentation explains the features as well as `how to setup the bot`, so make sure to take a look at it 😉
+> Documentation can be found [here](https://github.com/auuruum/rustplusplus/blob/production/docs/documentation.md). The documentation explains the features as well as `how to setup the bot`, so make sure to take a look at it 😉
 
 ## **Credentials**
 
-> You can get your credentials by running the `rustplusplus credential application`. Download it [here](https://github.com/alexemanuelol/rustplusplus-credential-application/releases/download/v1.4.0/rustplusplus-1.4.0-win-x64.exe)
+> You can get your credentials by running the `rustplusplus credential application`. Download it [here](https://github.com/alexemanuelol/rustplusplus/blob/master/docs/credentials_web_version.md)
 
-
-## **How to run the bot**
-
-> To run the bot, simply open the terminal of your choice and run the following from repository root:
-
-    $ npm start run
-
-
-## **How to update the repository**
-
-> Depending on your OS / choice of terminal you can run:
-
-    $ update.bat
-
-or
-
-    $ ./update.sh
-
-
-## **Running via docker**
-
-    $ docker run --rm -it -v ${pwd}/credentials:/app/credentials -v ${pwd}/instances:/app/instances -v ${pwd}/logs:/app/logs -e RPP_DISCORD_CLIENT_ID=111....1111 -e RPP_DISCORD_TOKEN=token --name rpp ghcr.io/alexemanuelol/rustplusplus
-
-or
-
-    $ docker-compose up -d
-
-Make sure you use the correct values for DISCORD_CLIENT_ID as well as DISCORD_TOKEN in the docker command/docker-compose.yml
+## **Author of that bot**
+<p align="center">
+<a href="https://discord.gg/vcrKbKVAbc"><img src="https://img.shields.io/badge/Discord-Alexemanuel-%237289DA?style=flat&logo=discord" alt="discord"/></a>
+<a href="https://www.reddit.com/user/Alexemanuelol"><img src="https://img.shields.io/badge/Reddit-Alexemanuelol-FF4500?style=flat&logo=reddit" alt="reddit"/></a>
+<a href="https://ko-fi.com/alexemanuelol"><img src="https://img.shields.io/badge/Donate%20a%20Coffee-alexemanuelol-yellow?style=flat&logo=buy-me-a-coffee" alt="donate on ko-fi"/></a>
 
 ## **Thanks to**
 
 **liamcottle**@GitHub - for the [rustplus.js](https://github.com/liamcottle/rustplus.js) library.
 <br>
 **.Vegas.#4844**@Discord - for the awesome icons!
+
