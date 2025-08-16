@@ -8,8 +8,10 @@ from typing import Optional
 
 app = FastAPI()
 
-LICENSE_FILE = "licenses.json"  # Available license keys
-SERVERS_FILE = "servers.json"   # Activated guilds with expiry times
+# Get the server_side directory (where this script is located)
+SERVER_SIDE_DIR = os.path.dirname(__file__)
+LICENSE_FILE = os.path.join(SERVER_SIDE_DIR, "licenses.json")  # Available license keys
+SERVERS_FILE = os.path.join(SERVER_SIDE_DIR, "servers.json")   # Activated guilds with expiry times
 
 # Load admin password from config
 def load_admin_password():
