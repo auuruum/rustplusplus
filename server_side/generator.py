@@ -56,8 +56,9 @@ def main():
         "keys": keys
     }
     
-    # Save to generator.json
-    output_file = "generator.json"
+    # Save to generator.json in the same directory as the script
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    output_file = os.path.join(script_dir, "generator.json")
     with open(output_file, "w") as f:
         json.dump(data, f, indent=4)
     
