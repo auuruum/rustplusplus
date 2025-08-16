@@ -8,11 +8,27 @@ from typing import Optional
 
 app = FastAPI()
 
-LICENSE_FILE = "server_side/licenses.json"  # Available license keys
-SERVERS_FILE = "server_side/servers.json"   # Activated guilds with expiry times
+LICENSE_FILE = "licenses.json"  # Available license keys
+SERVERS_FILE = "servers.json"   # Activated guilds with expiry times
 
-# Password for protected endpoints - change this to your desired password
-ADMIN_PASSWORD = "your_secure_password_here"
+# Load admin password from config
+def load_admin_password():
+    config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "index.js")
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            content = f.read()
+            # Extract password from the license.password field
+            match = re.search(r"password:\s*process\.env\.RPP_LICENSE_PASSWORD\s*\|\|\s*['\"]([^'\"]+)['\"]", content)
+            if match:
+                return match.group(1)
+            else:
+                # Fallback to default if not found
+                return "yoursupersecretpassword"
+    except Exception as e:
+        print(f"Error loading config: {e}")
+        return "yoursupersecretpassword"  # Fallback to default
+
+ADMIN_PASSWORD = load_admin_password()
 
 # Initialize files if they don't exist
 if not os.path.exists(LICENSE_FILE):
