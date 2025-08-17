@@ -101,25 +101,49 @@ def parse_time_string(time_str: str) -> timedelta:
 def load_licenses():
     """Load all licenses from JSON files in the licenses directory and subdirectories"""
     all_keys = []
+    file_mapping = {}  # Track which file each key came from
     
     if not os.path.exists(LICENSES_DIR):
-        return {"keys": []}
+        return {"keys": [], "file_mapping": {}}
     
     # Recursively scan all JSON files in the licenses directory
     for root, dirs, files in os.walk(LICENSES_DIR):
         for filename in files:
-            if filename.endswith('.json'):
+            if filename.endswith('.json') and filename != 'generator.json':
                 file_path = os.path.join(root, filename)
                 try:
                     with open(file_path, "r") as f:
                         data = json.load(f)
                         if "keys" in data and isinstance(data["keys"], list):
-                            all_keys.extend(data["keys"])
+                            for key_obj in data["keys"]:
+                                all_keys.append(key_obj)
+                                # Map each key to its source file
+                                file_mapping[key_obj["key"]] = file_path
                 except (json.JSONDecodeError, IOError) as e:
                     print(f"Error reading {filename}: {e}")
                     continue
     
-    return {"keys": all_keys}
+    return {"keys": all_keys, "file_mapping": file_mapping}
+
+def remove_key_from_file(key_to_remove, file_path):
+    """Remove a specific key from its source file"""
+    try:
+        with open(file_path, "r") as f:
+            data = json.load(f)
+        
+        # Remove the key from the file
+        if "keys" in data and isinstance(data["keys"], list):
+            data["keys"] = [key_obj for key_obj in data["keys"] if key_obj["key"] != key_to_remove]
+        
+        # Save the updated file
+        with open(file_path, "w") as f:
+            json.dump(data, f, indent=4)
+        
+        print(f"Removed key {key_to_remove} from {file_path}")
+        return True
+    except Exception as e:
+        print(f"Error removing key from {file_path}: {e}")
+        return False
 
 def save_licenses(data):
     """Note: This function is kept for compatibility but doesn't save to individual files"""
@@ -171,13 +195,13 @@ def activate_license(req: ActivateRequest):
     # Find the key in available licenses
     key_found = False
     key_duration = None
-    key_index = None
+    key_source_file = None
     
-    for i, lic in enumerate(licenses_data["keys"]):
+    for lic in licenses_data["keys"]:
         if lic["key"] == req.key:
             key_found = True
             key_duration = lic["duration"]
-            key_index = i
+            key_source_file = licenses_data["file_mapping"].get(req.key)
             break
     
     if not key_found:
@@ -211,11 +235,13 @@ def activate_license(req: ActivateRequest):
             "expires_at": new_expiry.isoformat()
         })
     
-    # Remove the used key from available licenses
-    licenses_data["keys"].pop(key_index)
+    # Remove the used key from its source file
+    if key_source_file:
+        remove_key_from_file(req.key, key_source_file)
+    else:
+        print(f"Warning: Could not find source file for key {req.key}")
     
-    # Save both files
-    save_licenses(licenses_data)
+    # Save servers data
     save_servers(servers_data)
     
     final_expiry = existing_guild["expires_at"] if existing_guild else new_expiry.isoformat()
