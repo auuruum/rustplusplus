@@ -22,6 +22,7 @@ Slash Command | Description
 [**/license**](commands.md#license) | License management commands.
 [**/map**](commands.md#map) | Get the currently connected server map image.
 [**/market**](commands.md#market) | Operations for In-Game Vending Machines.
+[**/offlinepattern**](commands.md#offlinepattern) | Analyze when players are most likely to be offline.
 [**/players**](commands.md#players) | Get player/players information based on battlemetrics.
 [**/raid**](commands.md#raid) | Display the raid costs for an item.
 [**/recycle**](commands.md#recycle) | Display the output of recycling an item.
@@ -218,6 +219,22 @@ Subcommand | Options | Description | Required
 ![Discord Slash Command market Image](images/slash_commands/market.png)
 
 
+## **/offlinepattern**
+
+> **Analyze when players are most likely to be offline.** This command analyzes player activity patterns from Battlemetrics data to determine when specific players are typically offline, helping with raid timing and strategic planning.
+
+Subcommand | Options | Description | Required
+---------- | ------- | ----------- | --------
+`player` | &nbsp; | Analyze offline patterns for a player by name. | &nbsp;
+&nbsp; | `name` | The name of the player to analyze. | `True`
+&nbsp; | `battlemetricsid` | The Battlemetrics ID of the server (default: The connected server). | `False`
+`playerid` | &nbsp; | Analyze offline patterns for a player by their ID. | &nbsp;
+&nbsp; | `playerid` | The player ID of the player to analyze. | `True`
+&nbsp; | `battlemetricsid` | The Battlemetrics ID of the server (default: The connected server). | `False`
+
+![Discord Slash Command offlinepattern Image](images/slash_commands/offlinepattern.png)
+
+
 ## **/players**
 
 > **Get player/players information based on Battlemetrics.** Calling the subcommand name without the name option will display all players depending on status option. By calling the subcommand playerid, you will get more specific information about a single player.
@@ -388,6 +405,7 @@ In-Game Command | Description
 [**note/notes**](commands.md#notenotes) | Create notes about meaningful things.
 [**offline**](commands.md#offline) | Get the currently offline players in your team.
 [**online**](commands.md#online) | Get the currently online players in your team.
+[**offlinepattern**](commands.md#offlinepattern-ingame) | Analyze when players are most likely to be offline.
 [**player/players**](commands.md#playerplayers) | Get the names and playtime of the currently online players on the server (Based on Battlemetrics).
 [**pop**](commands.md#pop) | Get the current population of the server including queue size and max population.
 [**prox**](commands.md#prox) | Get the distance to the three closest teammates.
@@ -598,6 +616,15 @@ Subcommand | Description | Required
 <br>Command: `!online`
 
 ![In-Game Command online Image](images/ingame_commands/online_ingame.png)
+
+
+## **offlinepattern ingame**
+
+> **Analyze when players are most likely to be offline.** This command analyzes player activity patterns from Battlemetrics data to determine when specific players are typically offline, helping with raid timing and strategic planning.
+<br>Command: `!offlinepattern <player-name>`
+<br>Command: `!offlinepattern PlayerName`
+
+![In-Game Command offlinepattern Image](images/ingame_commands/offlinepattern_ingame.png)
 
 
 ## **player/players**
