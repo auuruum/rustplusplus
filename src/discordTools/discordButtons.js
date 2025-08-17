@@ -524,6 +524,11 @@ module.exports = {
                     style: Discord.ButtonStyle.Link,
                     label: 'SUPPORT',
                     url: 'https://discord.com/invite/vwUknhSh4b'
+                }),
+                module.exports.getButton({
+                    style: Discord.ButtonStyle.Link,
+                    label: 'BUY LICENSE',
+                    url: 'https://auuruum.github.io/rustplusplus-buy/'
                 })
             )];
     },
