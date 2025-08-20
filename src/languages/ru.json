@@ -882,5 +882,8 @@
     "licenseStatusExpired": "❌ Срок действия лицензии истёк\n\nЛицензию можно приобрести по адресу: https://auuruum.github.io/rustplusplus-buy/",
     "licenseStatusNone": "❌ Лицензия не найдена\n\nЛицензию можно приобрести по адресу: https://auuruum.github.io/rustplusplus-buy/",
     "licenseSystemInitialized": "Система проверки лицензий инициализирована",
-    "licenseSystemStopped": "Система проверки лицензий остановлена"
+    "licenseSystemStopped": "Система проверки лицензий остановлена",
+    "licenseActivationWarning1h": "Этот бот должен быть активирован в течение 1 часа после добавления с помощью команды `/license activate [license_key]`. Если лицензия не будет активирована, бот покинет сервер, а созданные каналы и данные будут удалены.\n\nЛицензию можно приобрести по адресу: https://auuruum.github.io/rustplusplus-buy/",
+    "licenseActivationRequiredTitle": "Требуется активация лицензии",
+    "licenseActivationTimeoutLeave": "Лицензия не была активирована в течение 1 часа. Выполняется очистка данных и выход с сервера." 
 }

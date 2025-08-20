@@ -880,5 +880,8 @@
     "licenseInvalidConnectionBlocked": "⚠️ License invalid. Connection to Rust server blocked.\n\nLicense can be purchased from: https://auuruum.github.io/rustplusplus-buy/",
     "licenseExpiringSoonWarning": "⚠️ **License Expiring Soon!** Your license will expire in {hours} hours ({expires_at}). Please renew your license to avoid service interruption.",
     "licenseExpiringSoonTitle": "License Expiration Warning",
-    "licenseExpiringSoonDescription": "Your bot license is expiring soon. Use `/license activate [key]` to extend your license.\n\nLicense can be purchased from: https://auuruum.github.io/rustplusplus-buy/"
+    "licenseExpiringSoonDescription": "Your bot license is expiring soon. Use `/license activate [key]` to extend your license.\n\nLicense can be purchased from: https://auuruum.github.io/rustplusplus-buy/",
+    "licenseActivationWarning1h": "This bot must be activated within 1 hour of joining using `/license activate [license_key]`. If not activated, the bot will leave and all created channels and data will be removed.\n\nLicense can be purchased from: https://auuruum.github.io/rustplusplus-buy/",
+    "licenseActivationRequiredTitle": "License Activation Required",
+    "licenseActivationTimeoutLeave": "No license was activated within 1 hour. Cleaning up and leaving this server." 
 }

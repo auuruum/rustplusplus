@@ -156,15 +156,19 @@ class DiscordBot extends Discord.Client {
     intlGet(guildId, id, variables = {}) {
         let intl = null;
         if (guildId && guildId !== 'en') {
-            intl = this.guildIntl[guildId];
+            // Fallback to botIntl if guild-specific intl is missing (e.g., after guildDelete)
+            intl = (this.guildIntl && this.guildIntl[guildId]) ? this.guildIntl[guildId] : this.botIntl;
+        }
+        else if (guildId === 'en') {
+            intl = this.enIntl || this.botIntl;
         }
         else {
-            if (guildId === 'en') {
-                intl = this.enIntl;
-            }
-            else {
-                intl = this.botIntl;
-            }
+            intl = this.botIntl;
+        }
+
+        if (!intl) {
+            // Absolute fallback to avoid runtime errors
+            intl = this.botIntl;
         }
 
         return intl.formatMessage({
@@ -494,6 +498,14 @@ class DiscordBot extends Discord.Client {
     }
 
     async interactionReply(interaction, content) {
+        // Normalize deprecated ephemeral option to flags to avoid warnings
+        if (content && typeof content === 'object' && Object.prototype.hasOwnProperty.call(content, 'ephemeral')) {
+            const ephemeral = content.ephemeral === true;
+            const flags = content.flags ?? 0;
+            const EPHEMERAL_FLAG = (Discord && Discord.MessageFlags && typeof Discord.MessageFlags.Ephemeral === 'number') ? Discord.MessageFlags.Ephemeral : 64;
+            const { ephemeral: _omit, ...rest } = content;
+            content = ephemeral ? { ...rest, flags: (flags | EPHEMERAL_FLAG) } : rest;
+        }
         try {
             return await interaction.reply(content);
         }
@@ -506,6 +518,14 @@ class DiscordBot extends Discord.Client {
     }
 
     async interactionEditReply(interaction, content) {
+        // Normalize deprecated ephemeral option to flags to avoid warnings
+        if (content && typeof content === 'object' && Object.prototype.hasOwnProperty.call(content, 'ephemeral')) {
+            const ephemeral = content.ephemeral === true;
+            const flags = content.flags ?? 0;
+            const EPHEMERAL_FLAG = (Discord && Discord.MessageFlags && typeof Discord.MessageFlags.Ephemeral === 'number') ? Discord.MessageFlags.Ephemeral : 64;
+            const { ephemeral: _omit, ...rest } = content;
+            content = ephemeral ? { ...rest, flags: (flags | EPHEMERAL_FLAG) } : rest;
+        }
         try {
             return await interaction.editReply(content);
         }
@@ -518,6 +538,14 @@ class DiscordBot extends Discord.Client {
     }
 
     async interactionUpdate(interaction, content) {
+        // Normalize deprecated ephemeral option to flags to avoid warnings
+        if (content && typeof content === 'object' && Object.prototype.hasOwnProperty.call(content, 'ephemeral')) {
+            const ephemeral = content.ephemeral === true;
+            const flags = content.flags ?? 0;
+            const EPHEMERAL_FLAG = (Discord && Discord.MessageFlags && typeof Discord.MessageFlags.Ephemeral === 'number') ? Discord.MessageFlags.Ephemeral : 64;
+            const { ephemeral: _omit, ...rest } = content;
+            content = ephemeral ? { ...rest, flags: (flags | EPHEMERAL_FLAG) } : rest;
+        }
         try {
             return await interaction.update(content);
         }
@@ -558,8 +586,14 @@ class DiscordBot extends Discord.Client {
             return await channel.send(content);
         }
         catch (e) {
-            this.log(this.intlGet(null, 'errorCap'),
-                this.intlGet(null, 'messageSendFailed', { error: e }), 'error');
+            // Downgrade common post-kick errors to warnings to avoid noisy logs
+            if (e && (e.code === 50001 || e.code === 50013)) {
+                const reason = (e.code === 50001) ? 'Missing Access' : 'Missing Permissions';
+                this.log(this.intlGet(null, 'warningCap'), `Skipping message send in channel ${channel?.id || 'unknown'}: ${reason}`);
+            } else {
+                this.log(this.intlGet(null, 'errorCap'),
+                    this.intlGet(null, 'messageSendFailed', { error: e }), 'error');
+            }
         }
 
         return undefined;

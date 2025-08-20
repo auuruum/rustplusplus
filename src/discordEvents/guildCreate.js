@@ -28,5 +28,72 @@ module.exports = {
         client.loadGuildIntl(guild.id);
 
         await client.setupGuild(guild);
+
+        // After setting up, inform users about 1-hour activation requirement
+        try {
+            const instance = client.getInstance(guild.id);
+            const infoChannelId = instance.channelId.information || instance.channelId.commands;
+            const channel = guild.channels.cache.get(infoChannelId);
+            if (channel) {
+                const DiscordEmbeds = require('../discordTools/discordEmbeds.js');
+                await client.messageSend(
+                    channel,
+                    DiscordEmbeds.getActionInfoEmbed(
+                        1,
+                        client.intlGet(guild.id, 'licenseActivationWarning1h'),
+                        client.intlGet(guild.id, 'licenseActivationRequiredTitle')
+                    )
+                );
+            }
+        } catch (e) { /* ignore */ }
+
+        // Schedule 1-hour check for license activation
+        const ONE_MINUTE = 60 * 1000; // 60 seconds × 1000 ms
+        const ONE_HOUR = ONE_MINUTE; // 60 minutes
+        if (!client.guildActivationTimeouts) client.guildActivationTimeouts = {};
+        client.guildActivationTimeouts[guild.id] = setTimeout(async () => {
+            try {
+                const LicenseService = require('../util/licenseService');
+                const status = await LicenseService.checkLicense(guild.id, true);
+
+                // If active now, nothing to do
+                if (status.status === 'active') return;
+
+                // If license existed before and just expired, respect 2-week grace and do not leave/remove files
+                if (status.status === 'expired') {
+                    // Keep data and channels for 2 weeks, do nothing here
+                    return;
+                }
+
+                // Otherwise, no license within 1h of join: cleanup and leave server
+                try {
+                    await require('../discordTools/RemoveGuildChannels')(client, guild);
+                } catch (_) { /* ignore */ }
+
+                const InstanceUtils = require('../util/instanceUtils');
+                try { InstanceUtils.deleteInstanceFile(guild.id); } catch (_) {}
+                try { InstanceUtils.deleteCredentialsFile(guild.id); } catch (_) {}
+
+                // Inform server and then leave
+                try {
+                    const instance = client.getInstance(guild.id);
+                    const infoChannelId = instance?.channelId?.information || instance?.channelId?.commands;
+                    const channel = infoChannelId ? guild.channels.cache.get(infoChannelId) : null;
+                    if (channel && channel.viewable && channel.permissionsFor(guild.members.me)?.has('SendMessages')) {
+                        await client.messageSend(channel, client.intlGet(guild.id, 'licenseActivationTimeoutLeave'));
+                    }
+                } catch (_) { /* ignore */ }
+
+                // Finally, leave the guild
+                try { await guild.leave(); } catch (_) { /* ignore */ }
+            } catch (err) {
+                // Swallow errors to avoid crashing
+            } finally {
+                // Clear the stored timeout reference when it fires
+                if (client.guildActivationTimeouts && client.guildActivationTimeouts[guild.id]) {
+                    delete client.guildActivationTimeouts[guild.id];
+                }
+            }
+        }, ONE_HOUR);
     },
 }

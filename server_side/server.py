@@ -160,10 +160,39 @@ def save_servers(data):
         json.dump(data, f, indent=4)
 
 
+def cleanup_expired_servers():
+    """Remove servers that have been expired for more than 30 days"""
+    servers_data = load_servers()
+    current_time = datetime.utcnow()
+    one_month_ago = current_time - timedelta(days=30)
+    
+    original_count = len(servers_data["guilds"])
+    
+    # Filter out servers expired for more than 30 days
+    servers_data["guilds"] = [
+        guild for guild in servers_data["guilds"]
+        if datetime.fromisoformat(guild["expires_at"]) > one_month_ago
+    ]
+    
+    removed_count = original_count - len(servers_data["guilds"])
+    
+    if removed_count > 0:
+        save_servers(servers_data)
+        print(f"Cleaned up {removed_count} servers that were expired for more than 30 days")
+    
+    return removed_count
+
+
 @app.get("/check")
 def check_license(guild_id: str, password: str):
     # Verify password
     verify_password(password)
+    
+    # Perform cleanup of expired servers
+    try:
+        cleanup_expired_servers()
+    except Exception as e:
+        print(f"Error during cleanup: {e}")
     
     servers_data = load_servers()
     for guild in servers_data["guilds"]:
@@ -274,6 +303,23 @@ def list_keys(password: str):
     return {"available_keys": len(data["keys"]), "keys": data["keys"]}
 
 
+@app.post("/cleanup")
+def cleanup_servers(password: str):
+    """Manually trigger cleanup of servers expired for more than 30 days"""
+    # Verify password
+    verify_password(password)
+    
+    removed_count = cleanup_expired_servers()
+    return {"status": "ok", "removed_servers": removed_count, "message": f"Cleaned up {removed_count} expired servers"}
+
+
 if __name__ == "__main__":
+    # Cleanup expired servers on startup
+    print("Performing startup cleanup of expired servers...")
+    try:
+        cleanup_expired_servers()
+    except Exception as e:
+        print(f"Error during startup cleanup: {e}")
+    
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
