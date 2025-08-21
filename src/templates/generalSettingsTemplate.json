@@ -32,5 +32,8 @@
     "voiceServerWiped": false,
     "voiceSmartDevice": false,
     "voiceSayCommand": true,
-    "licenseActivationWarningMessageId": null
+    "licenseActivationWarningMessageId": null,
+    "licenseExpiredTimestamp": null,
+    "licenseGraceWarningLastSent": null,
+    "licenseGraceFinalNoticeSent": false
 }

@@ -180,6 +180,17 @@ async function handleActivateCommand(client, interaction, guildId, verifyId) {
                     } catch (_) { /* ignore */ }
                 }
             } catch (_) { /* ignore */ }
+
+            // Reset grace-period state on successful activation
+            try {
+                const inst2 = client.getInstance(guildId);
+                if (inst2 && inst2.generalSettings) {
+                    inst2.generalSettings.licenseExpiredTimestamp = null;
+                    inst2.generalSettings.licenseGraceWarningLastSent = null;
+                    inst2.generalSettings.licenseGraceFinalNoticeSent = false;
+                    client.setInstance(guildId, inst2);
+                }
+            } catch (_) { /* ignore */ }
             
             const logAction = isStacking ? 'stacked' : 'activated';
             client.log(client.intlGet(null, 'infoCap'), 
