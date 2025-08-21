@@ -36,7 +36,7 @@ module.exports = {
             const channel = guild.channels.cache.get(infoChannelId);
             if (channel) {
                 const DiscordEmbeds = require('../discordTools/discordEmbeds.js');
-                await client.messageSend(
+                const sent = await client.messageSend(
                     channel,
                     DiscordEmbeds.getActionInfoEmbed(
                         1,
@@ -44,12 +44,17 @@ module.exports = {
                         client.intlGet(guild.id, 'licenseActivationRequiredTitle')
                     )
                 );
+                if (sent && sent.id) {
+                    const inst = client.getInstance(guild.id);
+                    inst.generalSettings.licenseActivationWarningMessageId = sent.id;
+                    client.setInstance(guild.id, inst);
+                }
             }
         } catch (e) { /* ignore */ }
 
         // Schedule 1-hour check for license activation
         const ONE_MINUTE = 60 * 1000; // 60 seconds × 1000 ms
-        const ONE_HOUR = ONE_MINUTE; // 60 minutes
+        const ONE_HOUR = 60 * ONE_MINUTE; // 60 minutes
         if (!client.guildActivationTimeouts) client.guildActivationTimeouts = {};
         client.guildActivationTimeouts[guild.id] = setTimeout(async () => {
             try {

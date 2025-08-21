@@ -21,6 +21,7 @@
 const Builder = require('@discordjs/builders');
 const DiscordEmbeds = require('../discordTools/discordEmbeds.js');
 const LicenseService = require('../util/licenseService.js');
+const DiscordTools = require('../discordTools/discordTools');
 
 module.exports = {
     name: 'license',
@@ -150,6 +151,35 @@ async function handleActivateCommand(client, interaction, guildId, verifyId) {
             
             await client.interactionEditReply(interaction, 
                 DiscordEmbeds.getActionInfoEmbed(0, successMsg));
+
+            // Try to delete the initial 1-hour activation warning message if it exists
+            try {
+                const instance = client.getInstance(guildId);
+                const channelId = instance?.channelId?.information || instance?.channelId?.commands;
+                const warnId = instance?.generalSettings?.licenseActivationWarningMessageId;
+                if (channelId && warnId) {
+                    await DiscordTools.deleteMessageById(guildId, channelId, warnId);
+                    instance.generalSettings.licenseActivationWarningMessageId = null;
+                    client.setInstance(guildId, instance);
+                } else if (channelId && !warnId) {
+                    // Fallback: attempt to find and delete the activation warning message
+                    try {
+                        const channel = DiscordTools.getTextChannelById(guildId, channelId);
+                        if (channel) {
+                            const messages = await channel.messages.fetch({ limit: 25 });
+                            const titleStr = client.intlGet(guildId, 'licenseActivationRequiredTitle');
+                            const descStr = client.intlGet(guildId, 'licenseActivationWarning1h');
+                            const toDelete = messages.find(m => m.author?.id === client.user?.id && m.embeds?.length > 0 && (
+                                (m.embeds[0].footer && m.embeds[0].footer.text === titleStr) ||
+                                (m.embeds[0].description && m.embeds[0].description.includes(descStr))
+                            ));
+                            if (toDelete) {
+                                await toDelete.delete();
+                            }
+                        }
+                    } catch (_) { /* ignore */ }
+                }
+            } catch (_) { /* ignore */ }
             
             const logAction = isStacking ? 'stacked' : 'activated';
             client.log(client.intlGet(null, 'infoCap'), 
@@ -191,6 +221,38 @@ async function handleStatusCommand(client, interaction, guildId, verifyId) {
         
         // Get the current license status
         const licenseStatus = await LicenseService.checkLicense(guildId);
+
+        // If license is active, clean up any lingering activation warning message
+        if (licenseStatus.status === 'active') {
+            try {
+                const instance = client.getInstance(guildId);
+                const channelId = instance?.channelId?.information || instance?.channelId?.commands;
+                const warnId = instance?.generalSettings?.licenseActivationWarningMessageId;
+                if (channelId && warnId) {
+                    await DiscordTools.deleteMessageById(guildId, channelId, warnId);
+                    instance.generalSettings.licenseActivationWarningMessageId = null;
+                    client.setInstance(guildId, instance);
+                } else if (channelId && !warnId) {
+                    // Fallback: attempt to find and delete the activation warning message
+                    try {
+                        const channel = DiscordTools.getTextChannelById(guildId, channelId);
+                        if (channel) {
+                            const messages = await channel.messages.fetch({ limit: 25 });
+                            const titleStr = client.intlGet(guildId, 'licenseActivationRequiredTitle');
+                            const descStr = client.intlGet(guildId, 'licenseActivationWarning1h');
+                            const toDelete = messages.find(m => m.author?.id === client.user?.id && m.embeds?.length > 0 && (
+                                (m.embeds[0].footer && m.embeds[0].footer.text === titleStr) ||
+                                (m.embeds[0].description && m.embeds[0].description.includes(descStr))
+                            ));
+                            if (toDelete) {
+                                await toDelete.delete();
+                            }
+                        }
+                    } catch (_) { /* ignore */ }
+                }
+            } catch (_) { /* ignore */ }
+        }
+
         const statusMessage = await LicenseService.getLicenseStatusMessage(
             guildId, 
             (guildId, key, vars) => client.intlGet(guildId, key, vars)

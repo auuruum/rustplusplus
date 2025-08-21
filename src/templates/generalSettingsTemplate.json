@@ -31,5 +31,6 @@
     "voiceServerStatus": false,
     "voiceServerWiped": false,
     "voiceSmartDevice": false,
-    "voiceSayCommand": true
+    "voiceSayCommand": true,
+    "licenseActivationWarningMessageId": null
 }
