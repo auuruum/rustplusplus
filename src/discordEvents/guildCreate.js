@@ -30,27 +30,6 @@ module.exports = {
         await client.setupGuild(guild);
 
         // After setting up, inform users about 1-hour activation requirement
-        try {
-            const instance = client.getInstance(guild.id);
-            const infoChannelId = instance.channelId.information || instance.channelId.commands;
-            const channel = guild.channels.cache.get(infoChannelId);
-            if (channel) {
-                const DiscordEmbeds = require('../discordTools/discordEmbeds.js');
-                const sent = await client.messageSend(
-                    channel,
-                    DiscordEmbeds.getActionInfoEmbed(
-                        1,
-                        client.intlGet(guild.id, 'licenseActivationWarning1h'),
-                        client.intlGet(guild.id, 'licenseActivationRequiredTitle')
-                    )
-                );
-                if (sent && sent.id) {
-                    const inst = client.getInstance(guild.id);
-                    inst.generalSettings.licenseActivationWarningMessageId = sent.id;
-                    client.setInstance(guild.id, inst);
-                }
-            }
-        } catch (e) { /* ignore */ }
 
         // Schedule 1-hour check for license activation
         const ONE_MINUTE = 60 * 1000; // 60 seconds × 1000 ms
