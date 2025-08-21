@@ -26,12 +26,6 @@ const Types = require('discord-api-types/v9');
 const Config = require('../../config');
 
 module.exports = async (client, guild) => {
-    // If guild is unavailable or the client is no longer in the guild, skip registration gracefully
-    if (!guild || !client.guilds.cache.has(guild.id)) {
-        client.log(client.intlGet(null, 'warningCap'), `Skip slash command registration: bot not in guild ${guild?.id || 'unknown'}`);
-        return;
-    }
-
     const commands = [];
     const commandFiles = Fs.readdirSync(Path.join(__dirname, '..', 'commands')).filter(file => file.endsWith('.js'));
 
@@ -46,19 +40,13 @@ module.exports = async (client, guild) => {
         await rest.put(Types.Routes.applicationGuildCommands(Config.discord.clientId, guild.id), { body: commands });
     }
     catch (e) {
-        // Handle common cases without crashing the process
-        const code = e?.code;
-        if (code === 50001 /* Missing Access */ || code === 50013 /* Missing Permissions */ || code === 10004 /* Unknown Guild */) {
-            client.log(client.intlGet(null, 'warningCap'), `Could not register slash commands for guild ${guild.id}: ${e.message || code}`);
-            return;
-        }
         client.log(
             client.intlGet(null, 'errorCap'),
             client.intlGet(null, 'couldNotRegisterSlashCommands', { guildId: guild.id }) +
             client.intlGet(null, 'makeSureApplicationsCommandsEnabled'),
             'error'
         );
-        return; // Avoid process.exit for resilience
+        process.exit(1);
     }
     client.log(client.intlGet(null, 'infoCap'),
         client.intlGet(null, 'slashCommandsSuccessRegister', { guildId: guild.id }));
