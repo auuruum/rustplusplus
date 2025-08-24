@@ -137,10 +137,21 @@ class LicenseService {
                 await this.sendLicenseServerDownNotification(guildId, error.message);
             }
             
-            // Extract error message from API response if available
+            // Extract error message from API response if available (support both "error" and FastAPI "detail")
             let errorMessage = 'Activation failed';
-            if (error.response && error.response.data && error.response.data.error) {
-                errorMessage = error.response.data.error;
+            if (error.response && error.response.data) {
+                const data = error.response.data;
+                if (typeof data === 'string') {
+                    errorMessage = data;
+                } else if (data.error) {
+                    errorMessage = data.error;
+                } else if (data.detail) {
+                    if (typeof data.detail === 'string') {
+                        errorMessage = data.detail;
+                    } else if (typeof data.detail === 'object') {
+                        errorMessage = data.detail.error || data.detail.message || JSON.stringify(data.detail);
+                    }
+                }
             } else if (error.message) {
                 errorMessage = error.message;
             }
