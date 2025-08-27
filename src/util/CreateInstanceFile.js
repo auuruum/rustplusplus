@@ -20,6 +20,7 @@
 
 const Fs = require('fs');
 const Path = require('path');
+const Crypto = require('crypto');
 
 const InstanceUtils = require('../util/instanceUtils.js');
 
@@ -69,6 +70,10 @@ module.exports = (client, guild) => {
             },
             aliases: []
         };
+        // Ensure unique API password is generated for this guild
+        if (!instance.generalSettings.apiPassword) {
+            instance.generalSettings.apiPassword = Crypto.randomBytes(16).toString('hex');
+        }
     }
     else {
         instance = InstanceUtils.readInstanceFile(guild.id);
@@ -92,6 +97,10 @@ module.exports = (client, guild) => {
                     instance.generalSettings[key] = value;
                 }
             }
+        }
+        // Ensure unique API password exists after merging templates
+        if (!instance.generalSettings.apiPassword) {
+            instance.generalSettings.apiPassword = Crypto.randomBytes(16).toString('hex');
         }
 
         if (!instance.hasOwnProperty('notificationSettings')) {

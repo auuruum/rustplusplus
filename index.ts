@@ -42,7 +42,8 @@ const client = new DiscordBot({
 client.build();
 
 // Start the API server
-const apiServer = new ApiServer();
+const apiPort = process.env.RPP_API_PORT ? parseInt(process.env.RPP_API_PORT, 10) : 8074;
+const apiServer = new ApiServer(apiPort);
 apiServer.start();
 
 function createMissingDirectories() {

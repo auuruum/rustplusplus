@@ -15,12 +15,18 @@ class ApiServer {
 
     private setupMiddlewares(): void {
         // Enable CORS
-        this.app.use((req, res, next) => {
+        const corsMiddleware: RequestHandler = (req, res, next) => {
             res.header('Access-Control-Allow-Origin', '*');
-            res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+            res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-API-Key');
+            res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+            if (req.method === 'OPTIONS') {
+                res.sendStatus(200);
+                return;
+            }
             next();
-        });
-        
+        };
+        this.app.use(corsMiddleware);
+    
         // Parse JSON bodies
         this.app.use(express.json());
     }
@@ -30,6 +36,58 @@ class ApiServer {
         this.app.get('/health', (req: Request, res: Response) => {
             res.json({ status: 'ok' });
         });
+
+        // Per-guild API Key authentication middleware (applies to all /:guildId routes)
+        this.app.use('/:guildId', ((req: Request, res: Response, next) => {
+            try {
+                const { guildId } = req.params as { guildId: string };
+                if (!guildId) {
+                    return res.status(400).json({ error: 'Missing guildId in path' });
+                }
+
+                // Allow preflight
+                if (req.method === 'OPTIONS') {
+                    return res.sendStatus(200);
+                }
+
+                // Get client and instance
+                const client = require('../../index').client;
+                const instance = client?.getInstance?.(guildId);
+                if (!instance) {
+                    return res.status(404).json({ error: 'Guild instance not found' });
+                }
+
+                // Determine provided API key (header > bearer > query)
+                const authHeader = (req.headers['authorization'] || req.headers['Authorization']) as string | undefined;
+                const xApiKeyHeader = (req.headers['x-api-key'] || req.headers['X-API-Key']) as string | undefined;
+                const queryApiKey = (req.query['apiKey'] || req.query['token']) as string | undefined;
+
+                let providedKey: string | undefined = undefined;
+                if (xApiKeyHeader && typeof xApiKeyHeader === 'string') {
+                    providedKey = xApiKeyHeader;
+                } else if (authHeader && typeof authHeader === 'string' && authHeader.toLowerCase().startsWith('bearer ')) {
+                    providedKey = authHeader.slice(7).trim();
+                } else if (queryApiKey && typeof queryApiKey === 'string') {
+                    providedKey = queryApiKey;
+                }
+
+                const expectedKey: string | undefined = instance?.generalSettings?.apiPassword;
+                if (!expectedKey) {
+                    return res.status(401).json({ error: 'API access not configured for this guild' });
+                }
+                if (!providedKey) {
+                    return res.status(401).json({ error: 'Missing API key. Provide via X-API-Key header, Authorization: Bearer, or ?apiKey=' });
+                }
+                if (providedKey !== expectedKey) {
+                    return res.status(403).json({ error: 'Invalid API key' });
+                }
+
+                return next();
+            } catch (e) {
+                console.error('API auth error:', e);
+                return res.status(500).json({ error: 'Internal server error' });
+            }
+        }) as RequestHandler);
 
         // Get time info by guild ID
         this.app.get('/:guildId/time', (async (req: Request, res: Response) => {

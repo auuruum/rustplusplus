@@ -54,11 +54,42 @@ module.exports = {
 
     readCredentialsFile: function (guildId) {
         const path = Path.join(__dirname, '..', '..', 'credentials', `${guildId}.json`);
-        return JSON.parse(Fs.readFileSync(path, 'utf8'));
+        // Ensure the credentials directory exists
+        const dir = Path.dirname(path);
+        if (!Fs.existsSync(dir)) {
+            try { Fs.mkdirSync(dir, { recursive: true }); } catch (e) { /* Ignore */ }
+        }
+        // If the credentials file doesn't exist, create a default and return it
+        if (!Fs.existsSync(path)) {
+            const defaultCredentials = { hoster: null };
+            try { Fs.writeFileSync(path, JSON.stringify(defaultCredentials, null, 2)); } catch (e) { /* Ignore */ }
+            return defaultCredentials;
+        }
+        // Read and parse credentials file safely
+        try {
+            return JSON.parse(Fs.readFileSync(path, 'utf8'));
+        } catch (e) {
+            // If parsing fails for any reason, fall back to a safe default
+            return { hoster: null };
+        }
     },
 
     writeCredentialsFile: function (guildId, credentials) {
         const path = Path.join(__dirname, '..', '..', 'credentials', `${guildId}.json`);
         Fs.writeFileSync(path, JSON.stringify(credentials, null, 2));
+    },
+
+    deleteInstanceFile: function (guildId) {
+        const path = Path.join(__dirname, '..', '..', 'instances', `${guildId}.json`);
+        if (Fs.existsSync(path)) {
+            try { Fs.unlinkSync(path); } catch (e) { /* Ignore */ }
+        }
+    },
+
+    deleteCredentialsFile: function (guildId) {
+        const path = Path.join(__dirname, '..', '..', 'credentials', `${guildId}.json`);
+        if (Fs.existsSync(path)) {
+            try { Fs.unlinkSync(path); } catch (e) { /* Ignore */ }
+        }
     },
 }

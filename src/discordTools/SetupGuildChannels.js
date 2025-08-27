@@ -20,9 +20,47 @@
 
 const DiscordTools = require('../discordTools/discordTools.js');
 const PermissionHandler = require('../handlers/permissionHandler.js');
+const DiscordEmbeds = require('./discordEmbeds.js');
+const LicenseService = require('../util/licenseService');
 
 module.exports = async (client, guild, category) => {
     await addTextChannel(client.intlGet(guild.id, 'channelNameInformation'), 'information', client, guild, category);
+
+    // Immediately send license activation warning after creating the information channel (first-time only)
+    try {
+        const instance = client.getInstance(guild.id);
+        if (instance.firstTime) {
+            // If license is already active, do NOT send the warning
+            let shouldSendWarning = true;
+            try {
+                const status = await LicenseService.checkLicense(guild.id, true);
+                if (status && status.status === 'active') {
+                    shouldSendWarning = false;
+                }
+            }
+            catch (_) { /* ignore license check errors, fall back to sending warning */ }
+
+            if (shouldSendWarning) {
+                const infoChannelId = instance.channelId.information || instance.channelId.commands;
+                const channel = DiscordTools.getTextChannelById(guild.id, infoChannelId);
+                if (channel) {
+                    const sent = await client.messageSend(
+                        channel,
+                        DiscordEmbeds.getActionInfoEmbed(
+                            1,
+                            client.intlGet(guild.id, 'licenseActivationWarning1h'),
+                            client.intlGet(guild.id, 'licenseActivationRequiredTitle')
+                        )
+                    );
+                    if (sent && sent.id) {
+                        instance.generalSettings.licenseActivationWarningMessageId = sent.id;
+                        client.setInstance(guild.id, instance);
+                    }
+                }
+            }
+        }
+    } catch (_) { /* ignore */ }
+
     await addTextChannel(client.intlGet(guild.id, 'channelNameServers'), 'servers', client, guild, category);
     await addTextChannel(client.intlGet(guild.id, 'channelNameSettings'), 'settings', client, guild, category);
     await addTextChannel(client.intlGet(guild.id, 'channelNameCommands'), 'commands', client, guild, category, true);

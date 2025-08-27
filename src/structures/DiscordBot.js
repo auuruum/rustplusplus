@@ -156,15 +156,19 @@ class DiscordBot extends Discord.Client {
     intlGet(guildId, id, variables = {}) {
         let intl = null;
         if (guildId && guildId !== 'en') {
-            intl = this.guildIntl[guildId];
+            // Fallback to botIntl if guild-specific intl is missing (e.g., after guildDelete)
+            intl = (this.guildIntl && this.guildIntl[guildId]) ? this.guildIntl[guildId] : this.botIntl;
+        }
+        else if (guildId === 'en') {
+            intl = this.enIntl || this.botIntl;
         }
         else {
-            if (guildId === 'en') {
-                intl = this.enIntl;
-            }
-            else {
-                intl = this.botIntl;
-            }
+            intl = this.botIntl;
+        }
+
+        if (!intl) {
+            // Absolute fallback to avoid runtime errors
+            intl = this.botIntl;
         }
 
         return intl.formatMessage({
@@ -494,6 +498,14 @@ class DiscordBot extends Discord.Client {
     }
 
     async interactionReply(interaction, content) {
+        // Normalize deprecated ephemeral option to flags to avoid warnings
+        if (content && typeof content === 'object' && Object.prototype.hasOwnProperty.call(content, 'ephemeral')) {
+            const ephemeral = content.ephemeral === true;
+            const flags = content.flags ?? 0;
+            const EPHEMERAL_FLAG = (Discord && Discord.MessageFlags && typeof Discord.MessageFlags.Ephemeral === 'number') ? Discord.MessageFlags.Ephemeral : 64;
+            const { ephemeral: _omit, ...rest } = content;
+            content = ephemeral ? { ...rest, flags: (flags | EPHEMERAL_FLAG) } : rest;
+        }
         try {
             return await interaction.reply(content);
         }
@@ -506,6 +518,14 @@ class DiscordBot extends Discord.Client {
     }
 
     async interactionEditReply(interaction, content) {
+        // Normalize deprecated ephemeral option to flags to avoid warnings
+        if (content && typeof content === 'object' && Object.prototype.hasOwnProperty.call(content, 'ephemeral')) {
+            const ephemeral = content.ephemeral === true;
+            const flags = content.flags ?? 0;
+            const EPHEMERAL_FLAG = (Discord && Discord.MessageFlags && typeof Discord.MessageFlags.Ephemeral === 'number') ? Discord.MessageFlags.Ephemeral : 64;
+            const { ephemeral: _omit, ...rest } = content;
+            content = ephemeral ? { ...rest, flags: (flags | EPHEMERAL_FLAG) } : rest;
+        }
         try {
             return await interaction.editReply(content);
         }
@@ -518,6 +538,14 @@ class DiscordBot extends Discord.Client {
     }
 
     async interactionUpdate(interaction, content) {
+        // Normalize deprecated ephemeral option to flags to avoid warnings
+        if (content && typeof content === 'object' && Object.prototype.hasOwnProperty.call(content, 'ephemeral')) {
+            const ephemeral = content.ephemeral === true;
+            const flags = content.flags ?? 0;
+            const EPHEMERAL_FLAG = (Discord && Discord.MessageFlags && typeof Discord.MessageFlags.Ephemeral === 'number') ? Discord.MessageFlags.Ephemeral : 64;
+            const { ephemeral: _omit, ...rest } = content;
+            content = ephemeral ? { ...rest, flags: (flags | EPHEMERAL_FLAG) } : rest;
+        }
         try {
             return await interaction.update(content);
         }
@@ -558,8 +586,14 @@ class DiscordBot extends Discord.Client {
             return await channel.send(content);
         }
         catch (e) {
-            this.log(this.intlGet(null, 'errorCap'),
-                this.intlGet(null, 'messageSendFailed', { error: e }), 'error');
+            // Downgrade common post-kick errors to warnings to avoid noisy logs
+            if (e && (e.code === 50001 || e.code === 50013)) {
+                const reason = (e.code === 50001) ? 'Missing Access' : 'Missing Permissions';
+                this.log(this.intlGet(null, 'warningCap'), `Skipping message send in channel ${channel?.id || 'unknown'}: ${reason}`);
+            } else {
+                this.log(this.intlGet(null, 'errorCap'),
+                    this.intlGet(null, 'messageSendFailed', { error: e }), 'error');
+            }
         }
 
         return undefined;
@@ -625,8 +659,12 @@ class DiscordBot extends Discord.Client {
                         // Force refresh license status from API
                         const licenseStatus = await LicenseService.checkLicense(guildId, true);
                         
-                        // If license is expired or invalid, disconnect from Rust server
-                        if (licenseStatus.status !== 'active') {
+                        // Handle license status
+                        if (licenseStatus.status === 'expired') {
+                            await this.handleExpiredLicenseGrace(guildId, licenseStatus);
+                            // Remove from warning tracking since license is no longer active
+                            this.expirationWarningsSent.delete(guildId);
+                        } else if (licenseStatus.status !== 'active') {
                             await this.disconnectFromRustServer(guildId, licenseStatus.status);
                             // Remove from warning tracking since license is no longer active
                             this.expirationWarningsSent.delete(guildId);
@@ -781,8 +819,12 @@ class DiscordBot extends Discord.Client {
             // Force refresh license status from API
             const licenseStatus = await LicenseService.checkLicense(guildId, true);
             
-            // If license is expired or invalid, disconnect from Rust server
-            if (licenseStatus.status !== 'active') {
+            // Handle license status
+            if (licenseStatus.status === 'expired') {
+                await this.handleExpiredLicenseGrace(guildId, licenseStatus);
+                // Remove from warning tracking since license is no longer active
+                this.expirationWarningsSent.delete(guildId);
+            } else if (licenseStatus.status !== 'active') {
                 await this.disconnectFromRustServer(guildId, licenseStatus.status);
                 // Remove from warning tracking since license is no longer active
                 this.expirationWarningsSent.delete(guildId);
@@ -820,3 +862,146 @@ class DiscordBot extends Discord.Client {
 }
 
 module.exports = DiscordBot;
+
+    DiscordBot.prototype.handleExpiredLicenseGrace = async function(guildId, licenseStatus) {
+        try {
+            // Always ensure we are disconnected from Rust server for expired licenses
+            await this.disconnectFromRustServer(guildId, 'expired');
+
+            const instance = this.getInstance(guildId);
+            if (!instance || !instance.generalSettings) return;
+
+            const gs = instance.generalSettings;
+            // Initialize timestamps/flags if missing
+            if (!gs.licenseExpiredTimestamp) {
+                gs.licenseExpiredTimestamp = Date.now();
+                gs.licenseGraceFinalNoticeSent = false;
+                gs.licenseGraceWarningLastSent = null;
+                this.setInstance(guildId, instance);
+            }
+
+            const now = Date.now();
+            const expiredAtMs = (licenseStatus && licenseStatus.expires_at) ? (new Date(licenseStatus.expires_at)).getTime() : gs.licenseExpiredTimestamp;
+            const graceStartMs = gs.licenseExpiredTimestamp || expiredAtMs || now;
+            const msSince = now - graceStartMs;
+            const daysElapsed = Math.floor(msSince / (1000 * 60 * 60 * 24));
+            const daysRemaining = Math.max(0, 14 - daysElapsed);
+
+            // If grace period ended, perform cleanup
+            if (msSince >= 14 * 24 * 60 * 60 * 1000) {
+                await this.performGraceCleanup(guildId, graceStartMs);
+                return;
+            }
+
+            // Send initial grace notice once
+            const oneDayMs = 24 * 60 * 60 * 1000;
+            if (!gs.licenseGraceWarningLastSent) {
+                await this.sendGraceNoticeMessage(guildId, daysRemaining, graceStartMs);
+                gs.licenseGraceWarningLastSent = now;
+                this.setInstance(guildId, instance);
+                return;
+            }
+
+            // Send final notice once within the last 24 hours before cleanup
+            const cleanupAtMs = graceStartMs + 14 * oneDayMs;
+            const isWithinLastDay = (cleanupAtMs - now) <= oneDayMs;
+            if (isWithinLastDay && !gs.licenseGraceFinalNoticeSent) {
+                await this.sendFinalGraceNoticeMessage(guildId, cleanupAtMs);
+                gs.licenseGraceFinalNoticeSent = true;
+                gs.licenseGraceWarningLastSent = now;
+                this.setInstance(guildId, instance);
+            }
+        } catch (error) {
+            this.log(this.intlGet(null, 'errorCap'), 
+                `Failed grace-period handling for guild ${guildId}: ${error.message}`, 'error');
+        }
+    }
+
+    DiscordBot.prototype.sendGraceNoticeMessage = async function(guildId, daysRemaining, graceStartMs) {
+        try {
+            const guild = this.guilds.cache.get(guildId);
+            if (!guild) return;
+
+            const instance = this.getInstance(guildId);
+            if (!instance || !instance.channelId.general) return;
+
+            const channel = guild.channels.cache.get(instance.channelId.general);
+            if (!channel) return;
+
+            const expiredAtTs = Math.floor((graceStartMs) / 1000);
+            const expiredAtDiscord = `<t:${expiredAtTs}:f>`;
+
+            const DiscordEmbeds = require('../discordTools/discordEmbeds.js');
+            const embed = DiscordEmbeds.getActionInfoEmbed(
+                1,
+                this.intlGet(guildId, 'licenseExpiredGraceNotice', {
+                    expired_at: expiredAtDiscord,
+                    days_remaining: daysRemaining
+                })
+            );
+
+            await channel.send({ embeds: [embed] });
+        } catch (error) {
+            this.log(this.intlGet(null, 'errorCap'), 
+                `Failed to send grace notice to guild ${guildId}: ${error.message}`, 'error');
+        }
+    }
+
+    DiscordBot.prototype.sendFinalGraceNoticeMessage = async function(guildId, cleanupAtMs) {
+        try {
+            const guild = this.guilds.cache.get(guildId);
+            if (!guild) return;
+
+            const instance = this.getInstance(guildId);
+            if (!instance || !instance.channelId.general) return;
+
+            const channel = guild.channels.cache.get(instance.channelId.general);
+            if (!channel) return;
+
+            const cleanupTs = Math.floor((cleanupAtMs) / 1000);
+            const cleanupDiscord = `<t:${cleanupTs}:f>`;
+
+            const DiscordEmbeds = require('../discordTools/discordEmbeds.js');
+            const embed = DiscordEmbeds.getActionInfoEmbed(
+                1,
+                this.intlGet(guildId, 'licenseExpiredFinalNotice', {
+                    cleanup_at: cleanupDiscord
+                })
+            );
+
+            await channel.send({ embeds: [embed] });
+        } catch (error) {
+            this.log(this.intlGet(null, 'errorCap'), 
+                `Failed to send final grace notice to guild ${guildId}: ${error.message}`, 'error');
+        }
+    }
+
+    DiscordBot.prototype.performGraceCleanup = async function(guildId, graceStartMs) {
+        try {
+            const guild = this.guilds.cache.get(guildId);
+            if (!guild) return;
+
+            const instance = this.getInstance(guildId);
+            const generalId = instance?.channelId?.general;
+            if (generalId) {
+                try {
+                    const channel = guild.channels.cache.get(generalId);
+                    if (channel) {
+                        const DiscordEmbeds = require('../discordTools/discordEmbeds.js');
+                        const embed = DiscordEmbeds.getActionInfoEmbed(1, this.intlGet(guildId, 'licenseExpiredCleanupLeave'));
+                        await channel.send({ embeds: [embed] });
+                    }
+                } catch (_) { /* ignore */ }
+            }
+
+            // Remove channels
+            const RemoveGuildChannels = require('../discordTools/RemoveGuildChannels.js');
+            await RemoveGuildChannels(this, guild);
+
+            // Attempt to leave guild
+            try { await guild.leave(); } catch (_) { /* ignore */ }
+        } catch (error) {
+            this.log(this.intlGet(null, 'errorCap'), 
+                `Failed grace-period cleanup for guild ${guildId}: ${error.message}`, 'error');
+        }
+    }

@@ -880,5 +880,11 @@
     "licenseInvalidConnectionBlocked": "⚠️ License invalid. Connection to Rust server blocked.\n\nLicense can be purchased from: https://auuruum.github.io/rustplusplus-buy/",
     "licenseExpiringSoonWarning": "⚠️ **License Expiring Soon!** Your license will expire in {hours} hours ({expires_at}). Please renew your license to avoid service interruption.",
     "licenseExpiringSoonTitle": "License Expiration Warning",
-    "licenseExpiringSoonDescription": "Your bot license is expiring soon. Use `/license activate [key]` to extend your license.\n\nLicense can be purchased from: https://auuruum.github.io/rustplusplus-buy/"
+    "licenseExpiringSoonDescription": "Your bot license is expiring soon. Use `/license activate [key]` to extend your license.\n\nLicense can be purchased from: https://auuruum.github.io/rustplusplus-buy/",
+    "licenseActivationWarning1h": "This bot must be activated within 1 hour of joining using `/license activate [license_key]`. If not activated, the bot will leave and all created channels and data will be removed.\n\nLicense can be purchased from: https://auuruum.github.io/rustplusplus-buy/",
+    "licenseActivationRequiredTitle": "License Activation Required",
+    "licenseActivationTimeoutLeave": "No license was activated within 1 hour. Cleaning up and leaving this server.",
+    "licenseExpiredGraceNotice": "⚠️ Your license has expired. A 14-day grace period started on {expired_at}. The bot will remain but stay inactive. After {days_remaining} days, all channels will be removed and the bot will leave unless the license is renewed.",
+    "licenseExpiredFinalNotice": "⏳ Final notice: The 14-day grace period ends soon on {cleanup_at}. Renew your license now to avoid channel removal and the bot leaving this server.",
+    "licenseExpiredCleanupLeave": "🧹 Grace period ended. Removing channels and leaving this server. You can re-invite the bot and activate a license anytime."
 }
