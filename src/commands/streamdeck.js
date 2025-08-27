@@ -96,7 +96,7 @@ module.exports = {
                 color: Constants.COLOR_DEFAULT,
                 fields: [
                     { name: 'Guild ID', value: '`' + guildId + '`', inline: false },
-                    { name: 'Base URL', value: '`' + baseUrl + '`', inline: false },
+                    { name: 'Base URL', value: '`' + baseUrl + '/' + guildId + '`', inline: false },
                     { name: 'API Password', value: '`' + instance.generalSettings.apiPassword + '`', inline: false }
                 ],
                 timestamp: true

@@ -98,7 +98,7 @@ module.exports = {
                 color: Constants.COLOR_DEFAULT,
                 fields: [
                     { name: 'Guild ID', value: '```' + guildId + '```', inline: false },
-                    { name: 'Base URL', value: '```' + baseUrl + '```', inline: false },
+                    { name: 'Base URL', value: '```' + baseUrl + '/' + guildId + '```', inline: false },
                     { name: 'API Password', value: '```' + instance.generalSettings.apiPassword + '```', inline: false },
                     { name: 'Usage', value: 'Use this password in the X-API-Key header (or Authorization: Bearer) when calling your guild endpoints.\n' +
                         'Example:\n```bash\ncurl -H "X-API-Key: ' + instance.generalSettings.apiPassword + '" ' + baseUrl + '/' + guildId + '\n```', inline: false },
