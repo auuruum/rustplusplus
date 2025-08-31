@@ -35,7 +35,7 @@ const Logger = require('./Logger.js');
 const PermissionHandler = require('../handlers/permissionHandler.js');
 const RustLabs = require('../structures/RustLabs');
 const RustPlus = require('../structures/RustPlus');
-const WebhookService = require('../util/webhookService');
+const WebhookService = require('../util/webhookservice');
 
 class DiscordBot extends Discord.Client {
     constructor(props) {

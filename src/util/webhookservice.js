@@ -51,7 +51,7 @@ class WebhookService {
             ],
         };
         const payload = {
-            content: this.roleMention() || undefined,
+            // Do NOT ping roles for routine events
             embeds: [embed],
         };
         await this.send(payload);
@@ -70,7 +70,7 @@ class WebhookService {
             ],
         };
         const payload = {
-            content: this.roleMention() || undefined,
+            // Do NOT ping roles for routine events
             embeds: [embed],
         };
         await this.send(payload);
@@ -97,7 +97,7 @@ class WebhookService {
             ],
         };
         const payload = {
-            content: this.roleMention() || undefined,
+            // Do NOT ping roles for routine events
             embeds: [embed],
         };
         await this.send(payload);
@@ -124,7 +124,7 @@ class WebhookService {
             ],
         };
         const payload = {
-            content: this.roleMention() || undefined,
+            // Do NOT ping roles for routine events
             embeds: [embed],
         };
         await this.send(payload);

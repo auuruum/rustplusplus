@@ -22,7 +22,7 @@ const Builder = require('@discordjs/builders');
 const DiscordEmbeds = require('../discordTools/discordEmbeds.js');
 const LicenseService = require('../util/licenseService.js');
 const DiscordTools = require('../discordTools/discordTools');
-const WebhookService = require('../util/webhookService');
+const WebhookService = require('../util/webhookservice');
 
 module.exports = {
     name: 'license',

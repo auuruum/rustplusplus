@@ -21,7 +21,7 @@
 module.exports = {
     name: 'guildCreate',
     async execute(client, guild) {
-        const WebhookService = require('../util/webhookService');
+        const WebhookService = require('../util/webhookservice');
         require('../util/CreateInstanceFile')(client, guild);
         require('../util/CreateCredentialsFile')(client, guild);
         client.fcmListenersLite[guild.id] = new Object();
