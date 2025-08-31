@@ -35,6 +35,7 @@ const Logger = require('./Logger.js');
 const PermissionHandler = require('../handlers/permissionHandler.js');
 const RustLabs = require('../structures/RustLabs');
 const RustPlus = require('../structures/RustPlus');
+const WebhookService = require('../util/webhookService');
 
 class DiscordBot extends Discord.Client {
     constructor(props) {
@@ -878,6 +879,9 @@ module.exports = DiscordBot;
                 gs.licenseGraceFinalNoticeSent = false;
                 gs.licenseGraceWarningLastSent = null;
                 this.setInstance(guildId, instance);
+
+                // Send webhook about license expiration (only once per expiration event)
+                try { await WebhookService.sendLicenseExpired(guildId, licenseStatus?.expires_at); } catch (_) { /* ignore */ }
             }
 
             const now = Date.now();
