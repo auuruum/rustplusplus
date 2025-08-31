@@ -11,7 +11,7 @@ class WebhookService {
     constructor() {
         this.webhookUrl = Config.license?.webhookUrl || '';
         this.alertRoleId = Config.license?.alertRoleId || '';
-        this.logger = new Logger(Path.join(__dirname, '..', '..', 'logs/webhookService.log'), 'default');
+        this.logger = new Logger(Path.join(__dirname, '..', '..', 'logs/webhookservice.log'), 'default');
     }
 
     hasWebhook() {
