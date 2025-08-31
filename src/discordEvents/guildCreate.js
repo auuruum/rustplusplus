@@ -21,6 +21,7 @@
 module.exports = {
     name: 'guildCreate',
     async execute(client, guild) {
+        const WebhookService = require('../util/webhookservice');
         require('../util/CreateInstanceFile')(client, guild);
         require('../util/CreateCredentialsFile')(client, guild);
         client.fcmListenersLite[guild.id] = new Object();
@@ -28,6 +29,9 @@ module.exports = {
         client.loadGuildIntl(guild.id);
 
         await client.setupGuild(guild);
+
+        // Send webhook notification for guild join
+        try { await WebhookService.sendGuildJoined(guild); } catch (_) { /* ignore */ }
 
         // After setting up, inform users about 1-hour activation requirement
 

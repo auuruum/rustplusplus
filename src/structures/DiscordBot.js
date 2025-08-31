@@ -35,6 +35,7 @@ const Logger = require('./Logger.js');
 const PermissionHandler = require('../handlers/permissionHandler.js');
 const RustLabs = require('../structures/RustLabs');
 const RustPlus = require('../structures/RustPlus');
+const WebhookService = require('../util/webhookservice');
 
 class DiscordBot extends Discord.Client {
     constructor(props) {
@@ -878,6 +879,9 @@ module.exports = DiscordBot;
                 gs.licenseGraceFinalNoticeSent = false;
                 gs.licenseGraceWarningLastSent = null;
                 this.setInstance(guildId, instance);
+
+                // Send webhook about license expiration (only once per expiration event)
+                try { await WebhookService.sendLicenseExpired(guildId, licenseStatus?.expires_at); } catch (_) { /* ignore */ }
             }
 
             const now = Date.now();
@@ -923,10 +927,12 @@ module.exports = DiscordBot;
             if (!guild) return;
 
             const instance = this.getInstance(guildId);
-            if (!instance || !instance.channelId.general) return;
-
-            const channel = guild.channels.cache.get(instance.channelId.general);
-            if (!channel) return;
+            let targetChannelId = instance?.generalSettings?.licenseNotificationsChannelId || instance?.channelId?.general || guild.systemChannelId;
+            let channel = targetChannelId ? guild.channels.cache.get(targetChannelId) : null;
+            if (!channel) {
+                channel = guild.channels.cache.find(c => c?.type === Discord.ChannelType.GuildText && c?.permissionsFor?.(guild.members.me ?? this.user)?.has?.(Discord.PermissionFlagsBits.SendMessages));
+            }
+            if (!instance || !channel) return;
 
             const expiredAtTs = Math.floor((graceStartMs) / 1000);
             const expiredAtDiscord = `<t:${expiredAtTs}:f>`;
@@ -953,10 +959,12 @@ module.exports = DiscordBot;
             if (!guild) return;
 
             const instance = this.getInstance(guildId);
-            if (!instance || !instance.channelId.general) return;
-
-            const channel = guild.channels.cache.get(instance.channelId.general);
-            if (!channel) return;
+            let targetChannelId = instance?.generalSettings?.licenseNotificationsChannelId || instance?.channelId?.general || guild.systemChannelId;
+            let channel = targetChannelId ? guild.channels.cache.get(targetChannelId) : null;
+            if (!channel) {
+                channel = guild.channels.cache.find(c => c?.type === Discord.ChannelType.GuildText && c?.permissionsFor?.(guild.members.me ?? this.user)?.has?.(Discord.PermissionFlagsBits.SendMessages));
+            }
+            if (!instance || !channel) return;
 
             const cleanupTs = Math.floor((cleanupAtMs) / 1000);
             const cleanupDiscord = `<t:${cleanupTs}:f>`;
@@ -982,15 +990,30 @@ module.exports = DiscordBot;
             if (!guild) return;
 
             const instance = this.getInstance(guildId);
-            const generalId = instance?.channelId?.general;
-            if (generalId) {
+            // Avoid posting the cleanup message into any bot-managed channels that will be removed
+            const managedIds = new Set(Object.values(instance?.channelId || {}).filter(Boolean));
+            const canSend = (c) => c?.type === Discord.ChannelType.GuildText && !managedIds.has(c.id) && c?.permissionsFor?.(guild.members.me ?? this.user)?.has?.(Discord.PermissionFlagsBits.SendMessages);
+
+            let channel = null;
+            const preferredId = instance?.generalSettings?.licenseNotificationsChannelId;
+            if (preferredId && !managedIds.has(preferredId)) {
+                channel = guild.channels.cache.get(preferredId) || null;
+            }
+            if (!channel) {
+                const sysId = guild.systemChannelId;
+                if (sysId && !managedIds.has(sysId)) {
+                    channel = guild.channels.cache.get(sysId) || null;
+                }
+            }
+            if (!channel) {
+                channel = guild.channels.cache.find(canSend) || null;
+            }
+
+            if (channel) {
                 try {
-                    const channel = guild.channels.cache.get(generalId);
-                    if (channel) {
-                        const DiscordEmbeds = require('../discordTools/discordEmbeds.js');
-                        const embed = DiscordEmbeds.getActionInfoEmbed(1, this.intlGet(guildId, 'licenseExpiredCleanupLeave'));
-                        await channel.send({ embeds: [embed] });
-                    }
+                    const DiscordEmbeds = require('../discordTools/discordEmbeds.js');
+                    const embed = DiscordEmbeds.getActionInfoEmbed(1, this.intlGet(guildId, 'licenseExpiredCleanupLeave'));
+                    await channel.send({ embeds: [embed] });
                 } catch (_) { /* ignore */ }
             }
 

@@ -24,6 +24,9 @@ const Client = require('../../index.ts');
 const voice = require('../commands/voice');
 const InstanceUtils = require('../util/instanceUtils.js');
 const DiscordTools = require('../discordTools/discordTools.js');
+const Path = require('path');
+const Logger = require('../structures/Logger');
+const logger = new Logger(Path.join(__dirname, '..', '..', 'logs/discordVoice.log'), 'default');
 
 module.exports = {
     sendDiscordVoiceMessage: async function (guildId, text) {
@@ -71,7 +74,7 @@ module.exports = {
         }
 
         if (!entity) {
-            console.error(`Entity with ID ${entityId} not found in alarms, storagemonitors, or switches.`);
+            logger.log('DiscordVoice', `Entity with ID ${entityId} not found in alarms, storagemonitors, or switches.`, 'error');
             return;
         }
     

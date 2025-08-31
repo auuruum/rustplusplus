@@ -20,6 +20,12 @@
 module.exports = {
     name: 'guildDelete',
     async execute(client, guild) {
+        const WebhookService = require('../util/webhookservice');
+        try {
+            // Send webhook notification for guild leave
+            await WebhookService.sendGuildLeft(guild);
+        } catch (_) { /* ignore */ }
+
         try {
             // Log removal
             client.log(client.intlGet(null, 'infoCap'), `Bot removed from guild ${guild.id}`);

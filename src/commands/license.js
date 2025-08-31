@@ -22,6 +22,7 @@ const Builder = require('@discordjs/builders');
 const DiscordEmbeds = require('../discordTools/discordEmbeds.js');
 const LicenseService = require('../util/licenseService.js');
 const DiscordTools = require('../discordTools/discordTools');
+const WebhookService = require('../util/webhookservice');
 
 module.exports = {
     name: 'license',
@@ -151,6 +152,9 @@ async function handleActivateCommand(client, interaction, guildId, verifyId) {
             
             await client.interactionEditReply(interaction, 
                 DiscordEmbeds.getActionInfoEmbed(0, successMsg));
+
+            // Send webhook about license activation
+            try { await WebhookService.sendLicenseActivated(guildId, result?.data?.expires_at); } catch (_) { /* ignore */ }
 
             // Try to delete the initial 1-hour activation warning message if it exists
             try {

@@ -20,6 +20,8 @@
 
 const axios = require('axios');
 const Config = require('../../config');
+const Path = require('path');
+const Logger = require('../structures/Logger');
 
 /**
  * License Service - Handles all license-related operations
@@ -44,6 +46,9 @@ class LicenseService {
         
         // Set up periodic license checking every 5 minutes
         this.setupPeriodicCheck();
+
+        // Initialize built-in logger
+        this.logger = new Logger(Path.join(__dirname, '..', '..', 'logs/licenseService.log'), 'default');
     }
 
     /**
@@ -84,7 +89,7 @@ class LicenseService {
 
             return licenseData;
         } catch (error) {
-            console.error(`[License Service] Error checking license for guild ${guildId}:`, error.message);
+            this.logger.log('[License Service]', `Error checking license for guild ${guildId}: ${error.message}`, 'error');
             
             // Check if this is a connection refused error and send webhook notification
             if (error.code === 'ECONNREFUSED' || error.message.includes('ECONNREFUSED')) {
@@ -130,7 +135,7 @@ class LicenseService {
                 data: result
             };
         } catch (error) {
-            console.error(`[License Service] Error activating license for guild ${guildId}:`, error.message);
+            this.logger.log('[License Service]', `Error activating license for guild ${guildId}: ${error.message}`, 'error');
             
             // Check if this is a connection refused error and send webhook notification
             if (error.code === 'ECONNREFUSED' || error.message.includes('ECONNREFUSED')) {
@@ -200,7 +205,7 @@ class LicenseService {
                 expiryDate: licenseStatus.expires_at
             };
         } catch (error) {
-            console.error(`[License Service] Error checking expiration for guild ${guildId}:`, error.message);
+            this.logger.log('[License Service]', `Error checking expiration for guild ${guildId}: ${error.message}`, 'error');
             return { isExpiringSoon: false, timeRemaining: null };
         }
     }
@@ -294,7 +299,7 @@ class LicenseService {
             const lastNotification = this.webhookNotificationsSent.get(guildId);
             
             if (lastNotification && (now - lastNotification) < this.webhookCooldown) {
-                console.log(`[License Service] Webhook notification for guild ${guildId} skipped due to cooldown`);
+                this.logger.log('[License Service]', `Webhook notification for guild ${guildId} skipped due to cooldown`, 'info');
                 return;
             }
             
@@ -340,9 +345,9 @@ class LicenseService {
             // Record the notification timestamp
             this.webhookNotificationsSent.set(guildId, now);
             
-            console.log(`[License Service] Webhook notification sent for guild ${guildId}`);
+            this.logger.log('[License Service]', `Webhook notification sent for guild ${guildId}`,'info');
         } catch (webhookError) {
-            console.error(`[License Service] Failed to send webhook notification:`, webhookError.message);
+            this.logger.log('[License Service]', `Failed to send webhook notification: ${webhookError.message}`, 'error');
         }
     }
 }

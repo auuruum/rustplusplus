@@ -35,5 +35,6 @@
     "licenseActivationWarningMessageId": null,
     "licenseExpiredTimestamp": null,
     "licenseGraceWarningLastSent": null,
-    "licenseGraceFinalNoticeSent": false
+    "licenseGraceFinalNoticeSent": false,
+    "licenseNotificationsChannelId": null
 }
