@@ -4,11 +4,14 @@
 
 const axios = require('axios');
 const Config = require('../../config');
+const Path = require('path');
+const Logger = require('../structures/Logger');
 
 class WebhookService {
     constructor() {
         this.webhookUrl = Config.license?.webhookUrl || '';
         this.alertRoleId = Config.license?.alertRoleId || '';
+        this.logger = new Logger(Path.join(__dirname, '..', '..', 'logs/webhookService.log'), 'default');
     }
 
     hasWebhook() {
@@ -17,16 +20,17 @@ class WebhookService {
 
     async send(payload) {
         if (!this.hasWebhook()) {
-            console.log('[Webhook Service] No webhook URL configured, skipping notification');
-            return;
+            this.logger.log('[Webhook Service]', 'No webhook URL configured, skipping notification', 'info');
+            return void 0;
         }
         try {
             await axios.post(this.webhookUrl, payload, {
                 headers: { 'Content-Type': 'application/json' },
                 timeout: 5000,
             });
+            this.logger.log('[Webhook Service]', 'Webhook POST succeeded', 'info');
         } catch (err) {
-            console.error('[Webhook Service] Failed to send webhook:', err.message);
+            this.logger.log('[Webhook Service]', `Failed to send webhook: ${err.message}`, 'error');
         }
     }
 
