@@ -127,63 +127,64 @@ class ApiServer {
             }
         }) as RequestHandler);
 
-        // Get current events by guild ID
+        // Get current events by guild ID - mirrors getUpdateEventInformationEmbed
         this.app.get('/:guildId/events', (async (req: Request, res: Response) => {
             try {
                 const { guildId } = req.params;
-                
+
                 // Get rustplus instance from the client exports
                 const client = require('../../index').client;
                 const rustplus = client?.rustplusInstances?.[guildId];
-                
+
                 if (!rustplus) {
                     return res.status(404).json({
                         error: 'RustPlus instance not found for this guild'
                     });
                 }
 
-                // Get all possible events
-                const events = [];
-
-                // Check for Bradley APC
-                if (rustplus.bradleyAPC) {
-                    events.push('Bradley APC active');
+                const instance = client.getInstance(guildId);
+                if (!instance) {
+                    return res.status(404).json({
+                        error: 'Guild instance not found'
+                    });
                 }
 
-                // Check for Cargo Ship
-                if (rustplus.cargoShip) {
-                    const status = rustplus.cargoShip.isEgressing ? 'leaving the island' : 'on the island';
-                    events.push(`Cargo Ship ${status}`);
-                }
-
-                // Check for Patrol Helicopter
-                if (rustplus.patrol_helicopter) {
-                    events.push('Patrol Helicopter active');
-                }
-
-                // Check for Small Oil Rig
-                if (rustplus.smallOilRig?.hasLockedCrate) {
-                    events.push('Small Oil Rig has locked crate');
-                }
-
-                // Check for Large Oil Rig
-                if (rustplus.largeOilRig?.hasLockedCrate) {
-                    events.push('Large Oil Rig has locked crate');
-                }
-
-                // Check for CH47
-                if (rustplus.ch47) {
-                    events.push('CH47 active');
-                }
-
-                // Format response
                 const response = {
-                    events: events,
-                    message: events.length > 0 ? 
-                        `Current events:\n${events.join('\n')}` : 
-                        'No registered events at this time.'
+                    title: client.intlGet(guildId, 'eventInfo'),
+                    description: client.intlGet(guildId, 'inGameEventInfo'),
+                    server: instance.serverList[rustplus.serverId]?.title ?? null,
+                    fields: [
+                        {
+                            name: client.intlGet(guildId, 'cargoship'),
+                            value: rustplus.getCommandCargo(true)
+                        },
+                        {
+                            name: client.intlGet(guildId, 'patrolHelicopter'),
+                            value: rustplus.getCommandHeli(true)
+                        },
+                        {
+                            name: client.intlGet(guildId, 'smallOilRig'),
+                            value: rustplus.getCommandSmall(true)
+                        },
+                        {
+                            name: client.intlGet(guildId, 'largeOilRig'),
+                            value: rustplus.getCommandLarge(true)
+                        },
+                        {
+                            name: client.intlGet(guildId, 'chinook47'),
+                            value: rustplus.getCommandChinook(true)
+                        },
+                        {
+                            name: client.intlGet(guildId, 'travelingVendor'),
+                            value: rustplus.getCommandTravelingVendor(true)
+                        },
+                        {
+                            name: client.intlGet(guildId, 'deepSea'),
+                            value: rustplus.getCommandDeepSea(true)
+                        }
+                    ]
                 };
-                
+
                 return res.json(response);
             } catch (error) {
                 console.error('Error in events endpoint:', error);
