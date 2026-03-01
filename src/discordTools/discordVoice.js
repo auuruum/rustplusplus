@@ -21,7 +21,6 @@
 const { getVoiceConnection, createAudioPlayer, createAudioResource } = require('@discordjs/voice');
 const Actors = require('../staticFiles/actors.json');
 const Client = require('../../index.ts');
-const voice = require('../commands/voice');
 const InstanceUtils = require('../util/instanceUtils.js');
 const DiscordTools = require('../discordTools/discordTools.js');
 
