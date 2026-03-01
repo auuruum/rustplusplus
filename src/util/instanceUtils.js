@@ -73,7 +73,25 @@ module.exports = {
             Fs.unlinkSync(tempPath); 
             throw error;
         }
-        Fs.renameSync(tempPath, targetPath);
+        try {
+            Fs.renameSync(tempPath, targetPath);
+        } catch (renameError) {
+            // On Windows, renameSync can fail with EPERM if the target file is held open
+            // by another process (antivirus, file indexer, etc.). Work around by unlinking
+            // the target first and then retrying the rename.
+            if (renameError.code === 'EPERM' && process.platform === 'win32') {
+                try {
+                    if (Fs.existsSync(targetPath)) Fs.unlinkSync(targetPath);
+                    Fs.renameSync(tempPath, targetPath);
+                } catch (retryError) {
+                    // Last resort: write directly without atomic rename
+                    Fs.writeFileSync(targetPath, data, 'utf8');
+                    try { Fs.unlinkSync(tempPath); } catch (_) { /* ignore */ }
+                }
+            } else {
+                throw renameError;
+            }
+        }
     },
 
     readCredentialsFile: function (guildId) {
