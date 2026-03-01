@@ -597,6 +597,151 @@ class ApiServer {
                 res.status(500).json({ error: 'Internal server error', details: error instanceof Error ? error.message : String(error) });
             }
         }) as RequestHandler);
+
+        // Get all trackers for a guild
+        this.app.get('/:guildId/trackers', (async (req: Request, res: Response): Promise<void> => {
+            try {
+                const { guildId } = req.params;
+                const client = require('../../index').client;
+
+                const instance = client?.getInstance(guildId);
+                if (!instance) {
+                    res.status(404).json({ error: 'Guild instance not found' });
+                    return;
+                }
+
+                const trackers = instance.trackers ?? {};
+
+                const result = Object.entries(trackers).map(([id, tracker]: [string, any]) => {
+                    const bmInstance = client?.battlemetricsInstances?.[tracker.battlemetricsId];
+                    const successful = bmInstance?.lastUpdateSuccessful ?? false;
+
+                    const players = (tracker.players ?? []).map((player: any) => {
+                        let status: string;
+                        let time: string | null = null;
+
+                        if (!bmInstance || !successful) {
+                            status = 'unknown';
+                        } else if (!bmInstance.players?.hasOwnProperty(player.playerId)) {
+                            status = 'not_found';
+                        } else if (bmInstance.players[player.playerId]['status']) {
+                            status = 'online';
+                            const t = bmInstance.getOnlineTime(player.playerId);
+                            time = t ? t[1] : null;
+                        } else {
+                            status = 'offline';
+                            const t = bmInstance.getOfflineTime(player.playerId);
+                            time = t ? t[1] : null;
+                        }
+
+                        return {
+                            name: player.name,
+                            steamId: player.steamId ?? null,
+                            battlemetricsId: player.playerId ?? null,
+                            status,
+                            time
+                        };
+                    });
+
+                    return {
+                        id,
+                        trackerId: tracker.trackerId,
+                        name: tracker.name,
+                        serverId: tracker.serverId,
+                        battlemetricsId: tracker.battlemetricsId,
+                        title: tracker.title,
+                        img: tracker.img,
+                        clanTag: tracker.clanTag,
+                        everyone: tracker.everyone,
+                        inGame: tracker.inGame,
+                        serverStatus: !bmInstance ? 'unknown' : (bmInstance.server_status ? 'online' : 'offline'),
+                        streamerMode: bmInstance ? bmInstance.streamerMode : null,
+                        messageId: tracker.messageId ?? null,
+                        createdAt: tracker.createdAt ?? null,
+                        players
+                    };
+                });
+
+                res.json({
+                    total: result.length,
+                    trackers: result
+                });
+            } catch (error) {
+                console.error('Error in trackers endpoint:', error);
+                res.status(500).json({ error: 'Internal server error', details: error instanceof Error ? error.message : String(error) });
+            }
+        }) as RequestHandler);
+
+        // Get a single tracker by ID
+        this.app.get('/:guildId/trackers/:trackerId', (async (req: Request, res: Response): Promise<void> => {
+            try {
+                const { guildId, trackerId } = req.params;
+                const client = require('../../index').client;
+
+                const instance = client?.getInstance(guildId);
+                if (!instance) {
+                    res.status(404).json({ error: 'Guild instance not found' });
+                    return;
+                }
+
+                const tracker = instance.trackers?.[trackerId];
+                if (!tracker) {
+                    res.status(404).json({ error: 'Tracker not found' });
+                    return;
+                }
+
+                const bmInstance = client?.battlemetricsInstances?.[tracker.battlemetricsId];
+                const successful = bmInstance?.lastUpdateSuccessful ?? false;
+
+                const players = (tracker.players ?? []).map((player: any) => {
+                    let status: string;
+                    let time: string | null = null;
+
+                    if (!bmInstance || !successful) {
+                        status = 'unknown';
+                    } else if (!bmInstance.players?.hasOwnProperty(player.playerId)) {
+                        status = 'not_found';
+                    } else if (bmInstance.players[player.playerId]['status']) {
+                        status = 'online';
+                        const t = bmInstance.getOnlineTime(player.playerId);
+                        time = t ? t[1] : null;
+                    } else {
+                        status = 'offline';
+                        const t = bmInstance.getOfflineTime(player.playerId);
+                        time = t ? t[1] : null;
+                    }
+
+                    return {
+                        name: player.name,
+                        steamId: player.steamId ?? null,
+                        battlemetricsId: player.playerId ?? null,
+                        status,
+                        time
+                    };
+                });
+
+                res.json({
+                    id: trackerId,
+                    trackerId: tracker.trackerId,
+                    name: tracker.name,
+                    serverId: tracker.serverId,
+                    battlemetricsId: tracker.battlemetricsId,
+                    title: tracker.title,
+                    img: tracker.img,
+                    clanTag: tracker.clanTag,
+                    everyone: tracker.everyone,
+                    inGame: tracker.inGame,
+                    serverStatus: !bmInstance ? 'unknown' : (bmInstance.server_status ? 'online' : 'offline'),
+                    streamerMode: bmInstance ? bmInstance.streamerMode : null,
+                    messageId: tracker.messageId ?? null,
+                    createdAt: tracker.createdAt ?? null,
+                    players
+                });
+            } catch (error) {
+                console.error('Error in tracker/:trackerId endpoint:', error);
+                res.status(500).json({ error: 'Internal server error', details: error instanceof Error ? error.message : String(error) });
+            }
+        }) as RequestHandler);
     }
 
     public start(): void {
