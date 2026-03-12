@@ -34,7 +34,7 @@ class ApiServer {
         // Get time info by guild ID
         this.app.get('/:guildId/time', (async (req: Request, res: Response) => {
             try {
-                const { guildId } = req.params;
+                const { guildId } = req.params as Record<string, string>;
                 
                 // Get rustplus instance from the client exports
                 const client = require('../../index').client;
@@ -90,7 +90,7 @@ class ApiServer {
         // Get server population info by guild ID
         this.app.get('/:guildId/pop', (async (req: Request, res: Response) => {
             try {
-                const { guildId } = req.params;
+                const { guildId } = req.params as Record<string, string>;
                 
                 // Get rustplus instance from the client exports
                 const client = require('../../index').client;
@@ -130,7 +130,7 @@ class ApiServer {
         // Get current events by guild ID - mirrors getUpdateEventInformationEmbed
         this.app.get('/:guildId/events', (async (req: Request, res: Response) => {
             try {
-                const { guildId } = req.params;
+                const { guildId } = req.params as Record<string, string>;
 
                 // Get rustplus instance from the client exports
                 const client = require('../../index').client;
@@ -196,7 +196,7 @@ class ApiServer {
         }) as RequestHandler);        // Get switches info by guild ID - shows connected server switches or active server switches if not connected
         this.app.get('/:guildId/switches', (async (req: Request, res: Response): Promise<void> => {
             try {
-                const { guildId } = req.params;
+                const { guildId } = req.params as Record<string, string>;
                 
                 // Get rustplus instance from the client exports
                 const client = require('../../index').client;
@@ -273,7 +273,7 @@ class ApiServer {
         // Get alarms info by guild ID - shows connected server alarms or active server alarms if not connected
         this.app.get('/:guildId/alarms', (async (req: Request, res: Response): Promise<void> => {
             try {
-                const { guildId } = req.params;
+                const { guildId } = req.params as Record<string, string>;
 
                 // Get rustplus instance from the client exports
                 const client = require('../../index').client;
@@ -350,7 +350,7 @@ class ApiServer {
         // Get server info by guild ID
         this.app.get('/:guildId', (async (req: Request, res: Response) => {
             try {
-                const { guildId } = req.params;
+                const { guildId } = req.params as Record<string, string>;
                 const filePath = path.join(process.cwd(), 'instances', `${guildId}.json`);
                 
                 try {
@@ -394,7 +394,7 @@ class ApiServer {
         // Toggle smart switch state by switch ID
         this.app.post('/:guildId/switches/:switchId/toggle', (async (req: Request, res: Response) => {
             try {
-                const { guildId, switchId } = req.params;
+                const { guildId, switchId } = req.params as Record<string, string>;
                 const client = require('../../index').client;
                 const rustplus = client?.rustplusInstances?.[guildId];
 
@@ -454,7 +454,7 @@ class ApiServer {
 
         this.app.get('/:guildId/switchgroups', (async (req: Request, res: Response): Promise<void> => {
             try {
-                const { guildId } = req.params;
+                const { guildId } = req.params as Record<string, string>;
 
                 // Get rustplus instance from the client exports
                 const client = require('../../index').client;
@@ -521,7 +521,7 @@ class ApiServer {
 
         this.app.post('/:guildId/switchgroups/:groupId/on', (async (req: Request, res: Response) => {
             try {
-                const { guildId, groupId } = req.params;
+                const { guildId, groupId } = req.params as Record<string, string>;
                 const client = require('../../index').client;
                 const rustplus = client?.rustplusInstances?.[guildId];
 
@@ -561,7 +561,7 @@ class ApiServer {
         // Turn switch group OFF by group ID
         this.app.post('/:guildId/switchgroups/:groupId/off', (async (req: Request, res: Response) => {
             try {
-                const { guildId, groupId } = req.params;
+                const { guildId, groupId } = req.params as Record<string, string>;
                 const client = require('../../index').client;
                 const rustplus = client?.rustplusInstances?.[guildId];
 
@@ -601,7 +601,7 @@ class ApiServer {
         // Get all trackers for a guild
         this.app.get('/:guildId/trackers', (async (req: Request, res: Response): Promise<void> => {
             try {
-                const { guildId } = req.params;
+                const { guildId } = req.params as Record<string, string>;
                 const client = require('../../index').client;
 
                 const instance = client?.getInstance(guildId);
@@ -675,7 +675,7 @@ class ApiServer {
         // Get a single tracker by ID
         this.app.get('/:guildId/trackers/:trackerId', (async (req: Request, res: Response): Promise<void> => {
             try {
-                const { guildId, trackerId } = req.params;
+                const { guildId, trackerId } = req.params as Record<string, string>;
                 const client = require('../../index').client;
 
                 const instance = client?.getInstance(guildId);

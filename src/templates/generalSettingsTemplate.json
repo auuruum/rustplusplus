@@ -3,7 +3,7 @@
     "voiceGender": "male",
     "prefix": ".",
     "muteInGameBotMessages": false,
-    "trademark": "N0rth",
+    "trademark": "N0rth++",
     "inGameCommandsEnabled": true,
     "inGameCommandAccessMode": "blacklist",
     "fcmAlarmNotificationEnabled": false,
