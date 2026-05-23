@@ -19,7 +19,12 @@
 
 */
 
+const Discord = require('discord.js');
+const Fs = require('fs');
+const Path = require('path');
+
 const DiscordMessages = require('../discordTools/discordMessages.js');
+const DiscordTools = require('../discordTools/discordTools.js');
 
 const CAMERA_CYCLING_DWELL_TIME_MS = 5000;
 const CAMERA_CYCLING_GAP_MS = 1000;
@@ -121,6 +126,9 @@ module.exports = {
         /* Wait for ray data with dwell timeout */
         await new Promise(resolve => setTimeout(resolve, CAMERA_CYCLING_DWELL_TIME_MS));
 
+        /* Capture a camera frame */
+        await module.exports.captureAndSendFrame(rustplus, client, identifier, camera);
+
         /* Unsubscribe */
         await rustplus.unsubscribeFromCameraAsync(5000).catch(() => { /* Ignore */ });
         rustplus.cameraCurrentSubscription = null;
@@ -129,6 +137,54 @@ module.exports = {
         rustplus.cameraCyclingIndex++;
         rustplus.cameraCyclingTaskId = setTimeout(
             module.exports.cycleStep, CAMERA_CYCLING_GAP_MS, rustplus, client);
+    },
+
+    captureAndSendFrame: async function (rustplus, client, identifier, camera) {
+        const instance = client.getInstance(rustplus.guildId);
+        const storedCamera = instance.serverList[rustplus.serverId]?.cameras?.[identifier];
+        if (!storedCamera) return;
+
+        storedCamera.frame = (storedCamera.frame || 0) + 1;
+        client.setInstance(rustplus.guildId, instance);
+
+        const frameResponse = await rustplus.getCameraFrameAsync(identifier, storedCamera.frame, 10000);
+
+        if (!frameResponse || frameResponse.error ||
+            !(await rustplus.isResponseValid(frameResponse)) ||
+            !frameResponse.cameraFrame || !frameResponse.cameraFrame.jpgImage) {
+            return;
+        }
+
+        /* Save JPEG to disk */
+        const filePath = Path.join(__dirname, '..', '..', 'cameras',
+            `${rustplus.guildId}_${identifier}.jpg`);
+        Fs.writeFileSync(filePath, frameResponse.cameraFrame.jpgImage);
+
+        /* Send/update frame in #cameras channel */
+        const channelId = instance.channelId.cameras;
+        const channel = DiscordTools.getTextChannelById(rustplus.guildId, channelId);
+        if (!channel) return;
+
+        const content = {
+            content: `**${storedCamera.name || camera.name}** (\`${identifier}\`)`,
+            files: [new Discord.AttachmentBuilder(filePath, { name: `${identifier}.jpg` })],
+        }
+
+        if (storedCamera.messageId) {
+            const existingMessage = await DiscordTools.getMessageById(
+                rustplus.guildId, channelId, storedCamera.messageId);
+            if (existingMessage) {
+                await existingMessage.edit(content).catch(() => { /* Ignore */ });
+                return;
+            }
+        }
+
+        /* Previous message not found, send a new one */
+        const sentMessage = await channel.send(content).catch(() => null);
+        if (sentMessage) {
+            storedCamera.messageId = sentMessage.id;
+            client.setInstance(rustplus.guildId, instance);
+        }
     },
 
     processCameraRays: async function (rustplus, client, message) {

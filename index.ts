@@ -56,9 +56,13 @@ function createMissingDirectories() {
     if (!Fs.existsSync(Path.join(__dirname, 'maps'))) {
         Fs.mkdirSync(Path.join(__dirname, 'maps'));
     }
-    
+
     if (!Fs.existsSync(Path.join(__dirname, 'database'))) {
         Fs.mkdirSync(Path.join(__dirname, 'database'));
+    }
+
+    if (!Fs.existsSync(Path.join(__dirname, 'cameras'))) {
+        Fs.mkdirSync(Path.join(__dirname, 'cameras'));
     }
 }
 

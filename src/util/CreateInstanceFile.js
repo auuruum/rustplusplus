@@ -238,6 +238,10 @@ module.exports = (client, guild) => {
         }
 
         if (!content.hasOwnProperty('cameras')) content.cameras = {};
+        for (const camera of Object.values(content.cameras)) {
+            if (!camera.hasOwnProperty('frame')) camera.frame = 0;
+            if (!camera.hasOwnProperty('messageId')) camera.messageId = null;
+        }
     }
 
     client.setInstance(guild.id, instance);
