@@ -19,6 +19,7 @@
 */
 
 const Discord = require('discord.js');
+const Fs = require('fs');
 const Path = require('path');
 
 const Constants = require('../util/constants.js');
@@ -144,6 +145,71 @@ module.exports = {
             instance.serverList[serverId].alarms[entityId].messageId = message.id;
             Client.client.setInstance(guildId, instance);
         }
+    },
+
+    sendLinkingMessage: async function (guildId, serverId, alarmEntityId, interaction = null) {
+        const instance = Client.client.getInstance(guildId);
+        const alarm = instance.serverList[serverId].alarms[alarmEntityId];
+
+        const components = [DiscordButtons.getLinkingButtons(guildId, serverId, alarmEntityId)];
+        const removeSelectMenu = DiscordSelectMenus.getLinkingRemoveSelectMenu(
+            guildId, serverId, alarmEntityId);
+        if (removeSelectMenu) components.push(removeSelectMenu);
+
+        const content = {
+            embeds: [DiscordEmbeds.getLinkingEmbed(guildId, serverId, alarmEntityId)],
+            components: components,
+            files: [new Discord.AttachmentBuilder(
+                Path.join(__dirname, '..', `resources/images/electrics/${alarm.image}`))]
+        }
+
+        const linkingMessageId = alarm.linkingMessageId || null;
+        const message = await module.exports.sendMessage(guildId, content, linkingMessageId,
+            instance.channelId.linking, interaction);
+
+        if (!interaction) {
+            instance.serverList[serverId].alarms[alarmEntityId].linkingMessageId = message.id;
+            Client.client.setInstance(guildId, instance);
+        }
+    },
+
+    sendRaidAlertMessage: async function (guildId, serverId, alarmEntityId) {
+        const instance = Client.client.getInstance(guildId);
+        const alarm = instance.serverList[serverId].alarms[alarmEntityId];
+
+        let contentStr = '';
+        if (instance.role) {
+            contentStr = `<@&${instance.role}>`;
+        }
+        else if (alarm.everyone) {
+            contentStr = '@everyone';
+        }
+
+        const content = {
+            embeds: [DiscordEmbeds.getRaidAlertEmbed(guildId, serverId, alarmEntityId)],
+            files: [new Discord.AttachmentBuilder(
+                Path.join(__dirname, '..', `resources/images/electrics/${alarm.image}`))],
+            content: contentStr
+        }
+
+        const mapPath = Path.join(__dirname, '..', '..', `maps/${guildId}_map_full.png`);
+        if (Fs.existsSync(mapPath)) {
+            content.files.push(new Discord.AttachmentBuilder(mapPath, { name: 'map.png' }));
+            content.embeds[0].setImage('attachment://map.png');
+        }
+
+        await module.exports.sendMessage(guildId, content, null, instance.channelId.raidAlerts);
+    },
+
+    sendCameraPlayerSightingMessage: async function (guildId, serverId, identifier, cameraName, playerName) {
+        const instance = Client.client.getInstance(guildId);
+
+        const content = {
+            embeds: [DiscordEmbeds.getCameraPlayerSightingEmbed(
+                guildId, serverId, identifier, cameraName, playerName)]
+        }
+
+        await module.exports.sendMessage(guildId, content, null, instance.channelId.cameras);
     },
 
     sendStorageMonitorMessage: async function (guildId, serverId, entityId, interaction = null) {

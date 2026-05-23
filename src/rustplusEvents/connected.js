@@ -121,6 +121,10 @@ module.exports = {
         rustplus.pollingTaskId = setInterval(PollingHandler.pollingHandler, client.pollingIntervalMs, rustplus, client);
         rustplus.isOperational = true;
 
+        /* Start camera cycling if cameras exist */
+        const CameraHandler = require('../handlers/cameraHandler.js');
+        CameraHandler.startCycling(rustplus, client);
+
         rustplus.updateLeaderRustPlusLiteInstance();
     },
 };
