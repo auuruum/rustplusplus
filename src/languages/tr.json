@@ -246,6 +246,7 @@
     "commandSyntaxNotes": "notes",
     "commandSyntaxOff": "kapalı",
     "commandSyntaxOffline": "offline",
+    "commandSyntaxOfflinePattern": "offlinedesen",
     "commandSyntaxOn": "açık",
     "commandSyntaxOnline": "online",
     "commandSyntaxPlayer": "player",

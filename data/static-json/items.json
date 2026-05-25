@@ -1244,6 +1244,11 @@
         "name": "Speech Bubble Balloon",
         "description": "A speech bubble-shaped balloon to use as decoration and for you to celebrate. You can write on it."
     },
+    "963400638": {
+        "shortname": "speechbubbleballoon2025",
+        "name": "Speech Bubble Balloon",
+        "description": "A speech bubble-shaped balloon to use as decoration and for you to celebrate. You can write on it."
+    },
     "963906841": {
         "shortname": "rock",
         "name": "Rock",
@@ -1458,6 +1463,11 @@
         "shortname": "candycane",
         "name": "Candy Cane",
         "description": "A very old candy cane from 2014"
+    },
+    "1127417055": {
+        "shortname": "armoured.ladder.hatch",
+        "name": "Armoured Ladder Hatch",
+        "description": "An armoured hatch that opens and changes into a ladder."
     },
     "1130729138": {
         "shortname": "fish.spoiled",
@@ -1708,6 +1718,11 @@
         "shortname": "electric.xorswitch",
         "name": "XOR Switch",
         "description": "An exclusive-or logic gate that allows electrical passthrough if ONLY ONE input receives power, passthrough amount is whichever single input is active. If BOTH inputs receive power, passthrough will be zero."
+    },
+    "1295301598": {
+        "shortname": "latexballoon2025",
+        "name": "Latex Balloon",
+        "description": "A latex balloon to use as decoration and for you to celebrate. You can write on it."
     },
     "1295301598": {
         "shortname": "latexballoon2025",
@@ -3128,6 +3143,11 @@
         "shortname": "antiradpills",
         "name": "Anti-Radiation Pills",
         "description": "Taking these pills will lower your radiation level. WARNING: May cause extreme dehydration."
+    },
+    "-601133933": {
+        "shortname": "armoured.triangle.ladder.hatch",
+        "name": "Armoured Triangle Laddder Hatch",
+        "description": "An armoured hatch that opens and changes into a ladder."
     },
     "-1023065463": {
         "shortname": "arrow.hv",

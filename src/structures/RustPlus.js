@@ -19,6 +19,7 @@
 */
 
 const Fs = require('fs');
+const PlayerActivityDB = require('../util/database');
 const Path = require('path');
 const RustPlusLib = require('@liamcottle/rustplus.js');
 const Translate = require('translate');
@@ -2637,6 +2638,166 @@ class RustPlus extends RustPlusLib {
 
         return string !== '' ? `${amount}${string.slice(0, -2)}.` :
             `${amount}${Client.client.intlGet(this.guildId, 'noOneIsOnline')}`;
+    }
+
+    getCommandOfflinePattern(command) {
+        const args = command.trim().split(' ');
+        if (args.length < 2) {
+            return `${Client.client.intlGet(this.guildId, 'usage')}: ${this.generalSettings.prefix}${Client.client.intlGet(this.guildId, 'commandSyntaxOfflinePattern')} <${Client.client.intlGet(this.guildId, 'playerName')}>`;
+        }
+
+        const playerName = args.slice(1).join(' ');
+        const instance = Client.client.getInstance(this.guildId);
+        const server = instance.serverList[this.serverId];
+        
+        if (!server || !server.battlemetricsId) {
+            return Client.client.intlGet(this.guildId, 'invalidBattlemetricsId');
+        }
+        
+        const battlemetricsId = server.battlemetricsId;
+        const bmInstance = Client.client.battlemetricsInstances[battlemetricsId];
+        
+        if (!bmInstance || !bmInstance.lastUpdateSuccessful) {
+            return Client.client.intlGet(this.guildId, 'battlemetricsInstanceCouldNotBeFound', {
+                id: battlemetricsId
+            });
+        }
+        
+        // Find the player by name
+        const players = bmInstance.getOnlinePlayerIdsOrderedByTime()
+            .concat(bmInstance.getOfflinePlayerIdsOrderedByLeastTimeSinceOnline());
+        
+        const matchingPlayers = [];
+        for (const playerId of players) {
+            if (bmInstance.players[playerId]['name'].toLowerCase().includes(playerName.toLowerCase())) {
+                matchingPlayers.push(playerId);
+            }
+        }
+        
+        if (matchingPlayers.length === 0) {
+            return Client.client.intlGet(this.guildId, 'couldNotFindAnyPlayers');
+        }
+        
+        if (matchingPlayers.length > 1) {
+            let response = Client.client.intlGet(this.guildId, 'multiplePlayersFound') + '\\n';
+            for (let i = 0; i < Math.min(matchingPlayers.length, 3); i++) {
+                const playerId = matchingPlayers[i];
+                const playerName = bmInstance.players[playerId]['name'];
+                response += `${i+1}. ${playerName}\\n`;
+            }
+            if (matchingPlayers.length > 3) {
+                response += Client.client.intlGet(this.guildId, 'andMorePlayers', { 
+                    number: matchingPlayers.length - 3 
+                });
+            }
+            return response;
+        }
+        
+        // We have a single match, analyze offline patterns
+        const playerId = matchingPlayers[0];
+        const player = bmInstance.players[playerId];
+        const steamId = player.steamId || playerId;
+        const userName = player.name;
+        
+        // Get the player's offline patterns from the database
+        const offlinePatterns = PlayerActivityDB.analyzeOfflinePatterns(steamId, this.serverId, this.guildId);
+        
+        if (!offlinePatterns || offlinePatterns.length === 0) {
+            return Client.client.intlGet(this.guildId, 'noOfflinePatternData', { name: userName });
+        }
+        
+        // Format the response
+        let response = `${Client.client.intlGet(this.guildId, 'offlinePatternFor')}: ${userName}\\n`;
+        response += `${Client.client.intlGet(this.guildId, 'bestRaidTimes')}:\\n`;
+        
+        for (let i = 0; i < Math.min(offlinePatterns.length, 3); i++) {
+            const pattern = offlinePatterns[i];
+            const startHour = pattern.startHour.toString().padStart(2, '0');
+            const endHour = pattern.endHour.toString().padStart(2, '0');
+            const rangeStr = pattern.startHour <= pattern.endHour ?
+                `${startHour}:00 - ${endHour}:00` :
+                `${startHour}:00 - ${endHour}:00 ⌛`; // Midnight emoji substitute
+            
+            const confidencePercent = ((pattern.averageEventsPerHour / offlinePatterns[0].averageEventsPerHour) * 100).toFixed(0);
+            
+            response += `${i+1}. ${rangeStr}\\n`;
+            response += `   • ${Client.client.intlGet(this.guildId, 'duration')}: ${pattern.duration} ${Client.client.intlGet(this.guildId, 'hours')}\\n`;
+            response += `   • ${Client.client.intlGet(this.guildId, 'confidence')}: ${confidencePercent}%\\n`;
+        }
+        
+        return response;
+    }
+
+    getCommandWhois(command) {
+        const args = command.trim().split(' ');
+        if (args.length < 2) {
+            return `${Client.client.intlGet(this.guildId, 'usage')}: ${this.generalSettings.prefix}${Client.client.intlGet(this.guildId, 'commandSyntaxWhois')} <${Client.client.intlGet(this.guildId, 'playerName')}>`;
+        }
+
+        const playerName = args.slice(1).join(' ');
+        const instance = Client.client.getInstance(this.guildId);
+        const server = instance.serverList[this.serverId];
+
+        if (!server || !server.battlemetricsId) {
+            return Client.client.intlGet(this.guildId, 'invalidBattlemetricsId');
+        }
+
+        const battlemetricsId = server.battlemetricsId;
+        const bmInstance = Client.client.battlemetricsInstances[battlemetricsId];
+
+        if (!bmInstance || !bmInstance.lastUpdateSuccessful) {
+            return Client.client.intlGet(this.guildId, 'battlemetricsInstanceCouldNotBeFound', {
+                id: battlemetricsId
+            });
+        }
+
+        const players = bmInstance.getOnlinePlayerIdsOrderedByTime()
+            .concat(bmInstance.getOfflinePlayerIdsOrderedByLeastTimeSinceOnline());
+
+        const matchingPlayers = [];
+        for (const playerId of players) {
+            if (bmInstance.players[playerId]['name'].toLowerCase().includes(playerName.toLowerCase())) {
+                matchingPlayers.push(playerId);
+            }
+        }
+
+        if (matchingPlayers.length === 0) {
+            return Client.client.intlGet(this.guildId, 'couldNotFindAnyPlayers');
+        }
+
+        if (matchingPlayers.length > 1) {
+            let response = Client.client.intlGet(this.guildId, 'multiplePlayersFound') + '\n';
+            for (let i = 0; i < Math.min(matchingPlayers.length, 3); i++) {
+                const pid = matchingPlayers[i];
+                response += `${i + 1}. ${bmInstance.players[pid]['name']}\n`;
+            }
+            if (matchingPlayers.length > 3) {
+                response += Client.client.intlGet(this.guildId, 'andMorePlayers', {
+                    number: matchingPlayers.length - 3
+                });
+            }
+            return response;
+        }
+
+        const playerId = matchingPlayers[0];
+        const player = bmInstance.players[playerId];
+        const steamId = player.steamId || playerId;
+        const currentName = player.name;
+
+        const nameHistory = PlayerActivityDB.getNameHistory(steamId, this.serverId, this.guildId);
+
+        if (!nameHistory || nameHistory.length === 0) {
+            return Client.client.intlGet(this.guildId, 'noNameHistoryData', { name: currentName });
+        }
+
+        let response = `${Client.client.intlGet(this.guildId, 'whoisTitle').replace('{name}', currentName)}\n`;
+        response += `${Client.client.intlGet(this.guildId, 'whoisNameHistory')}:\n`;
+        for (const entry of nameHistory) {
+            const date = new Date(entry.first_seen).toISOString().slice(0, 10);
+            response += `  • ${entry.name} (${date})\n`;
+        }
+
+        return response;
     }
 
     getCommandPlayer(command) {
