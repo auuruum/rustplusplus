@@ -24,7 +24,6 @@ const DiscordEmbeds = require('../discordTools/discordEmbeds');
 
 const Battlemetrics = require('../structures/Battlemetrics');
 const Constants = require('../util/constants.js');
-const DiscordEmbeds = require('../discordTools/discordEmbeds.js');
 const DiscordMessages = require('../discordTools/discordMessages.js');
 const Keywords = require('../util/keywords.js');
 const Scrape = require('../util/scrape.js');
