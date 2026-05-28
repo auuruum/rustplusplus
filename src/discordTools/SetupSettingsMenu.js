@@ -260,6 +260,18 @@ async function setupGeneralSettings(client, guildId, channel) {
     await client.messageSend(channel, {
         embeds: [DiscordEmbeds.getEmbed({
             color: Constants.COLOR_SETTINGS,
+            title: client.intlGet(guildId, 'showPlayerPopulationTrendSetting'),
+            thumbnail: `attachment://settings_logo.png`
+        })],
+        components: [DiscordButtons.getPlayerPopulationTrendButton(guildId,
+            instance.generalSettings.showPlayerPopulationTrend)],
+        files: [new Discord.AttachmentBuilder(
+            Path.join(__dirname, '..', 'resources/images/settings_logo.png'))]
+    });
+
+    await client.messageSend(channel, {
+        embeds: [DiscordEmbeds.getEmbed({
+            color: Constants.COLOR_SETTINGS,
             title: client.intlGet(guildId, 'subscribeToChangesBattlemetrics'),
             thumbnail: `attachment://settings_logo.png`
         })],

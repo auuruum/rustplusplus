@@ -37,6 +37,10 @@ function normalizePopulationTrend(currentPlayers, baselinePlayers, options = {})
     return buildTrend(currentPlayers, baselinePlayers, 2, options);
 }
 
+function isPopulationTrendEnabled(settings) {
+    return Boolean(settings && settings.showPlayerPopulationTrend === true);
+}
+
 class PlayerPopulationTrend {
     constructor(options = {}) {
         this.windowMs = Number.isFinite(options.windowMs) ? options.windowMs : DEFAULT_WINDOW_MS;
@@ -79,5 +83,6 @@ class PlayerPopulationTrend {
 
 module.exports = {
     PlayerPopulationTrend,
-    normalizePopulationTrend
+    normalizePopulationTrend,
+    isPopulationTrendEnabled
 };

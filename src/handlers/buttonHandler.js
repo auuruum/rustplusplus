@@ -344,6 +344,28 @@ module.exports = async (client, interaction) => {
                 instance.generalSettings.displayInformationBattlemetricsAllOnlinePlayers)]
         });
     }
+    else if (interaction.customId === 'ShowPlayerPopulationTrend') {
+        instance.generalSettings.showPlayerPopulationTrend =
+            !instance.generalSettings.showPlayerPopulationTrend;
+        client.setInstance(guildId, instance);
+
+        if (rustplus) rustplus.generalSettings.showPlayerPopulationTrend =
+            instance.generalSettings.showPlayerPopulationTrend;
+
+        if (client.streamDeckBridge) {
+            client.streamDeckBridge.broadcastSnapshot(guildId, ['pop'], 'immediate_update');
+        }
+
+        client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'buttonValueChange', {
+            id: `${verifyId}`,
+            value: `${instance.generalSettings.showPlayerPopulationTrend}`
+        }));
+
+        await client.interactionUpdate(interaction, {
+            components: [DiscordButtons.getPlayerPopulationTrendButton(guildId,
+                instance.generalSettings.showPlayerPopulationTrend)]
+        });
+    }
     else if (interaction.customId === 'BattlemetricsServerNameChanges') {
         instance.generalSettings.battlemetricsServerNameChanges =
             !instance.generalSettings.battlemetricsServerNameChanges;

@@ -36,6 +36,7 @@ const InstanceUtils = require('../util/instanceUtils.js');
 const Languages = require('../util/languages.js');
 const Logger = require('./Logger.js');
 const Map = require('../util/map.js');
+const { isPopulationTrendEnabled } = require('../util/playerPopulationTrend');
 const getRuntimeDataStorage = require('../util/getRuntimeDataStorage');
 const RustPlusLite = require('../structures/RustPlusLite');
 const TeamHandler = require('../handlers/teamHandler.js');
@@ -2889,7 +2890,8 @@ class RustPlus extends RustPlusLib {
     }
 
     getCommandPop(isInfoChannel = false) {
-        const trendSymbol = this.info && this.info.playerTrend ? ` ${this.info.playerTrend.symbol}` : '';
+        const showTrend = isPopulationTrendEnabled(this.generalSettings);
+        const trendSymbol = showTrend && this.info && this.info.playerTrend ? ` ${this.info.playerTrend.symbol}` : '';
         if (isInfoChannel) {
             return `${this.info.players}${this.info.isQueue() ? `(${this.info.queuedPlayers})` : ''}` +
                 `/${this.info.maxPlayers}${trendSymbol}`;

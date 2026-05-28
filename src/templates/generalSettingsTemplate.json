@@ -19,6 +19,7 @@
     "mapWipeNotifyEveryone": false,
     "itemAvailableInVendingMachineNotifyInGame": true,
     "displayInformationBattlemetricsAllOnlinePlayers": false,
+    "showPlayerPopulationTrend": false,
     "battlemetricsServerNameChanges": true,
     "battlemetricsTrackerNameChanges": true,
     "battlemetricsGlobalNameChanges": false,

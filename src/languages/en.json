@@ -729,6 +729,7 @@
     "shouldSmartAlarmNotifyNotConnectedSetting": "Should Smart Alarms notify even if they are not setup on the connected rust server?",
     "shouldSmartAlarmsNotifyInGameSetting": "Should Smart Alarms notify In-Game?",
     "shouldSmartSwitchNotifyInGameWhenChangedFromDiscord": "Should Smart Switches and Smart Switch Groups notify In-Game when they are changed from discord?",
+    "showPlayerPopulationTrendSetting": "Show player population trend arrows in Discord and in-game population messages?",
     "showingBlacklist": "Showing the blacklist.",
     "showingInGameCommandAccess": "Showing in-game command access settings.",
     "showingWhitelist": "Showing the whitelist.",
