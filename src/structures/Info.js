@@ -20,9 +20,10 @@
 
 const Map = require('../util/map.js');
 const Timer = require('../util/timer');
+const { PlayerPopulationTrend } = require('../util/playerPopulationTrend');
 
 class Info {
-    constructor(info) {
+    constructor(info, trendOptions = {}) {
         this._name = info.name;
         this._headerImage = info.headerImage;
         this._url = info.url;
@@ -36,6 +37,8 @@ class Info {
         this._salt = info.salt;
 
         this._correctedMapSize = info.mapSize;
+        this._playerPopulationTrend = new PlayerPopulationTrend(trendOptions);
+        this._playerPopulationTrend.record(info.players);
     }
 
     /* Getters and Setters */
@@ -63,6 +66,7 @@ class Info {
     set salt(salt) { this._salt = salt; }
     get correctedMapSize() { return this._correctedMapSize; }
     set correctedMapSize(correctedMapSize) { this._correctedMapSize = correctedMapSize; }
+    get playerTrend() { return this._playerPopulationTrend.getTrend(); }
 
     /* Change checkers */
     isNameChanged(info) { return ((this.name) !== (info.name)); }
@@ -82,7 +86,7 @@ class Info {
     isMaxPlayersDecreased(info) { return ((this.maxPlayers) > (info.maxPlayers)); }
     isQueue() { return (this.queuedPlayers !== 0); }
 
-    updateInfo(info) {
+    updateInfo(info, timestamp = undefined) {
         this.name = info.name;
         this.headerImage = info.headerImage;
         this.url = info.url;
@@ -90,6 +94,7 @@ class Info {
         this.mapSize = info.mapSize;
         this.wipeTime = info.wipeTime;
         this.players = info.players;
+        this._playerPopulationTrend.record(info.players, timestamp);
         this.maxPlayers = info.maxPlayers;
         this.queuedPlayers = info.queuedPlayers;
         this.seed = info.seed;

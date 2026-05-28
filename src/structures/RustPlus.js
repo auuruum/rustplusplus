@@ -2889,9 +2889,10 @@ class RustPlus extends RustPlusLib {
     }
 
     getCommandPop(isInfoChannel = false) {
+        const trendSymbol = this.info && this.info.playerTrend ? ` ${this.info.playerTrend.symbol}` : '';
         if (isInfoChannel) {
             return `${this.info.players}${this.info.isQueue() ? `(${this.info.queuedPlayers})` : ''}` +
-                `/${this.info.maxPlayers}`;
+                `/${this.info.maxPlayers}${trendSymbol}`;
         }
         else {
             const string = Client.client.intlGet(this.guildId, 'populationPlayers', {
@@ -2901,7 +2902,7 @@ class RustPlus extends RustPlusLib {
             const queuedPlayers = this.info.isQueue() ?
                 ` ${Client.client.intlGet(this.guildId, 'populationQueue', { number: this.info.queuedPlayers })}` : '';
 
-            return `${string}${queuedPlayers}`;
+            return `${string}${queuedPlayers}${trendSymbol}`;
         }
     }
 

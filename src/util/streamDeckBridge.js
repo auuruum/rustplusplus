@@ -304,11 +304,14 @@ class StreamDeckBridge {
     getPopData(guildId) {
         const { rustplus, server, connected } = this.getContext(guildId);
         const info = rustplus && rustplus.info;
+        const playerTrend = info && info.playerTrend ? info.playerTrend : null;
         return {
             connected,
             currentPlayers: info ? info.players : 0,
             maxPlayers: info ? info.maxPlayers : 0,
             queuedPlayers: info ? info.queuedPlayers : 0,
+            playerTrend,
+            populationTrend: playerTrend ? playerTrend.trend : 'stable',
             title: info ? info.name : (server ? server.title : '')
         };
     }
