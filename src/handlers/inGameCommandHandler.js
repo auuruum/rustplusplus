@@ -206,7 +206,7 @@ module.exports = {
         }
         else if (commandLowerCase.startsWith(`${prefix}${client.intlGet('en', 'commandSyntaxTTS')} `) ||
             commandLowerCase.startsWith(`${prefix}${client.intlGet(guildId, 'commandSyntaxTTS')} `)) {
-            rustplus.sendInGameMessage(await rustplus.getCommandTTS(command, callerName));
+            rustplus.sendInGameMessage(await rustplus.getCommandTTS(command, callerName, true));
         }
         else if (commandLowerCase === `${prefix}${client.intlGet('en', 'commandSyntaxUnmute')}` ||
             commandLowerCase === `${prefix}${client.intlGet(guildId, 'commandSyntaxUnmute')}`) {

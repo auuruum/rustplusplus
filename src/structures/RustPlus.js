@@ -3448,7 +3448,7 @@ class RustPlus extends RustPlusLib {
         }
     }
 
-    async getCommandTTS(command, callerName) {
+    async getCommandTTS(command, callerName, useVoiceChannel = false) {
         const prefix = this.generalSettings.prefix;
         const commandTTS = `${prefix}${Client.client.intlGet(this.guildId, 'commandSyntaxTTS')}`;
         const commandTTSEn = `${prefix}${Client.client.intlGet('en', 'commandSyntaxTTS')}`;
@@ -3461,7 +3461,14 @@ class RustPlus extends RustPlusLib {
             text = command.slice(`${commandTTSEn} `.length).trim();
         }
 
-        await DiscordMessages.sendTTSMessage(this.guildId, callerName, text);
+        if (useVoiceChannel) {
+            const sent = await DiscordVoice.sendDiscordVoiceMessage(this.guildId, text);
+            if (!sent) return 'Bot is not in a voice channel.';
+        }
+        else {
+            await DiscordMessages.sendTTSMessage(this.guildId, callerName, text);
+        }
+
         return Client.client.intlGet(this.guildId, 'sentTextToSpeech');
     }
 

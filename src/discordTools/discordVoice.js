@@ -30,13 +30,15 @@ module.exports = {
         const voice = await this.getVoice(guildId);
         const url = `https://cache-a.oddcast.com/tts/genC.php?EID=${voice.EID}&LID=${voice.LID}&VID=${voice.VID}&TXT=${encodeURIComponent(text)}&EXT=mp3`;
 
-        if (connection) {
-            let stream = (await (await fetch(url)).blob()).stream()
-            const resource = createAudioResource(stream);
-            const player = createAudioPlayer();
-            connection.subscribe(player);
-            player.play(resource);
-        }
+        if (!connection) return false;
+
+        let stream = (await (await fetch(url)).blob()).stream()
+        const resource = createAudioResource(stream);
+        const player = createAudioPlayer();
+        connection.subscribe(player);
+        player.play(resource);
+
+        return true;
     },
 
     getVoice: async function (guildId) {
