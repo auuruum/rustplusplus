@@ -64,7 +64,7 @@ There are a few buttons for each server. The `CONNECT` button lets you start a c
 
 ## Settings Channel
 
-> The Settings Channel contain a bunch of different settings for rustplusplus. There are settings for language, voice gender, command prefix, trademark visibility, allow in-game commands, mute in-game, in-game teammate notifications, command delay, Smart Alarm notifications, enable leader command, battlemetrics notifications, wipe detection, vending machine subscription and event notifications.
+> The Settings Channel contain a bunch of different settings for rustplusplus. There are settings for language, voice gender, command prefix, trademark visibility, allow in-game commands, mute in-game, in-game teammate notifications, command delay, Smart Alarm notifications, enable leader command, battlemetrics notifications, player population trend arrows, wipe detection, vending machine subscription and event notifications.
 
 ![Discord Text Channel Settings](images/channels/settings_channel.png)
 

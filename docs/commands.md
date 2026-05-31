@@ -420,6 +420,7 @@ In-Game Command | Description
 [**upkeep**](commands.md#upkeep) | Get the upkeep time of all connected tool cupboard monitors.
 [**uptime**](commands.md#uptime-ingame) | Display uptime of the bot and server.
 [**vendor**](commands.md#vendor) | Get information about the Traveling Vendor (Current Location, Time since last vendor)
+[**voice**](commands.md#voice-ingame) | Make the bot join or leave your linked Discord voice channel.
 [**wipe**](commands.md#wipe) | Get the time since it was wiped.
 
 
@@ -589,6 +590,13 @@ Subcommand | Description | Required
 * `!move Alle Gaming` – Moves **Alle** to the **Gaming** channel
 * `!move 123456789012345678` – Moves **you** to the voice channel with that **ID**
 
+## **voice ingame**
+
+> **Join or leave a Discord voice channel from in-game team chat.** `!voice join` finds the Discord account linked to your Rust account and joins the voice channel you are currently in. `!voice leave` disconnects the bot from voice.
+
+<br>Command: `!voice join`
+<br>Command: `!voice leave`
+
 ## **note/notes**
 
 > **Create notes about meaningful things.** To list all registered notes run `!notes`, all note ids will be presented as well.
@@ -628,6 +636,7 @@ Subcommand | Description | Required
 ## **pop**
 
 > **Get the current population of the server including queue size and max population.**
+If player population trend is enabled in the settings channel, population messages also show arrows for the recent online-player trend.
 <br>Command: `!pop`
 
 ![In-Game Command pop Image](images/ingame_commands/pop_ingame.png)

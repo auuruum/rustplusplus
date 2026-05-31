@@ -42,6 +42,7 @@
 - **marker/markers** - Set markers to navigate to.
 - **market** - Search for or subscribe to items in vending machines.
 - **mute** - Mute rustplusplus In-Game.
+- **move** - Move yourself or another Discord user between voice channels from in-game chat.
 - **note/notes** - Add notes.
 - **offline** - Display offline teammates.
 - **online** - Display online teammates.
@@ -63,6 +64,7 @@
 - **upkeep** - Check upkeep of Storage Monitor Tool Cupboards.
 - **uptime** - Display the uptime of rustplusplus and currently connected server.
 - **vendor** - Get information regarding the Traveling Vendor
+- **voice** - Make the bot join or leave your linked Discord voice channel from in-game chat.
 - **wipe** - Display time since wipe.
 
 ## Smart Devices
@@ -76,6 +78,7 @@
 
 ## Rust Server Information
 - See number of players, max capacity and queue size of the Rust Server.
+- Optionally show recent player population trend arrows in Discord and in-game population messages.
 - See the In-Game time and time till day/night.
 - See how long ago wipe was.
 - See Map Size.
