@@ -148,7 +148,7 @@ async function messageBroadcastEntityChanged(rustplus, client, message) {
     if (client.streamDeckBridge) {
         client.streamDeckBridge.broadcastSnapshot(
             rustplus.guildId,
-            ['switches', 'alarms', 'switchgroups'],
+            ['switches', 'alarms', 'switchgroups', 'storagemonitors'],
             'immediate_update'
         );
     }

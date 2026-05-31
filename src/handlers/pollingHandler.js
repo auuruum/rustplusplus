@@ -101,7 +101,7 @@ module.exports = {
         if (client.streamDeckBridge) {
             client.streamDeckBridge.broadcastSnapshot(
                 rustplus.guildId,
-                ['server', 'time', 'pop', 'switches', 'alarms', 'switchgroups']
+                ['server', 'time', 'pop', 'switches', 'alarms', 'switchgroups', 'storagemonitors']
             );
         }
     },

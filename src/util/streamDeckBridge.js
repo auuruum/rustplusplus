@@ -9,7 +9,7 @@ const { WebSocketServer, WebSocket } = require('ws');
 const Config = require('../../config');
 const Timer = require('./timer.js');
 
-const DEFAULT_ENDPOINTS = ['server', 'time', 'pop', 'switches', 'alarms', 'switchgroups', 'trackers'];
+const DEFAULT_ENDPOINTS = ['server', 'time', 'pop', 'switches', 'alarms', 'switchgroups', 'storagemonitors', 'trackers'];
 
 class StreamDeckBridge {
     constructor(client) {
@@ -144,6 +144,7 @@ class StreamDeckBridge {
             '/switches': () => this.getSwitchesData(guildId),
             '/alarms': () => this.getAlarmsData(guildId),
             '/switchgroups': () => this.getSwitchGroupsData(guildId),
+            '/storagemonitors': () => this.getStorageMonitorsData(guildId),
             '/trackers': () => this.getTrackersData(guildId)
         };
 
@@ -249,6 +250,7 @@ class StreamDeckBridge {
             if (endpoint === 'switches') data.switches = this.getSwitchesData(guildId);
             if (endpoint === 'alarms') data.alarms = this.getAlarmsData(guildId);
             if (endpoint === 'switchgroups') data.switchgroups = this.getSwitchGroupsData(guildId);
+            if (endpoint === 'storagemonitors') data.storagemonitors = this.getStorageMonitorsData(guildId);
             if (endpoint === 'trackers') data.trackers = this.getTrackersData(guildId);
         }
         return data;
@@ -368,6 +370,37 @@ class StreamDeckBridge {
         })) : [];
 
         return { total: switchGroups.length, connected, switchGroups };
+    }
+
+    getStorageMonitorsData(guildId) {
+        const { instance, server, rustplus, connected } = this.getContext(guildId);
+        const storageMonitors = server ? Object.entries(server.storageMonitors || {}).map(([id, device]) => {
+            const live = rustplus && rustplus.storageMonitors ? rustplus.storageMonitors[id] : null;
+            const capacity = live ? live.capacity || 0 : 0;
+            const items = live && Array.isArray(live.items) ? live.items : [];
+
+            return {
+                id,
+                name: device.name || id,
+                reachable: device.reachable !== false,
+                location: device.location || '',
+                monitorType: device.type || null,
+                decaying: device.decaying === true,
+                upkeep: device.upkeep || null,
+                everyone: device.everyone === true,
+                inGame: device.inGame !== false,
+                image: device.image || 'storage_monitor.png',
+                messageId: device.messageId || null,
+                server: instance ? instance.activeServer : null,
+                capacity,
+                occupiedSlots: items.length,
+                items,
+                expiry: live ? live.expiry || 0 : 0,
+                hasProtection: live ? live.hasProtection === true : false
+            };
+        }) : [];
+
+        return { total: storageMonitors.length, connected, storageMonitors };
     }
 
     getTrackersData(guildId) {

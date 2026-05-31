@@ -149,6 +149,7 @@ module.exports = {
     sendStorageMonitorMessage: async function (guildId, serverId, entityId, interaction = null) {
         let instance = Client.client.getInstance(guildId);
         const entity = instance.serverList[serverId].storageMonitors[entityId];
+        broadcastStreamDeck(guildId, ['storagemonitors']);
 
         const content = {
             embeds: [entity.reachable ?
