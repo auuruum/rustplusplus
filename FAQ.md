@@ -41,7 +41,7 @@ If you're getting this error it's because you missed a step in the setup guide (
 
 ![TokenInvalid](docs/images/faq/token_invalid.png)
 
-This happens when the token you placed in the config file is invalid. There have been cases where people clone the repository with git and also download the zip of the repository, ending having two separate repositories of the bot. The problem that have occured for these people is that they've placed the token in one respository and tried running the other one. So make sure that you are trying to start the correct bot that have the config setup with the token.
+This happens when the token you placed in `.env` is invalid. There have been cases where people clone the repository with git and also download the zip of the repository, ending having two separate repositories of the bot. The problem that have occured for these people is that they've placed the token in one respository and tried running the other one. So make sure that you are trying to start the correct bot that has `.env` setup with the token.
 
 
 <a name="unexpected-token-invalid-json"></a>

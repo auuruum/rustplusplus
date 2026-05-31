@@ -18,30 +18,80 @@
 
 */
 
+const fs = require('fs');
+const path = require('path');
+
+function loadEnvFile() {
+    const envPath = path.join(__dirname, '..', '.env');
+    if (!fs.existsSync(envPath)) {
+        return;
+    }
+
+    const lines = fs.readFileSync(envPath, 'utf8').split(/\r?\n/);
+    for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) {
+            continue;
+        }
+
+        const match = trimmed.match(/^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
+        if (!match) {
+            continue;
+        }
+
+        const key = match[1];
+        let value = match[2].trim();
+
+        if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+            value = value.slice(1, -1);
+        }
+
+        if (process.env[key] === undefined) {
+            process.env[key] = value;
+        }
+    }
+}
+
+function getString(key, fallback) {
+    return process.env[key] ?? fallback;
+}
+
+function getNumber(key, fallback) {
+    const value = Number(process.env[key]);
+    return Number.isFinite(value) ? value : fallback;
+}
+
+function getBoolean(key, fallback) {
+    const value = process.env[key];
+    if (value === undefined) {
+        return fallback;
+    }
+
+    return ['true', '1', 'yes', 'on'].includes(value.toLowerCase());
+}
+
+loadEnvFile();
+
 module.exports = {
     general: {
-        language: process.env.RPP_LANGUAGE || 'en',
-        pollingIntervalMs: process.env.RPP_POLLING_INTERVAL || 10000,
-        showCallStackError: process.env.RPP_LOG_CALL_STACK || false,
-        reconnectIntervalMs: process.env.RPP_RECONNECT_INTERVAL || 15000,
+        language: getString('RPP_LANGUAGE', 'en'),
+        pollingIntervalMs: getNumber('RPP_POLLING_INTERVAL', 10000),
+        showCallStackError: getBoolean('RPP_LOG_CALL_STACK', false),
+        reconnectIntervalMs: getNumber('RPP_RECONNECT_INTERVAL', 15000),
     },
     discord: {
-        username: process.env.RPP_DISCORD_USERNAME || 'rustplusplus',
-        clientId: process.env.RPP_DISCORD_CLIENT_ID || '',
-        token: process.env.RPP_DISCORD_TOKEN || '',
-        needAdminPrivileges: process.env.RPP_NEED_ADMIN_PRIVILEGES || true, /* If true, only admins can delete (server, switch..), manage credentials and reset a channel */
+        username: getString('RPP_DISCORD_USERNAME', 'rustplusplus'),
+        clientId: getString('RPP_DISCORD_CLIENT_ID', ''),
+        token: getString('RPP_DISCORD_TOKEN', ''),
+        needAdminPrivileges: getBoolean('RPP_NEED_ADMIN_PRIVILEGES', true),
     },
     battlemetrics: {
-        token: process.env.RPP_BATTLEMETRICS_TOKEN || '',
+        token: getString('RPP_BATTLEMETRICS_TOKEN', ''),
     },
     streamDeck: {
-        enabled: process.env.RPP_STREAM_DECK_ENABLED === 'true',
-        host: process.env.RPP_STREAM_DECK_HOST || 'localhost',
-        port: process.env.RPP_STREAM_DECK_PORT || 8074,
-        /* Per-guild passwords. Examples:
-           RPP_STREAM_DECK_API_PASSWORDS='1134548581378961473=pass1,1033084565323001867=pass2'
-           RPP_STREAM_DECK_API_PASSWORDS='{"1134548581378961473":"pass1","1033084565323001867":"pass2"}'
-        */
-        apiPasswords: process.env.RPP_STREAM_DECK_API_PASSWORDS || '',
+        enabled: getBoolean('RPP_STREAM_DECK_ENABLED', false),
+        host: getString('RPP_STREAM_DECK_HOST', 'localhost'),
+        port: getNumber('RPP_STREAM_DECK_PORT', 8074),
+        apiPasswords: getString('RPP_STREAM_DECK_API_PASSWORDS', ''),
     }
 };
