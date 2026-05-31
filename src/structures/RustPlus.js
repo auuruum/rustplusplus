@@ -23,6 +23,7 @@ const PlayerActivityDB = require('../util/database');
 const Path = require('path');
 const RustPlusLib = require('@liamcottle/rustplus.js');
 const Translate = require('translate');
+const { joinVoiceChannel, getVoiceConnection } = require('@discordjs/voice');
 
 const Client = require('../../index.ts');
 const Constants = require('../util/constants.js');
@@ -1842,28 +1843,13 @@ class RustPlus extends RustPlusLib {
         
         if (args.length === 1) {
             targetChannelInput = args[0];
-            
-            const fs = require('fs');
-            const path = require('path');
-            const credentialsPath = path.join(__dirname, '..', '..', 'credentials', `${this.guildId}.json`);
-            
-            try {
-                if (fs.existsSync(credentialsPath)) {
-                    const credentialsData = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
-                    
-                    if (credentialsData[callerSteamId]?.discord_user_id) {
-                        const discordUserId = credentialsData[callerSteamId].discord_user_id;
-                        playerNames = [discordUserId];
-                    } else {
-                        return Client.client.intlGet(this.guildId, 'noLinkedUserFound');
-                    }
-                } else {
-                    return Client.client.intlGet(this.guildId, 'noLinkedUserFound');
-                }
-            } catch (error) {
-                console.error('Error reading user data:', error);
+
+            const discordUserId = this.getLinkedDiscordUserId(callerSteamId);
+            if (!discordUserId) {
                 return Client.client.intlGet(this.guildId, 'noLinkedUserFound');
             }
+
+            playerNames = [discordUserId];
         } else {
             targetChannelInput = args[args.length - 1];
             playerNames = args.slice(0, -1);
@@ -2022,6 +2008,84 @@ class RustPlus extends RustPlusLib {
         }
 
         return messages.join('\n');
+    }
+
+    getLinkedDiscordUserId(callerSteamId) {
+        const credentialsPath = Path.join(__dirname, '..', '..', 'credentials', `${this.guildId}.json`);
+
+        try {
+            if (!Fs.existsSync(credentialsPath)) return null;
+
+            const credentialsData = JSON.parse(Fs.readFileSync(credentialsPath, 'utf8'));
+            return credentialsData[callerSteamId]?.discord_user_id || null;
+        } catch (error) {
+            console.error('Error reading user data:', error);
+            return null;
+        }
+    }
+
+    async handleVoiceCommand(command, callerSteamId) {
+        const args = command.split(' ').slice(1);
+        const action = args[0]?.toLowerCase();
+
+        if (action !== 'join' && action !== 'leave') {
+            return Client.client.intlGet(this.guildId, 'commandSyntaxVoiceHelp');
+        }
+
+        const guild = Client.client.guilds.cache.get(this.guildId);
+        if (!guild) {
+            return Client.client.intlGet(this.guildId, 'couldNotFindGuild', { guildId: this.guildId });
+        }
+
+        if (action === 'leave') {
+            const connection = getVoiceConnection(guild.id);
+            if (!connection) {
+                return Client.client.intlGet(this.guildId, 'commandsVoiceBotNotInVoice');
+            }
+
+            connection.destroy();
+            return Client.client.intlGet(this.guildId, 'commandsVoiceBotLeftVoice');
+        }
+
+        const discordUserId = this.getLinkedDiscordUserId(callerSteamId);
+        if (!discordUserId) {
+            return Client.client.intlGet(this.guildId, 'commandsVoiceNoLinkedUserFound');
+        }
+
+        let member = guild.members.cache.get(discordUserId);
+        if (!member) {
+            try {
+                member = await guild.members.fetch(discordUserId);
+            } catch (error) {
+                return Client.client.intlGet(this.guildId, 'couldNotFindUser', { userId: discordUserId });
+            }
+        }
+
+        const voiceChannel = member.voice?.channel;
+        if (!voiceChannel) {
+            return Client.client.intlGet(this.guildId, 'commandsVoiceNotInVoice');
+        }
+
+        try {
+            joinVoiceChannel({
+                channelId: voiceChannel.id,
+                guildId: guild.id,
+                adapterCreator: guild.voiceAdapterCreator,
+            });
+        } catch (error) {
+            console.error('Failed to join voice channel:', error);
+            return Client.client.intlGet(this.guildId, 'errorFindingChannel', { error: error.message });
+        }
+
+        Client.client.log(Client.client.intlGet(null, 'infoCap'), Client.client.intlGet(this.guildId, 'commandsVoiceJoin',
+            {
+                name: voiceChannel.name || Client.client.intlGet(this.guildId, 'unknown'),
+                id: voiceChannel.id || Client.client.intlGet(this.guildId, 'unknown'),
+                guild: guild.name || Client.client.intlGet(this.guildId, 'unknown')
+            }
+        ));
+
+        return Client.client.intlGet(this.guildId, 'commandsVoiceBotJoinedVoice');
     }
 
     async getCommandLeader(command, callerSteamId) {

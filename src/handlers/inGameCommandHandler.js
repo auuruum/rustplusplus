@@ -103,6 +103,12 @@ module.exports = {
             commandLowerCase.startsWith(`${prefix}${client.intlGet(guildId, 'commandSyntaxMove')} `)) {
             rustplus.sendInGameMessage(await rustplus.handleMoveCommand(command, callerSteamId, callerName));
         }
+        else if (commandLowerCase === `${prefix}${client.intlGet('en', 'commandSyntaxVoice')}` ||
+            commandLowerCase.startsWith(`${prefix}${client.intlGet('en', 'commandSyntaxVoice')} `) ||
+            commandLowerCase === `${prefix}${client.intlGet(guildId, 'commandSyntaxVoice')}` ||
+            commandLowerCase.startsWith(`${prefix}${client.intlGet(guildId, 'commandSyntaxVoice')} `)) {
+            rustplus.sendInGameMessage(await rustplus.handleVoiceCommand(command, callerSteamId));
+        }
         else if ((commandLowerCase.startsWith(`${prefix}${client.intlGet('en', 'commandSyntaxMarker')} `) ||
             commandLowerCase === `${prefix}${client.intlGet('en', 'commandSyntaxMarkers')}`) ||
             (commandLowerCase.startsWith(`${prefix}${client.intlGet(guildId, 'commandSyntaxMarker')} `) ||
