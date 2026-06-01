@@ -953,6 +953,7 @@
     "cameraPlayersDetected": "Players detected",
     "cameraNoPlayersDetected": "none",
     "cameraUnknownPlayer": "Unknown player",
+    "cameraUnknownPlayerCount": "Unknown player x{count}",
     "cameraUnreachable": "Camera {camera} is unreachable.",
     "cameraMonitoringRequiresInactivePlayer": "Camera monitoring starts only when the paired Rust+ player is offline from the server.",
     "cameraWaitingForPlayerInactive": "Camera monitoring paused because the paired Rust+ player is online on the server.",

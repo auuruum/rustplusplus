@@ -244,14 +244,25 @@ module.exports = {
 
         const camera = server.cameras[identifier];
         const now = Date.now();
-        const detectedPlayers = [];
+        const detectedPlayerNames = [];
+        let unknownPlayerCount = 0;
 
         for (const entity of message.broadcast.cameraRays.entities) {
             if (entity.type !== 2 && entity.type !== 'Player') continue; /* Only Player entities */
-            detectedPlayers.push(entity.name || client.intlGet(null, 'cameraUnknownPlayer'));
+            if (entity.name) {
+                detectedPlayerNames.push(entity.name);
+            }
+            else {
+                unknownPlayerCount += 1;
+            }
         }
 
-        const uniquePlayers = [...new Set(detectedPlayers)];
+        const uniquePlayers = [...new Set(detectedPlayerNames)];
+        if (unknownPlayerCount > 0) {
+            uniquePlayers.push(client.intlGet(null, 'cameraUnknownPlayerCount', {
+                count: `${unknownPlayerCount}`
+            }));
+        }
         rustplus.cameraVisiblePlayers[identifier] = uniquePlayers;
         if (uniquePlayers.length === 0) return;
 
