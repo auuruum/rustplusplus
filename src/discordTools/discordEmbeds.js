@@ -1572,4 +1572,19 @@ module.exports = {
             timestamp: true
         });
     },
+
+    getCameraFrameEmbed: function (guildId, serverId, identifier, cameraName, frame) {
+        const instance = Client.client.getInstance(guildId);
+        const server = instance.serverList[serverId];
+
+        return module.exports.getEmbed({
+            color: Constants.COLOR_DEFAULT,
+            title: `${cameraName}`,
+            description: `**${Client.client.intlGet(guildId, 'camera')}**: \`${identifier}\`\n` +
+                `**${Client.client.intlGet(guildId, 'cameraFrame')}**: \`${frame}\``,
+            image: `attachment://${identifier}.png`,
+            footer: { text: server.title },
+            timestamp: true
+        });
+    },
 }

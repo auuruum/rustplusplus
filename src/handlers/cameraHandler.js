@@ -21,14 +21,17 @@
 
 const Discord = require('discord.js');
 const Fs = require('fs');
+const Jimp = require('jimp');
 const Path = require('path');
 
+const DiscordEmbeds = require('../discordTools/discordEmbeds.js');
 const DiscordMessages = require('../discordTools/discordMessages.js');
 const DiscordTools = require('../discordTools/discordTools.js');
 
-const CAMERA_CYCLING_DWELL_TIME_MS = 5000;
+const CAMERA_FRAME_CAPTURE_TIMEOUT_MS = 15000;
 const CAMERA_CYCLING_GAP_MS = 1000;
 const CAMERA_DEDUP_COOLDOWN_MS = 5 * 60 * 1000; /* 5 minutes */
+const CAMERA_FRAME_SCALE = 4;
 
 module.exports = {
     startCycling: function (rustplus, client) {
@@ -54,7 +57,12 @@ module.exports = {
             rustplus.cameraCyclingTaskId = null;
         }
 
-        if (rustplus.cameraCurrentSubscription !== null) {
+        if (rustplus.cameraCurrentCamera !== null) {
+            rustplus.cameraCurrentCamera.unsubscribe().catch(() => { /* Ignore */ });
+            rustplus.cameraCurrentCamera = null;
+            rustplus.cameraCurrentSubscription = null;
+        }
+        else if (rustplus.cameraCurrentSubscription !== null) {
             rustplus.unsubscribeFromCameraAsync(5000).catch(() => { /* Ignore */ });
             rustplus.cameraCurrentSubscription = null;
         }
@@ -76,13 +84,18 @@ module.exports = {
             return;
         }
 
-        /* Cameras can only be monitored when the Rust+ user is offline/dead */
+        /* Cameras can only be monitored when the Rust+ user is offline */
         const player = rustplus.team ? rustplus.team.getPlayer(rustplus.playerId) : null;
-        if (player && player.isAlive) {
+        if (player && player.isOnline) {
+            if (!rustplus.cameraWaitingForPlayerInactiveLogged) {
+                rustplus.cameraWaitingForPlayerInactiveLogged = true;
+                rustplus.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'cameraWaitingForPlayerInactive'));
+            }
             rustplus.cameraCyclingTaskId = setTimeout(
                 module.exports.cycleStep, CAMERA_CYCLING_GAP_MS, rustplus, client);
             return;
         }
+        rustplus.cameraWaitingForPlayerInactiveLogged = false;
 
         const cameraKeys = Object.keys(server.cameras);
         if (rustplus.cameraCyclingIndex >= cameraKeys.length) {
@@ -101,14 +114,24 @@ module.exports = {
         }
 
         /* Subscribe to the camera */
-        const response = await rustplus.subscribeToCameraAsync(identifier, 10000);
+        if (!rustplus.cameraClients[identifier]) {
+            rustplus.cameraClients[identifier] = rustplus.getCamera(identifier);
+        }
+        const cameraClient = rustplus.cameraClients[identifier];
+        const framePromise = module.exports.waitForCameraFrame(cameraClient, CAMERA_FRAME_CAPTURE_TIMEOUT_MS);
 
-        if (!response || response.error || !(await rustplus.isResponseValid(response))) {
+        try {
+            await cameraClient.subscribe();
+        }
+        catch (e) {
             if (camera.reachable) {
                 camera.reachable = false;
                 client.setInstance(rustplus.guildId, instance);
                 rustplus.log(client.intlGet(null, 'warningCap'),
-                    client.intlGet(null, 'cameraUnreachable', { camera: identifier }));
+                    client.intlGet(null, 'cameraUnreachableWithError', {
+                        camera: identifier,
+                        error: e && e.message ? e.message : `${e}`
+                    }));
             }
 
             rustplus.cameraCyclingIndex++;
@@ -121,16 +144,21 @@ module.exports = {
         client.setInstance(rustplus.guildId, instance);
 
         rustplus.cameraCurrentSubscription = identifier;
+        rustplus.cameraCurrentCamera = cameraClient;
         rustplus.cameraRayDataReceived = false;
 
-        /* Wait for ray data with dwell timeout */
-        await new Promise(resolve => setTimeout(resolve, CAMERA_CYCLING_DWELL_TIME_MS));
-
-        /* Capture a camera frame */
-        await module.exports.captureAndSendFrame(rustplus, client, identifier, camera);
+        const frame = await framePromise;
+        if (frame) {
+            await module.exports.sendFrame(rustplus, client, identifier, camera, frame);
+        }
+        else {
+            rustplus.log(client.intlGet(null, 'warningCap'),
+                client.intlGet(null, 'cameraFrameTimedOut', { camera: identifier }));
+        }
 
         /* Unsubscribe */
-        await rustplus.unsubscribeFromCameraAsync(5000).catch(() => { /* Ignore */ });
+        await cameraClient.unsubscribe().catch(() => { /* Ignore */ });
+        rustplus.cameraCurrentCamera = null;
         rustplus.cameraCurrentSubscription = null;
 
         /* Advance index and schedule next step */
@@ -139,7 +167,17 @@ module.exports = {
             module.exports.cycleStep, CAMERA_CYCLING_GAP_MS, rustplus, client);
     },
 
-    captureAndSendFrame: async function (rustplus, client, identifier, camera) {
+    waitForCameraFrame: function (cameraClient, timeoutMs) {
+        return new Promise(resolve => {
+            const timeoutId = setTimeout(() => resolve(null), timeoutMs);
+            cameraClient.once('render', frame => {
+                clearTimeout(timeoutId);
+                resolve(frame);
+            });
+        });
+    },
+
+    sendFrame: async function (rustplus, client, identifier, camera, frame) {
         const instance = client.getInstance(rustplus.guildId);
         const storedCamera = instance.serverList[rustplus.serverId]?.cameras?.[identifier];
         if (!storedCamera) return;
@@ -147,27 +185,26 @@ module.exports = {
         storedCamera.frame = (storedCamera.frame || 0) + 1;
         client.setInstance(rustplus.guildId, instance);
 
-        const frameResponse = await rustplus.getCameraFrameAsync(identifier, storedCamera.frame, 10000);
-
-        if (!frameResponse || frameResponse.error ||
-            !(await rustplus.isResponseValid(frameResponse)) ||
-            !frameResponse.cameraFrame || !frameResponse.cameraFrame.jpgImage) {
-            return;
-        }
-
-        /* Save JPEG to disk */
+        /* Save upscaled PNG to disk */
         const filePath = Path.join(__dirname, '..', '..', 'cameras',
-            `${rustplus.guildId}_${identifier}.jpg`);
-        Fs.writeFileSync(filePath, frameResponse.cameraFrame.jpgImage);
+            `${rustplus.guildId}_${identifier}.png`);
+        const image = await Jimp.read(frame);
+        image.resize(image.bitmap.width * CAMERA_FRAME_SCALE, image.bitmap.height * CAMERA_FRAME_SCALE,
+            Jimp.RESIZE_NEAREST_NEIGHBOR);
+        Fs.writeFileSync(filePath, await image.getBufferAsync(Jimp.MIME_PNG));
 
         /* Send/update frame in #cameras channel */
         const channelId = instance.channelId.cameras;
         const channel = DiscordTools.getTextChannelById(rustplus.guildId, channelId);
-        if (!channel) return;
+        if (!channel) {
+            rustplus.log(client.intlGet(null, 'warningCap'), client.intlGet(null, 'cameraChannelNotFound'));
+            return;
+        }
 
         const content = {
-            content: `**${storedCamera.name || camera.name}** (\`${identifier}\`)`,
-            files: [new Discord.AttachmentBuilder(filePath, { name: `${identifier}.jpg` })],
+            embeds: [DiscordEmbeds.getCameraFrameEmbed(rustplus.guildId, rustplus.serverId, identifier,
+                storedCamera.name || camera.name, storedCamera.frame)],
+            files: [new Discord.AttachmentBuilder(filePath, { name: `${identifier}.png` })],
         }
 
         if (storedCamera.messageId) {
@@ -184,6 +221,11 @@ module.exports = {
         if (sentMessage) {
             storedCamera.messageId = sentMessage.id;
             client.setInstance(rustplus.guildId, instance);
+        }
+        else {
+            rustplus.log(client.intlGet(null, 'warningCap'), client.intlGet(null, 'cameraFrameSendFailed', {
+                camera: identifier
+            }));
         }
     },
 

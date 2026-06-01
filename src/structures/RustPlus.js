@@ -120,8 +120,10 @@ class RustPlus extends RustPlusLib {
         this.cameraCyclingTaskId = null;
         this.cameraCyclingIndex = 0;
         this.cameraCurrentSubscription = null;
+        this.cameraCurrentCamera = null;
         this.cameraRayDataReceived = false;
         this.cameraSeenPlayers = {};
+        this.cameraClients = {};
 
         /* Rustplus structures */
         this.map = null;            /* Stores the Map structure. */

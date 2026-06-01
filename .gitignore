@@ -12,3 +12,4 @@ data/runtimeData.sqlite-shm
 data/runtimeData.sqlite-wal
 database
 
+/cameras
