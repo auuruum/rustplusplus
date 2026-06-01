@@ -257,20 +257,21 @@ module.exports = {
             }
         }
 
-        const uniquePlayers = [...new Set(detectedPlayerNames)];
+        const uniqueNamedPlayers = [...new Set(detectedPlayerNames)];
+        const visiblePlayers = uniqueNamedPlayers.slice();
         if (unknownPlayerCount > 0) {
-            uniquePlayers.push(client.intlGet(null, 'cameraUnknownPlayerCount', {
+            visiblePlayers.push(client.intlGet(null, 'cameraUnknownPlayerCount', {
                 count: `${unknownPlayerCount}`
             }));
         }
-        rustplus.cameraVisiblePlayers[identifier] = uniquePlayers;
-        if (uniquePlayers.length === 0) return;
+        rustplus.cameraVisiblePlayers[identifier] = visiblePlayers;
+        if (uniqueNamedPlayers.length === 0) return;
 
         const lastAlert = rustplus.cameraLastPlayerAlert[identifier] || 0;
         if (now - lastAlert < CAMERA_DEDUP_COOLDOWN_MS) return;
 
         rustplus.cameraLastPlayerAlert[identifier] = now;
-        const playerText = uniquePlayers.join(', ');
+        const playerText = uniqueNamedPlayers.join(', ');
 
         rustplus.log(client.intlGet(null, 'infoCap'),
             client.intlGet(null, 'cameraPlayerSightedLog', {
