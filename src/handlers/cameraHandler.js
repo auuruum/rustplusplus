@@ -32,7 +32,6 @@ const DiscordTools = require('../discordTools/discordTools.js');
 
 const CAMERA_FRAME_CAPTURE_TIMEOUT_MS = 15000;
 const CAMERA_CYCLING_GAP_MS = 1000;
-const CAMERA_DEDUP_COOLDOWN_MS = 5 * 60 * 1000; /* 5 minutes */
 const CAMERA_FRAME_SCALE = 4;
 
 module.exports = {
@@ -45,7 +44,6 @@ module.exports = {
 
         rustplus.cameraCyclingActive = true;
         rustplus.cameraCyclingIndex = 0;
-        rustplus.cameraSeenPlayers = {};
 
         rustplus.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'cameraCyclingStarted'));
         module.exports.cycleStep(rustplus, client);
@@ -117,14 +115,6 @@ module.exports = {
 
         const identifier = cameraKeys[rustplus.cameraCyclingIndex];
         const camera = server.cameras[identifier];
-
-        /* Prune expired dedup entries */
-        const now = Date.now();
-        for (const key of Object.keys(rustplus.cameraSeenPlayers)) {
-            if (now - rustplus.cameraSeenPlayers[key] > CAMERA_DEDUP_COOLDOWN_MS) {
-                delete rustplus.cameraSeenPlayers[key];
-            }
-        }
 
         /* Subscribe to the camera */
         const cameraClientKey = `${cameraSession.steamId}:${identifier}`;
@@ -370,7 +360,6 @@ module.exports = {
         if (!identifier || !server.cameras[identifier]) return;
 
         const camera = server.cameras[identifier];
-        const now = Date.now();
         const detectedPlayerNames = [];
         let unknownPlayerCount = 0;
 
@@ -401,18 +390,11 @@ module.exports = {
         }
 
         const previousVisibleKeys = rustplus.cameraLastPlayerAlertKey[identifier] || [];
-        const newPlayerKeys = visiblePlayerKeys.filter(key => {
-            if (previousVisibleKeys.includes(key)) return false;
-            const alertKey = `${identifier}:${key}`;
-            return now - (rustplus.cameraSeenPlayers[alertKey] || 0) >= CAMERA_DEDUP_COOLDOWN_MS;
-        });
+        const newPlayerKeys = visiblePlayerKeys.filter(key => !previousVisibleKeys.includes(key));
+        rustplus.cameraLastPlayerAlertKey[identifier] = visiblePlayerKeys;
         if (newPlayerKeys.length === 0) return;
 
-        rustplus.cameraLastPlayerAlert[identifier] = now;
-        rustplus.cameraLastPlayerAlertKey[identifier] = visiblePlayerKeys;
-        for (const key of newPlayerKeys) {
-            rustplus.cameraSeenPlayers[`${identifier}:${key}`] = now;
-        }
+        rustplus.cameraLastPlayerAlert[identifier] = Date.now();
         const newPlayerTexts = visiblePlayers.filter((player, index) => newPlayerKeys.includes(visiblePlayerKeys[index]));
         const playerText = newPlayerTexts.join(', ');
 

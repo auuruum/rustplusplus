@@ -965,7 +965,6 @@ module.exports = async (client, interaction) => {
         if (rustplus && camera.notifyInGame) {
             rustplus.cameraLastPlayerAlert[ids.cameraId] = 0;
             rustplus.cameraLastPlayerAlertKey[ids.cameraId] = [];
-            clearCameraSeenPlayers(rustplus, ids.cameraId);
         }
 
         client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'buttonValueChange', {
@@ -986,7 +985,6 @@ module.exports = async (client, interaction) => {
         if (rustplus && camera.notifyDiscord) {
             rustplus.cameraLastPlayerAlert[ids.cameraId] = 0;
             rustplus.cameraLastPlayerAlertKey[ids.cameraId] = [];
-            clearCameraSeenPlayers(rustplus, ids.cameraId);
         }
 
         client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'buttonValueChange', {
@@ -1348,10 +1346,4 @@ function formatDiscordTime(timestamp) {
     if (!timestamp) return 'unknown';
     const seconds = Math.floor(timestamp / 1000);
     return `<t:${seconds}:f> (<t:${seconds}:R>)`;
-}
-
-function clearCameraSeenPlayers(rustplus, cameraId) {
-    for (const key of Object.keys(rustplus.cameraSeenPlayers || {})) {
-        if (key.startsWith(`${cameraId}:`)) delete rustplus.cameraSeenPlayers[key];
-    }
 }
