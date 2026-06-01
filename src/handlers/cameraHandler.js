@@ -25,6 +25,7 @@ const Jimp = require('jimp');
 const Path = require('path');
 const RustPlusLib = require('@liamcottle/rustplus.js');
 
+const DiscordButtons = require('../discordTools/discordButtons.js');
 const DiscordEmbeds = require('../discordTools/discordEmbeds.js');
 const DiscordMessages = require('../discordTools/discordMessages.js');
 const DiscordTools = require('../discordTools/discordTools.js');
@@ -330,6 +331,7 @@ module.exports = {
             embeds: [DiscordEmbeds.getCameraFrameEmbed(rustplus.guildId, rustplus.serverId, identifier,
                 storedCamera.name || camera.name, storedCamera.frame,
                 rustplus.cameraVisiblePlayers[identifier] || [])],
+            components: [DiscordButtons.getCameraButtons(rustplus.guildId, rustplus.serverId, identifier)],
             files: [new Discord.AttachmentBuilder(filePath, { name: `${identifier}.png` })],
         }
 
@@ -390,13 +392,13 @@ module.exports = {
             }));
         }
         rustplus.cameraVisiblePlayers[identifier] = visiblePlayers;
-        if (uniqueNamedPlayers.length === 0) return;
+        if (visiblePlayers.length === 0) return;
 
         const lastAlert = rustplus.cameraLastPlayerAlert[identifier] || 0;
         if (now - lastAlert < CAMERA_DEDUP_COOLDOWN_MS) return;
 
         rustplus.cameraLastPlayerAlert[identifier] = now;
-        const playerText = uniqueNamedPlayers.join(', ');
+        const playerText = visiblePlayers.join(', ');
 
         rustplus.log(client.intlGet(null, 'infoCap'),
             client.intlGet(null, 'cameraPlayerSightedLog', {
@@ -404,7 +406,25 @@ module.exports = {
                 camera: camera.name
             }));
 
-        await DiscordMessages.sendCameraPlayerSightingMessage(
-            rustplus.guildId, serverId, identifier, camera.name, playerText);
+        if (camera.notifyDiscord) {
+            await DiscordMessages.sendActivityNotificationMessage(
+                rustplus.guildId,
+                serverId,
+                '#CE412B',
+                client.intlGet(rustplus.guildId, 'cameraPlayerSightedActivity', {
+                    player: playerText,
+                    camera: `${camera.name} (${identifier})`
+                }),
+                null,
+                client.intlGet(rustplus.guildId, 'cameraPlayerSighted')
+            );
+        }
+
+        if (camera.notifyInGame) {
+            rustplus.sendInGameMessage(client.intlGet(rustplus.guildId, 'cameraPlayerSightedInGame', {
+                player: playerText,
+                camera: `${camera.name} (${identifier})`
+            }));
+        }
     }
 };

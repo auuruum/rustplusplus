@@ -285,6 +285,24 @@ module.exports = {
             }));
     },
 
+    getCameraButtons: function (guildId, serverId, cameraId) {
+        const instance = Client.client.getInstance(guildId);
+        const camera = instance.serverList[serverId].cameras[cameraId];
+        const identifier = JSON.stringify({ "serverId": serverId, "cameraId": cameraId });
+
+        return new Discord.ActionRowBuilder().addComponents(
+            module.exports.getButton({
+                customId: `CameraNotifyInGame${identifier}`,
+                label: Client.client.intlGet(guildId, 'inGameCap'),
+                style: camera.notifyInGame ? SUCCESS : DANGER
+            }),
+            module.exports.getButton({
+                customId: `CameraNotifyDiscord${identifier}`,
+                label: Client.client.intlGet(guildId, 'discordCap'),
+                style: camera.notifyDiscord ? SUCCESS : DANGER
+            }));
+    },
+
     getRecycleDeleteButton: function () {
         return new Discord.ActionRowBuilder().addComponents(
             module.exports.getButton({

@@ -947,6 +947,8 @@
     "cameraListTitle": "Monitored Cameras",
     "cameraPlayerSighted": "Player Spotted",
     "cameraPlayerSightedLog": "Player {player} spotted on camera {camera}.",
+    "cameraPlayerSightedActivity": "{player} spotted on camera {camera}.",
+    "cameraPlayerSightedInGame": "{player} spotted on camera {camera}.",
     "cameraRemoved": "Camera `{identifier}` removed from monitoring.",
     "cameraPlayer": "Player",
     "cameraFrame": "Frame",

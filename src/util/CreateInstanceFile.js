@@ -235,6 +235,8 @@ module.exports = (client, guild) => {
         for (const camera of Object.values(content.cameras)) {
             if (!camera.hasOwnProperty('frame')) camera.frame = 0;
             if (!camera.hasOwnProperty('messageId')) camera.messageId = null;
+            if (!camera.hasOwnProperty('notifyInGame')) camera.notifyInGame = false;
+            if (!camera.hasOwnProperty('notifyDiscord')) camera.notifyDiscord = false;
         }
     }
 

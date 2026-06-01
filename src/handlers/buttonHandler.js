@@ -956,6 +956,40 @@ module.exports = async (client, interaction) => {
         delete server.storageMonitors[ids.entityId];
         client.setInstance(guildId, instance);
     }
+    else if (interaction.customId.startsWith('CameraNotifyInGame')) {
+        const ids = JSON.parse(interaction.customId.replace('CameraNotifyInGame', ''));
+        const camera = instance.serverList[ids.serverId].cameras[ids.cameraId];
+
+        camera.notifyInGame = !camera.notifyInGame;
+        client.setInstance(guildId, instance);
+        if (rustplus && camera.notifyInGame) rustplus.cameraLastPlayerAlert[ids.cameraId] = 0;
+
+        client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'buttonValueChange', {
+            id: `${verifyId}`,
+            value: `camera, ${ids.cameraId}, inGame, ${camera.notifyInGame}`
+        }));
+
+        await client.interactionUpdate(interaction, {
+            components: [DiscordButtons.getCameraButtons(guildId, ids.serverId, ids.cameraId)]
+        });
+    }
+    else if (interaction.customId.startsWith('CameraNotifyDiscord')) {
+        const ids = JSON.parse(interaction.customId.replace('CameraNotifyDiscord', ''));
+        const camera = instance.serverList[ids.serverId].cameras[ids.cameraId];
+
+        camera.notifyDiscord = !camera.notifyDiscord;
+        client.setInstance(guildId, instance);
+        if (rustplus && camera.notifyDiscord) rustplus.cameraLastPlayerAlert[ids.cameraId] = 0;
+
+        client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'buttonValueChange', {
+            id: `${verifyId}`,
+            value: `camera, ${ids.cameraId}, discord, ${camera.notifyDiscord}`
+        }));
+
+        await client.interactionUpdate(interaction, {
+            components: [DiscordButtons.getCameraButtons(guildId, ids.serverId, ids.cameraId)]
+        });
+    }
     else if (interaction.customId === 'RecycleDelete') {
         if (Config.discord.needAdminPrivileges && !client.isAdministrator(interaction)) {
             interaction.deferUpdate();

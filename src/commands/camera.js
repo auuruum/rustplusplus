@@ -109,7 +109,9 @@ module.exports = {
                     name: name,
                     reachable: true,
                     frame: 0,
-                    messageId: null
+                    messageId: null,
+                    notifyInGame: false,
+                    notifyDiscord: false
                 };
                 client.setInstance(interaction.guildId, instance);
 
