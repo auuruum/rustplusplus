@@ -1293,9 +1293,6 @@ function processItemDurability(rustlabsName, shortname, name, data, type = 'item
             invalidateRow(`unknown tool id (${toolShortname} / ${toolName})`);
         }
         if (rowInvalid) continue;
-            console.error(`Tool ID not found for ${toolShortname} - ${toolName}`);
-            continue; // Skip this iteration and continue with the next match
-        }
 
         /* Caption in tool name */
         let captionInTool = null;
