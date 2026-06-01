@@ -40,8 +40,6 @@ module.exports = async (client, guild, category) => {
         'storageMonitors', client, guild, category);
     await addTextChannel(client.intlGet(guild.id, 'channelNameActivity'), 'activity', client, guild, category);
     await addTextChannel(client.intlGet(guild.id, 'channelNameTrackers'), 'trackers', client, guild, category);
-    await addTextChannel(client.intlGet(guild.id, 'channelNameLinking'), 'linking', client, guild, category);
-    await addTextChannel(client.intlGet(guild.id, 'channelNameRaidAlerts'), 'raidAlerts', client, guild, category);
     await addTextChannel(client.intlGet(guild.id, 'channelNameCameras'), 'cameras', client, guild, category);
 };
 

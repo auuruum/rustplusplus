@@ -47,8 +47,6 @@ module.exports = (client, guild) => {
                 storageMonitors: null,
                 activity: null,
                 trackers: null,
-                linking: null,
-                raidAlerts: null,
                 cameras: null
             },
             informationMessageId: {
@@ -137,8 +135,6 @@ module.exports = (client, guild) => {
                 storageMonitors: null,
                 activity: null,
                 trackers: null,
-                linking: null,
-                raidAlerts: null,
                 cameras: null
             }
         }
@@ -156,8 +152,6 @@ module.exports = (client, guild) => {
             if (!instance.channelId.hasOwnProperty('storageMonitors')) instance.channelId.storageMonitors = null;
             if (!instance.channelId.hasOwnProperty('activity')) instance.channelId.activity = null;
             if (!instance.channelId.hasOwnProperty('trackers')) instance.channelId.trackers = null;
-            if (!instance.channelId.hasOwnProperty('linking')) instance.channelId.linking = null;
-            if (!instance.channelId.hasOwnProperty('raidAlerts')) instance.channelId.raidAlerts = null;
             if (!instance.channelId.hasOwnProperty('cameras')) instance.channelId.cameras = null;
         }
 

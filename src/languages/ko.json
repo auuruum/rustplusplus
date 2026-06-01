@@ -844,8 +844,6 @@
     "yield": "Yield",
     "youAreAlreadyLeader": "당신은 이미 팀 리더 입니다.",
     "youAreNotPairedWithServer": "서버와 페어링되지 않았기 때문에 리더 명령어가 작동하지 않습니다.",
-    "channelNameLinking": "linking",
-    "channelNameRaidAlerts": "raid-alerts",
     "channelNameCameras": "cameras",
     "camera": "Camera",
     "cameraAdded": "Camera `{name} ({identifier})` added to monitoring.",

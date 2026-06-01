@@ -72,6 +72,17 @@ module.exports = {
         }
 
         const serverId = rustplus.serverId;
+        const server = instance.serverList[serverId];
+        if (!server) {
+            const str = client.intlGet(interaction.guildId, 'activeRustServerNotFound');
+            await client.interactionEditReply(interaction, DiscordEmbeds.getActionInfoEmbed(1, str));
+            client.log(client.intlGet(null, 'warningCap'), str);
+            return;
+        }
+        if (!server.cameras) {
+            server.cameras = {};
+            client.setInstance(interaction.guildId, instance);
+        }
 
         switch (interaction.options.getSubcommand()) {
             case 'add': {
@@ -84,7 +95,7 @@ module.exports = {
                     return;
                 }
 
-                if (instance.serverList[serverId].cameras.hasOwnProperty(identifier)) {
+                if (server.cameras.hasOwnProperty(identifier)) {
                     const str = client.intlGet(interaction.guildId, 'cameraAlreadyExists', {
                         identifier: identifier
                     });
@@ -93,7 +104,7 @@ module.exports = {
                     return;
                 }
 
-                instance.serverList[serverId].cameras[identifier] = {
+                server.cameras[identifier] = {
                     identifier: identifier,
                     name: name,
                     reachable: true,
@@ -112,7 +123,7 @@ module.exports = {
                     identifier: identifier
                 });
                 await client.interactionEditReply(interaction, DiscordEmbeds.getActionInfoEmbed(0, str,
-                    instance.serverList[serverId].title));
+                    server.title));
                 rustplus.log(client.intlGet(interaction.guildId, 'infoCap'), str);
 
                 client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'slashCommandValueChange', {
@@ -124,7 +135,7 @@ module.exports = {
             case 'remove': {
                 const identifier = interaction.options.getString('identifier');
 
-                if (!instance.serverList[serverId].cameras.hasOwnProperty(identifier)) {
+                if (!server.cameras.hasOwnProperty(identifier)) {
                     const str = client.intlGet(interaction.guildId, 'cameraDoesNotExist', {
                         identifier: identifier
                     });
@@ -133,10 +144,10 @@ module.exports = {
                     return;
                 }
 
-                delete instance.serverList[serverId].cameras[identifier];
+                delete server.cameras[identifier];
                 client.setInstance(interaction.guildId, instance);
 
-                if (Object.keys(instance.serverList[serverId].cameras).length === 0) {
+                if (Object.keys(server.cameras).length === 0) {
                     const CameraHandler = require('../handlers/cameraHandler.js');
                     CameraHandler.stopCycling(rustplus);
                 }
@@ -145,7 +156,7 @@ module.exports = {
                     identifier: identifier
                 });
                 await client.interactionEditReply(interaction, DiscordEmbeds.getActionInfoEmbed(0, str,
-                    instance.serverList[serverId].title));
+                    server.title));
                 rustplus.log(client.intlGet(interaction.guildId, 'infoCap'), str);
 
                 client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'slashCommandValueChange', {
@@ -155,7 +166,7 @@ module.exports = {
             } break;
 
             case 'list': {
-                const cameras = instance.serverList[serverId].cameras;
+                const cameras = server.cameras;
                 const cameraKeys = Object.keys(cameras);
 
                 if (cameraKeys.length === 0) {
@@ -185,7 +196,7 @@ module.exports = {
                     embeds: [DiscordEmbeds.getEmbed({
                         color: Constants.COLOR_DEFAULT,
                         title: client.intlGet(interaction.guildId, 'cameraListTitle'),
-                        footer: { text: instance.serverList[serverId].title },
+                        footer: { text: server.title },
                         fields: fields
                     })],
                     ephemeral: true

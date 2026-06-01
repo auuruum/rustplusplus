@@ -844,8 +844,6 @@
     "yield": "Teslim Ol",
     "youAreAlreadyLeader": "Zaten lidersin.",
     "youAreNotPairedWithServer": "Sunucuyla eşleşmediğiniz için lider komutu çalışmıyor.",
-    "channelNameLinking": "linking",
-    "channelNameRaidAlerts": "raid-alerts",
     "channelNameCameras": "cameras",
     "camera": "Camera",
     "cameraAdded": "Camera `{name} ({identifier})` added to monitoring.",

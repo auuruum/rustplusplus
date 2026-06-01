@@ -834,8 +834,6 @@
     "yield": "Úrodnost",
     "youAreAlreadyLeader": "Už jsi vůdce.",
     "youAreNotPairedWithServer": "Příkaz na vůdce nefunguje, protože nejsi spárován se serverem.",
-    "channelNameLinking": "linking",
-    "channelNameRaidAlerts": "raid-alerts",
     "channelNameCameras": "cameras",
     "camera": "Camera",
     "cameraAdded": "Camera `{name} ({identifier})` added to monitoring.",

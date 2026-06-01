@@ -58,12 +58,6 @@ module.exports = {
 				.setName('trackers')
 				.setDescription(client.intlGet(guildId, 'commandsResetTrackersDesc')))
 			.addSubcommand(subcommand => subcommand
-				.setName('linking')
-				.setDescription(client.intlGet(guildId, 'commandsResetLinkingDesc')))
-			.addSubcommand(subcommand => subcommand
-				.setName('raidalerts')
-				.setDescription(client.intlGet(guildId, 'commandsResetRaidAlertsDesc')))
-			.addSubcommand(subcommand => subcommand
 				.setName('cameras')
 				.setDescription(client.intlGet(guildId, 'commandsResetCamerasDesc')));
 	},
@@ -105,8 +99,6 @@ module.exports = {
 				await DiscordTools.clearTextChannel(guild.id, instance.channelId.switches, 100);
 				await DiscordTools.clearTextChannel(guild.id, instance.channelId.switchGroups, 100);
 				await DiscordTools.clearTextChannel(guild.id, instance.channelId.storageMonitors, 100);
-				await DiscordTools.clearTextChannel(guild.id, instance.channelId.linking, 100);
-				await DiscordTools.clearTextChannel(guild.id, instance.channelId.raidAlerts, 100);
 				await DiscordTools.clearTextChannel(guild.id, instance.channelId.cameras, 100);
 
 				instance.informationMessageId.map = null;
@@ -289,29 +281,6 @@ module.exports = {
 				client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'slashCommandValueChange', {
 					id: `${verifyId}`,
 					value: `trackers`
-				}));
-			} break;
-
-			case 'linking': {
-				await DiscordTools.clearTextChannel(guild.id, instance.channelId.linking, 100);
-
-				const rustplus = client.rustplusInstances[guild.id];
-				if (rustplus && rustplus.isOperational) {
-					await require('../discordTools/SetupLinking')(client, rustplus);
-				}
-
-				client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'slashCommandValueChange', {
-					id: `${verifyId}`,
-					value: `linking`
-				}));
-			} break;
-
-			case 'raidalerts': {
-				await DiscordTools.clearTextChannel(guild.id, instance.channelId.raidAlerts, 100);
-
-				client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'slashCommandValueChange', {
-					id: `${verifyId}`,
-					value: `raidalerts`
 				}));
 			} break;
 

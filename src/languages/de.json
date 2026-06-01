@@ -857,8 +857,6 @@
     "duration": "Dauer",
     "confidence": "Zuverlässigkeit",
     "hours": "Stunden",
-    "channelNameLinking": "linking",
-    "channelNameRaidAlerts": "raid-alerts",
     "channelNameCameras": "cameras",
     "camera": "Camera",
     "cameraAdded": "Camera `{name} ({identifier})` added to monitoring.",

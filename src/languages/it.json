@@ -842,8 +842,6 @@
     "yield": "Yield",
     "youAreAlreadyLeader": "Sei già il leader.",
     "youAreNotPairedWithServer": "Il comando del leader non funziona perché non sei associato al server.",
-    "channelNameLinking": "linking",
-    "channelNameRaidAlerts": "raid-alerts",
     "channelNameCameras": "cameras",
     "camera": "Camera",
     "cameraAdded": "Camera `{name} ({identifier})` added to monitoring.",

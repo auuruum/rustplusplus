@@ -66,6 +66,7 @@ module.exports = {
 
         /* Successful connection — reset the backoff counter. */
         client.rustplusReconnectAttempts[guildId] = 0;
+        rustplus.isOperational = true;
 
         rustplus.log(client.intlGet(null, 'connectedCap'), client.intlGet(null, 'rustplusOperational'));
 
@@ -119,7 +120,6 @@ module.exports = {
         rustplus.restorePersistentRuntimeState();
         rustplus.persistMapMarkersRuntimeState();
         rustplus.pollingTaskId = setInterval(PollingHandler.pollingHandler, client.pollingIntervalMs, rustplus, client);
-        rustplus.isOperational = true;
 
         /* Start camera cycling if cameras exist */
         const CameraHandler = require('../handlers/cameraHandler.js');

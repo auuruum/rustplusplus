@@ -858,8 +858,6 @@
     "duration": "Varaktighet",
     "confidence": "Tillförlitlighet",
     "hours": "timmar",
-    "channelNameLinking": "linking",
-    "channelNameRaidAlerts": "raid-alerts",
     "channelNameCameras": "cameras",
     "camera": "Camera",
     "cameraAdded": "Camera `{name} ({identifier})` added to monitoring.",

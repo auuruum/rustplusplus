@@ -836,8 +836,6 @@
     "yield": "Plon",
     "youAreAlreadyLeader": "Jesteś już liderem.",
     "youAreNotPairedWithServer": "Komenda leader nie działa, ponieważ nie jesteś sparowany z serwerem.",
-    "channelNameLinking": "linking",
-    "channelNameRaidAlerts": "raid-alerts",
     "channelNameCameras": "cameras",
     "camera": "Camera",
     "cameraAdded": "Camera `{name} ({identifier})` added to monitoring.",
