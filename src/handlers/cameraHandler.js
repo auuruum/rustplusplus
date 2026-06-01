@@ -23,6 +23,7 @@ const Discord = require('discord.js');
 const Fs = require('fs');
 const Jimp = require('jimp');
 const Path = require('path');
+const RustPlusLib = require('@liamcottle/rustplus.js');
 
 const DiscordEmbeds = require('../discordTools/discordEmbeds.js');
 const DiscordMessages = require('../discordTools/discordMessages.js');
@@ -66,6 +67,18 @@ module.exports = {
             rustplus.unsubscribeFromCameraAsync(5000).catch(() => { /* Ignore */ });
             rustplus.cameraCurrentSubscription = null;
         }
+        for (const cameraClient of Object.values(rustplus.cameraClients || {})) {
+            if (cameraClient && cameraClient.isSubscribed) {
+                cameraClient.unsubscribe().catch(() => { /* Ignore */ });
+            }
+        }
+        for (const credentialClient of Object.values(rustplus.cameraCredentialClients || {})) {
+            if (credentialClient && credentialClient.websocket) {
+                credentialClient.disconnect();
+            }
+        }
+        rustplus.cameraClients = {};
+        rustplus.cameraCredentialClients = {};
 
         rustplus.cameraCyclingActive = false;
         rustplus.cameraRayDataReceived = false;
@@ -84,9 +97,8 @@ module.exports = {
             return;
         }
 
-        /* Cameras can only be monitored when the Rust+ user is offline */
-        const player = rustplus.team ? rustplus.team.getPlayer(rustplus.playerId) : null;
-        if (player && player.isOnline) {
+        const cameraSession = await module.exports.getCameraSession(rustplus, client, instance);
+        if (!cameraSession) {
             if (!rustplus.cameraWaitingForPlayerInactiveLogged) {
                 rustplus.cameraWaitingForPlayerInactiveLogged = true;
                 rustplus.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'cameraWaitingForPlayerInactive'));
@@ -114,23 +126,33 @@ module.exports = {
         }
 
         /* Subscribe to the camera */
-        if (!rustplus.cameraClients[identifier]) {
-            rustplus.cameraClients[identifier] = rustplus.getCamera(identifier);
+        const cameraClientKey = `${cameraSession.steamId}:${identifier}`;
+        if (!rustplus.cameraClients[cameraClientKey]) {
+            rustplus.cameraClients[cameraClientKey] = cameraSession.session.getCamera(identifier);
         }
-        const cameraClient = rustplus.cameraClients[identifier];
+        const cameraClient = rustplus.cameraClients[cameraClientKey];
         const framePromise = module.exports.waitForCameraFrame(cameraClient, CAMERA_FRAME_CAPTURE_TIMEOUT_MS);
+        const onCameraMessage = async message => {
+            await module.exports.processCameraRays(rustplus, client, message);
+        };
+        if (cameraSession.session !== rustplus) {
+            cameraSession.session.on('message', onCameraMessage);
+        }
 
         try {
             await cameraClient.subscribe();
         }
         catch (e) {
+            if (cameraSession.session !== rustplus) {
+                cameraSession.session.off('message', onCameraMessage);
+            }
             if (camera.reachable) {
                 camera.reachable = false;
                 client.setInstance(rustplus.guildId, instance);
                 rustplus.log(client.intlGet(null, 'warningCap'),
                     client.intlGet(null, 'cameraUnreachableWithError', {
                         camera: identifier,
-                        error: e && e.message ? e.message : `${e}`
+                        error: module.exports.formatError(e)
                     }));
             }
 
@@ -158,6 +180,9 @@ module.exports = {
 
         /* Unsubscribe */
         await cameraClient.unsubscribe().catch(() => { /* Ignore */ });
+        if (cameraSession.session !== rustplus) {
+            cameraSession.session.off('message', onCameraMessage);
+        }
         rustplus.cameraCurrentCamera = null;
         rustplus.cameraCurrentSubscription = null;
 
@@ -165,6 +190,106 @@ module.exports = {
         rustplus.cameraCyclingIndex++;
         rustplus.cameraCyclingTaskId = setTimeout(
             module.exports.cycleStep, CAMERA_CYCLING_GAP_MS, rustplus, client);
+    },
+
+    getCameraSession: async function (rustplus, client, instance) {
+        const player = rustplus.team ? rustplus.team.getPlayer(rustplus.playerId) : null;
+        if (!player || !player.isOnline) {
+            return {
+                session: rustplus,
+                steamId: rustplus.playerId
+            };
+        }
+
+        const liteServers = instance.serverListLite || {};
+        const liteCredentials = liteServers[rustplus.serverId] || {};
+        for (const [steamId, serverLite] of Object.entries(liteCredentials)) {
+            if (steamId === rustplus.playerId) continue;
+
+            const teamPlayer = rustplus.team ? rustplus.team.getPlayer(steamId) : null;
+            if (teamPlayer && teamPlayer.isOnline) continue;
+
+            const session = await module.exports.getCredentialCameraClient(rustplus, steamId, serverLite);
+            if (!session) continue;
+
+            if (rustplus.cameraCredentialSteamId !== steamId) {
+                rustplus.cameraCredentialSteamId = steamId;
+                rustplus.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'cameraUsingAlternateCredentials', {
+                    steamId: steamId
+                }));
+            }
+
+            return {
+                session: session,
+                steamId: steamId
+            };
+        }
+
+        return null;
+    },
+
+    getCredentialCameraClient: async function (rustplus, steamId, serverLite) {
+        if (rustplus.cameraCredentialClients[steamId]) {
+            const client = rustplus.cameraCredentialClients[steamId];
+            if (client.websocket && client.websocket.readyState === 1) return client;
+            client.disconnect();
+            delete rustplus.cameraCredentialClients[steamId];
+        }
+
+        const client = new RustPlusLib(
+            serverLite.serverIp,
+            serverLite.appPort,
+            serverLite.steamId,
+            serverLite.playerToken
+        );
+
+        try {
+            await module.exports.connectCameraCredentialClient(client);
+            await client.sendRequestAsync({ getInfo: {} }, 10000);
+        }
+        catch (e) {
+            client.disconnect();
+            return null;
+        }
+
+        rustplus.cameraCredentialClients[steamId] = client;
+        return client;
+    },
+
+    connectCameraCredentialClient: function (client) {
+        return new Promise((resolve, reject) => {
+            const timeoutId = setTimeout(() => {
+                cleanup();
+                reject(new Error('Timeout reached while connecting camera credential'));
+            }, 15000);
+            const cleanup = () => {
+                clearTimeout(timeoutId);
+                client.off('connected', onConnected);
+                client.off('error', onError);
+            };
+            const onConnected = () => {
+                cleanup();
+                resolve();
+            };
+            const onError = error => {
+                cleanup();
+                reject(error);
+            };
+            client.once('connected', onConnected);
+            client.once('error', onError);
+            client.connect();
+        });
+    },
+
+    formatError: function (error) {
+        if (!error) return 'unknown error';
+        if (error.message) return error.message;
+        try {
+            return JSON.stringify(error);
+        }
+        catch (e) {
+            return `${error}`;
+        }
     },
 
     waitForCameraFrame: function (cameraClient, timeoutMs) {
