@@ -1573,15 +1573,19 @@ module.exports = {
         });
     },
 
-    getCameraFrameEmbed: function (guildId, serverId, identifier, cameraName, frame) {
+    getCameraFrameEmbed: function (guildId, serverId, identifier, cameraName, frame, players = []) {
         const instance = Client.client.getInstance(guildId);
         const server = instance.serverList[serverId];
+        const playerText = players.length === 0 ?
+            Client.client.intlGet(guildId, 'cameraNoPlayersDetected') :
+            players.map(player => `\`${player}\``).join(', ');
 
         return module.exports.getEmbed({
             color: Constants.COLOR_DEFAULT,
             title: `${cameraName}`,
             description: `**${Client.client.intlGet(guildId, 'camera')}**: \`${identifier}\`\n` +
-                `**${Client.client.intlGet(guildId, 'cameraFrame')}**: \`${frame}\``,
+                `**${Client.client.intlGet(guildId, 'cameraFrame')}**: \`${frame}\`\n` +
+                `**${Client.client.intlGet(guildId, 'cameraPlayersDetected')}**: ${playerText}`,
             image: `attachment://${identifier}.png`,
             footer: { text: server.title },
             timestamp: true

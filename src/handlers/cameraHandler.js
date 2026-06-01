@@ -203,7 +203,8 @@ module.exports = {
 
         const content = {
             embeds: [DiscordEmbeds.getCameraFrameEmbed(rustplus.guildId, rustplus.serverId, identifier,
-                storedCamera.name || camera.name, storedCamera.frame)],
+                storedCamera.name || camera.name, storedCamera.frame,
+                rustplus.cameraVisiblePlayers[identifier] || [])],
             files: [new Discord.AttachmentBuilder(filePath, { name: `${identifier}.png` })],
         }
 
@@ -243,28 +244,30 @@ module.exports = {
 
         const camera = server.cameras[identifier];
         const now = Date.now();
+        const detectedPlayers = [];
 
         for (const entity of message.broadcast.cameraRays.entities) {
-            if (entity.type !== 2) continue; /* Only Player entities */
-            if (!entity.name) continue;
-
-            const dedupKey = `${identifier}:${entity.name}`;
-            const lastSeen = rustplus.cameraSeenPlayers[dedupKey];
-
-            if (lastSeen && (now - lastSeen < CAMERA_DEDUP_COOLDOWN_MS)) {
-                continue; /* Within cooldown, skip Discord notification */
-            }
-
-            rustplus.cameraSeenPlayers[dedupKey] = now;
-
-            rustplus.log(client.intlGet(null, 'infoCap'),
-                client.intlGet(null, 'cameraPlayerSightedLog', {
-                    player: entity.name,
-                    camera: camera.name
-                }));
-
-            await DiscordMessages.sendCameraPlayerSightingMessage(
-                rustplus.guildId, serverId, identifier, camera.name, entity.name);
+            if (entity.type !== 2 && entity.type !== 'Player') continue; /* Only Player entities */
+            detectedPlayers.push(entity.name || client.intlGet(null, 'cameraUnknownPlayer'));
         }
+
+        const uniquePlayers = [...new Set(detectedPlayers)];
+        rustplus.cameraVisiblePlayers[identifier] = uniquePlayers;
+        if (uniquePlayers.length === 0) return;
+
+        const lastAlert = rustplus.cameraLastPlayerAlert[identifier] || 0;
+        if (now - lastAlert < CAMERA_DEDUP_COOLDOWN_MS) return;
+
+        rustplus.cameraLastPlayerAlert[identifier] = now;
+        const playerText = uniquePlayers.join(', ');
+
+        rustplus.log(client.intlGet(null, 'infoCap'),
+            client.intlGet(null, 'cameraPlayerSightedLog', {
+                player: playerText,
+                camera: camera.name
+            }));
+
+        await DiscordMessages.sendCameraPlayerSightingMessage(
+            rustplus.guildId, serverId, identifier, camera.name, playerText);
     }
 };
