@@ -386,19 +386,35 @@ module.exports = {
 
         const uniqueNamedPlayers = [...new Set(detectedPlayerNames)];
         const visiblePlayers = uniqueNamedPlayers.slice();
+        const visiblePlayerKeys = uniqueNamedPlayers.map(player => `name:${player}`);
         if (unknownPlayerCount > 0) {
             visiblePlayers.push(client.intlGet(null, 'cameraUnknownPlayerCount', {
                 count: `${unknownPlayerCount}`
             }));
+            visiblePlayerKeys.push('unknown');
         }
         rustplus.cameraVisiblePlayers[identifier] = visiblePlayers;
-        if (visiblePlayers.length === 0) return;
+        rustplus.cameraVisiblePlayerKeys[identifier] = visiblePlayerKeys;
+        if (visiblePlayerKeys.length === 0) {
+            rustplus.cameraLastPlayerAlertKey[identifier] = [];
+            return;
+        }
 
-        const lastAlert = rustplus.cameraLastPlayerAlert[identifier] || 0;
-        if (now - lastAlert < CAMERA_DEDUP_COOLDOWN_MS) return;
+        const previousVisibleKeys = rustplus.cameraLastPlayerAlertKey[identifier] || [];
+        const newPlayerKeys = visiblePlayerKeys.filter(key => {
+            if (previousVisibleKeys.includes(key)) return false;
+            const alertKey = `${identifier}:${key}`;
+            return now - (rustplus.cameraSeenPlayers[alertKey] || 0) >= CAMERA_DEDUP_COOLDOWN_MS;
+        });
+        if (newPlayerKeys.length === 0) return;
 
         rustplus.cameraLastPlayerAlert[identifier] = now;
-        const playerText = visiblePlayers.join(', ');
+        rustplus.cameraLastPlayerAlertKey[identifier] = visiblePlayerKeys;
+        for (const key of newPlayerKeys) {
+            rustplus.cameraSeenPlayers[`${identifier}:${key}`] = now;
+        }
+        const newPlayerTexts = visiblePlayers.filter((player, index) => newPlayerKeys.includes(visiblePlayerKeys[index]));
+        const playerText = newPlayerTexts.join(', ');
 
         rustplus.log(client.intlGet(null, 'infoCap'),
             client.intlGet(null, 'cameraPlayerSightedLog', {

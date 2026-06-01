@@ -126,7 +126,9 @@ class RustPlus extends RustPlusLib {
         this.cameraClients = {};
         this.cameraCredentialClients = {};
         this.cameraVisiblePlayers = {};
+        this.cameraVisiblePlayerKeys = {};
         this.cameraLastPlayerAlert = {};
+        this.cameraLastPlayerAlertKey = {};
 
         /* Rustplus structures */
         this.map = null;            /* Stores the Map structure. */
