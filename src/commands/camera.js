@@ -111,7 +111,9 @@ module.exports = {
                     frame: 0,
                     messageId: null,
                     notifyInGame: false,
-                    notifyDiscord: false
+                    notifyDiscord: false,
+                    mode: 'slow',
+                    refreshRequested: true
                 };
                 client.setInstance(interaction.guildId, instance);
 

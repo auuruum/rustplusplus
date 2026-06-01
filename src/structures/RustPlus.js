@@ -122,10 +122,12 @@ class RustPlus extends RustPlusLib {
         this.cameraCurrentSubscription = null;
         this.cameraCurrentCamera = null;
         this.cameraRayDataReceived = false;
+        this.cameraRayDataCamera = null;
         this.cameraClients = {};
         this.cameraCredentialClients = {};
         this.cameraVisiblePlayers = {};
         this.cameraVisiblePlayerKeys = {};
+        this.cameraDisplayedPlayerKeys = {};
         this.cameraLastPlayerAlert = {};
         this.cameraLastPlayerAlertKey = {};
 

@@ -300,6 +300,18 @@ module.exports = {
                 customId: `CameraNotifyDiscord${identifier}`,
                 label: Client.client.intlGet(guildId, 'discordCap'),
                 style: camera.notifyDiscord ? SUCCESS : DANGER
+            }),
+            module.exports.getButton({
+                customId: `CameraMode${identifier}`,
+                label: camera.mode === 'realtime' ?
+                    Client.client.intlGet(guildId, 'cameraModeRealtime') :
+                    Client.client.intlGet(guildId, 'cameraModeSlow'),
+                style: camera.mode === 'realtime' ? PRIMARY : SECONDARY
+            }),
+            module.exports.getButton({
+                customId: `CameraRefresh${identifier}`,
+                label: Client.client.intlGet(guildId, 'cameraRefresh'),
+                style: SECONDARY
             }));
     },
 

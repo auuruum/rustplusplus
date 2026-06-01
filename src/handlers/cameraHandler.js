@@ -81,6 +81,7 @@ module.exports = {
 
         rustplus.cameraCyclingActive = false;
         rustplus.cameraRayDataReceived = false;
+        rustplus.cameraRayDataCamera = null;
     },
 
     cycleStep: async function (rustplus, client) {
@@ -130,6 +131,10 @@ module.exports = {
             cameraSession.session.on('message', onCameraMessage);
         }
 
+        rustplus.cameraCurrentSubscription = identifier;
+        rustplus.cameraCurrentCamera = cameraClient;
+        rustplus.cameraRayDataReceived = false;
+
         try {
             await cameraClient.subscribe();
         }
@@ -137,6 +142,8 @@ module.exports = {
             if (cameraSession.session !== rustplus) {
                 cameraSession.session.off('message', onCameraMessage);
             }
+            rustplus.cameraCurrentCamera = null;
+            rustplus.cameraCurrentSubscription = null;
             if (camera.reachable) {
                 camera.reachable = false;
                 client.setInstance(rustplus.guildId, instance);
@@ -156,12 +163,9 @@ module.exports = {
         camera.reachable = true;
         client.setInstance(rustplus.guildId, instance);
 
-        rustplus.cameraCurrentSubscription = identifier;
-        rustplus.cameraCurrentCamera = cameraClient;
-        rustplus.cameraRayDataReceived = false;
-
         const frame = await framePromise;
         if (frame) {
+            await module.exports.waitForCameraRays(rustplus, identifier, 250);
             await module.exports.sendFrame(rustplus, client, identifier, camera, frame);
         }
         else {
@@ -293,12 +297,39 @@ module.exports = {
         });
     },
 
+    waitForCameraRays: function (rustplus, identifier, timeoutMs) {
+        if (rustplus.cameraRayDataReceived && rustplus.cameraRayDataCamera === identifier) {
+            return Promise.resolve();
+        }
+
+        return new Promise(resolve => {
+            const startedAt = Date.now();
+            const intervalId = setInterval(() => {
+                if (rustplus.cameraRayDataReceived && rustplus.cameraRayDataCamera === identifier) {
+                    clearInterval(intervalId);
+                    resolve();
+                    return;
+                }
+                if (Date.now() - startedAt >= timeoutMs) {
+                    clearInterval(intervalId);
+                    resolve();
+                }
+            }, 25);
+        });
+    },
+
     sendFrame: async function (rustplus, client, identifier, camera, frame) {
         const instance = client.getInstance(rustplus.guildId);
         const storedCamera = instance.serverList[rustplus.serverId]?.cameras?.[identifier];
         if (!storedCamera) return;
 
+        const visiblePlayers = rustplus.cameraVisiblePlayers[identifier] || [];
+        const visiblePlayerKeys = rustplus.cameraVisiblePlayerKeys[identifier] || [];
+        if (!module.exports.shouldUpdateFrame(rustplus, identifier, storedCamera, visiblePlayerKeys)) return;
+
         storedCamera.frame = (storedCamera.frame || 0) + 1;
+        storedCamera.refreshRequested = false;
+        rustplus.cameraDisplayedPlayerKeys[identifier] = visiblePlayerKeys;
         client.setInstance(rustplus.guildId, instance);
 
         /* Save upscaled PNG to disk */
@@ -320,7 +351,7 @@ module.exports = {
         const content = {
             embeds: [DiscordEmbeds.getCameraFrameEmbed(rustplus.guildId, rustplus.serverId, identifier,
                 storedCamera.name || camera.name, storedCamera.frame,
-                rustplus.cameraVisiblePlayers[identifier] || [])],
+                visiblePlayers)],
             components: [DiscordButtons.getCameraButtons(rustplus.guildId, rustplus.serverId, identifier)],
             files: [new Discord.AttachmentBuilder(filePath, { name: `${identifier}.png` })],
         }
@@ -347,6 +378,19 @@ module.exports = {
         }
     },
 
+    shouldUpdateFrame: function (rustplus, identifier, camera, visiblePlayerKeys) {
+        if (camera.mode === 'realtime') return true;
+        if (!camera.messageId || (camera.frame || 0) === 0) return true;
+        if (camera.refreshRequested) return true;
+        const displayedPlayerKeys = rustplus.cameraDisplayedPlayerKeys[identifier] || [];
+        return module.exports.playerKeysChanged(displayedPlayerKeys, visiblePlayerKeys);
+    },
+
+    playerKeysChanged: function (previousKeys, currentKeys) {
+        if (previousKeys.length !== currentKeys.length) return true;
+        return currentKeys.some(key => !previousKeys.includes(key));
+    },
+
     processCameraRays: async function (rustplus, client, message) {
         if (!message.broadcast || !message.broadcast.cameraRays) return;
         if (!message.broadcast.cameraRays.entities) return;
@@ -358,6 +402,9 @@ module.exports = {
 
         const identifier = rustplus.cameraCurrentSubscription;
         if (!identifier || !server.cameras[identifier]) return;
+
+        rustplus.cameraRayDataReceived = true;
+        rustplus.cameraRayDataCamera = identifier;
 
         const camera = server.cameras[identifier];
         const detectedPlayerNames = [];

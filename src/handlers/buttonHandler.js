@@ -996,6 +996,42 @@ module.exports = async (client, interaction) => {
             components: [DiscordButtons.getCameraButtons(guildId, ids.serverId, ids.cameraId)]
         });
     }
+    else if (interaction.customId.startsWith('CameraMode')) {
+        const ids = JSON.parse(interaction.customId.replace('CameraMode', ''));
+        const camera = instance.serverList[ids.serverId].cameras[ids.cameraId];
+
+        camera.mode = camera.mode === 'realtime' ? 'slow' : 'realtime';
+        client.setInstance(guildId, instance);
+
+        client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'buttonValueChange', {
+            id: `${verifyId}`,
+            value: `camera, ${ids.cameraId}, mode, ${camera.mode}`
+        }));
+
+        await client.interactionUpdate(interaction, {
+            components: [DiscordButtons.getCameraButtons(guildId, ids.serverId, ids.cameraId)]
+        });
+    }
+    else if (interaction.customId.startsWith('CameraRefresh')) {
+        const ids = JSON.parse(interaction.customId.replace('CameraRefresh', ''));
+        const camera = instance.serverList[ids.serverId].cameras[ids.cameraId];
+
+        camera.refreshRequested = true;
+        client.setInstance(guildId, instance);
+        if (rustplus && rustplus.serverId === ids.serverId && !rustplus.cameraCyclingActive) {
+            const CameraHandler = require('./cameraHandler.js');
+            CameraHandler.startCycling(rustplus, client);
+        }
+
+        client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'buttonValueChange', {
+            id: `${verifyId}`,
+            value: `camera, ${ids.cameraId}, refresh`
+        }));
+
+        await client.interactionUpdate(interaction, {
+            components: [DiscordButtons.getCameraButtons(guildId, ids.serverId, ids.cameraId)]
+        });
+    }
     else if (interaction.customId === 'RecycleDelete') {
         if (Config.discord.needAdminPrivileges && !client.isAdministrator(interaction)) {
             interaction.deferUpdate();
