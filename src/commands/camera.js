@@ -126,8 +126,8 @@ module.exports = {
                     name: name,
                     identifier: identifier
                 });
-                const status = rustplus.team ? rustplus.team.getPlayer(rustplus.playerId) : null;
-                const message = status && status.isOnline
+                const cameraSession = await CameraHandler.getCameraSession(rustplus, client, instance);
+                const message = cameraSession === null
                     ? `${str}\n${client.intlGet(interaction.guildId, 'cameraMonitoringRequiresInactivePlayer')}`
                     : str;
                 await client.interactionEditReply(interaction, DiscordEmbeds.getActionInfoEmbed(0, message,

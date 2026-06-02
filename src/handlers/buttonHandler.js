@@ -1038,6 +1038,37 @@ module.exports = async (client, interaction) => {
             components: [DiscordButtons.getCameraButtons(guildId, ids.serverId, ids.cameraId)]
         });
     }
+    else if (interaction.customId.startsWith('CameraDelete')) {
+        const ids = JSON.parse(interaction.customId.replace('CameraDelete', ''));
+        const server = instance.serverList[ids.serverId];
+
+        if (Config.discord.needAdminPrivileges && !client.isAdministrator(interaction)) {
+            interaction.deferUpdate();
+            return;
+        }
+
+        if (!server || !server.cameras || !server.cameras.hasOwnProperty(ids.cameraId)) {
+            await interaction.message.delete();
+            return;
+        }
+
+        await interaction.deferUpdate();
+
+        const CameraHandler = require('./cameraHandler.js');
+        await CameraHandler.deleteCameraArtifacts(client, guildId, ids.serverId, ids.cameraId);
+
+        delete server.cameras[ids.cameraId];
+        client.setInstance(guildId, instance);
+
+        if (rustplus && rustplus.serverId === ids.serverId && Object.keys(server.cameras).length === 0) {
+            CameraHandler.stopCycling(rustplus);
+        }
+
+        client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'buttonValueChange', {
+            id: `${verifyId}`,
+            value: `camera, ${ids.cameraId}, delete`
+        }));
+    }
     else if (interaction.customId === 'RecycleDelete') {
         if (Config.discord.needAdminPrivileges && !client.isAdministrator(interaction)) {
             interaction.deferUpdate();

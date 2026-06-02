@@ -966,7 +966,7 @@
     "cameraUnreachableWithError": "Camera {camera} is unreachable: {error}",
     "cameraFrameTimedOut": "Camera {camera} did not produce a frame before timeout.",
     "cameraChannelNotFound": "Camera channel could not be found.",
-    "cameraFrameSendFailed": "Could not send camera frame for {camera}.",
+    "cameraFrameSendFailed": "Could not send camera frame for {camera}: {error}.",
     "commandsCameraDesc": "Manage CCTV camera monitoring.",
     "commandsCameraAddDesc": "Add a camera to monitor.",
     "commandsCameraRemoveDesc": "Remove a monitored camera.",

@@ -365,14 +365,19 @@ module.exports = {
         }
 
         /* Previous message not found, send a new one */
-        const sentMessage = await channel.send(content).catch(() => null);
+        let sendError = null;
+        const sentMessage = await channel.send(content).catch(e => {
+            sendError = e;
+            return null;
+        });
         if (sentMessage) {
             storedCamera.messageId = sentMessage.id;
             client.setInstance(rustplus.guildId, instance);
         }
         else {
             rustplus.log(client.intlGet(null, 'warningCap'), client.intlGet(null, 'cameraFrameSendFailed', {
-                camera: identifier
+                camera: identifier,
+                error: module.exports.formatError(sendError)
             }));
         }
     },

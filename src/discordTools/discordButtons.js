@@ -312,6 +312,11 @@ module.exports = {
                 customId: `CameraRefresh${identifier}`,
                 label: Client.client.intlGet(guildId, 'cameraRefresh'),
                 style: SECONDARY
+            }),
+            module.exports.getButton({
+                customId: `CameraDelete${identifier}`,
+                style: SECONDARY,
+                emoji: '🗑️'
             }));
     },
 
