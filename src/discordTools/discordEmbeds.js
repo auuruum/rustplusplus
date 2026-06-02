@@ -1584,7 +1584,8 @@ module.exports = {
         });
     },
 
-    getCameraFrameEmbed: function (guildId, serverId, identifier, cameraName, frame, players = [], status = null) {
+    getCameraFrameEmbed: function (guildId, serverId, identifier, cameraName, frame, players = [], status = null,
+        showImage = true) {
         const instance = Client.client.getInstance(guildId);
         const server = instance.serverList[serverId];
         const playerText = players.length === 0 ?
@@ -1604,7 +1605,7 @@ module.exports = {
             footer: { text: server.title },
             timestamp: true
         });
-        if (!status) embed.setImage(`attachment://${identifier}.png`);
+        if (showImage) embed.setImage(`attachment://${identifier}.png`);
         return embed;
     },
 }

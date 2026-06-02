@@ -150,6 +150,7 @@ module.exports = {
             rustplus.cameraCurrentCamera = null;
             rustplus.cameraCurrentSubscription = null;
             if (!rustplus.cameraCyclingActive || rustplus.isDeleted) return;
+            const status = module.exports.getCameraUnavailableStatus(client, rustplus.guildId, e);
             if (camera.reachable) {
                 camera.reachable = false;
                 client.setInstance(rustplus.guildId, instance);
@@ -158,11 +159,9 @@ module.exports = {
                         camera: identifier,
                         error: module.exports.formatError(e)
                     }));
+                await module.exports.sendCameraUnavailableNotification(rustplus, client, identifier, camera, status);
             }
-            await module.exports.sendUnavailableFrame(rustplus, client, identifier, camera,
-                client.intlGet(rustplus.guildId, 'cameraUnavailableStatus', {
-                    error: module.exports.formatError(e)
-                }));
+            await module.exports.sendUnavailableFrame(rustplus, client, identifier, camera, status);
 
             rustplus.cameraCyclingIndex++;
             rustplus.cameraCyclingTaskId = setTimeout(
@@ -421,12 +420,17 @@ module.exports = {
             return;
         }
 
+        const filePath = module.exports.getCameraImagePath(rustplus.guildId, rustplus.serverId, identifier);
+        const hasLastFrame = Fs.existsSync(filePath);
         const content = {
             embeds: [DiscordEmbeds.getCameraFrameEmbed(rustplus.guildId, rustplus.serverId, identifier,
                 storedCamera.name || camera.name, storedCamera.frame || 0,
-                rustplus.cameraVisiblePlayers[identifier] || [], status)],
+                rustplus.cameraVisiblePlayers[identifier] || [], status, hasLastFrame)],
             components: [DiscordButtons.getCameraButtons(rustplus.guildId, rustplus.serverId, identifier)]
         };
+        if (hasLastFrame) {
+            content.files = [new Discord.AttachmentBuilder(filePath, { name: `${identifier}.png` })];
+        }
 
         if (storedCamera.messageId) {
             const existingMessage = await DiscordTools.getMessageById(
@@ -441,6 +445,44 @@ module.exports = {
         if (sentMessage) {
             storedCamera.messageId = sentMessage.id;
             client.setInstance(rustplus.guildId, instance);
+        }
+    },
+
+    getCameraUnavailableStatus: function (client, guildId, error) {
+        const code = error && error.error ? error.error : error && error.message ? error.message : `${error}`;
+        if (code === 'not_found') return client.intlGet(guildId, 'cameraUnavailableNotFoundStatus');
+        if (code === 'player_online') return client.intlGet(guildId, 'cameraUnavailablePlayerOnlineStatus');
+        return client.intlGet(guildId, 'cameraUnavailableStatus', {
+            error: module.exports.formatError(error)
+        });
+    },
+
+    sendCameraUnavailableNotification: async function (rustplus, client, identifier, camera, status) {
+        const cameraName = `${camera.name} (${identifier})`;
+        rustplus.log(client.intlGet(null, 'warningCap'), client.intlGet(null, 'cameraUnavailableLog', {
+            camera: camera.name,
+            status: status
+        }));
+
+        if (camera.notifyDiscord) {
+            await DiscordMessages.sendActivityNotificationMessage(
+                rustplus.guildId,
+                rustplus.serverId,
+                '#CE412B',
+                client.intlGet(rustplus.guildId, 'cameraUnavailableActivity', {
+                    camera: cameraName,
+                    status: status
+                }),
+                null,
+                client.intlGet(rustplus.guildId, 'cameraUnavailable')
+            );
+        }
+
+        if (camera.notifyInGame) {
+            rustplus.sendInGameMessage(client.intlGet(rustplus.guildId, 'cameraUnavailableInGame', {
+                camera: cameraName,
+                status: status
+            }));
         }
     },
 
@@ -491,6 +533,7 @@ module.exports = {
         if (camera.mode === 'realtime') return true;
         if (!camera.messageId || (camera.frame || 0) === 0) return true;
         if (camera.refreshRequested) return true;
+        if (camera.status) return true;
         const displayedPlayerKeys = rustplus.cameraDisplayedPlayerKeys[identifier] || [];
         return module.exports.playerKeysChanged(displayedPlayerKeys, visiblePlayerKeys);
     },
