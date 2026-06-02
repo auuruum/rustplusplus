@@ -7,7 +7,7 @@ const DiscordTools = require('../discordTools/discordTools.js');
 
 const CALLMEBOT_URL = 'http://api.callmebot.com/start.php';
 const CALLMEBOT_TEXT_URL = 'https://api.callmebot.com/text.php';
-const DEFAULT_REPEAT_SECONDS = 60;
+const DEFAULT_REPEAT_SECONDS = 75;
 const DEFAULT_MAX_CALLS = 3;
 
 function getWakeProfiles(instance) {
@@ -53,6 +53,16 @@ function classifyResponse(text, mode = 'call') {
             title: 'CallMeBot not authorized',
             description: 'Telegram account is not authorized for CallMeBot calls yet.',
             hint: 'Open https://api2.callmebot.com/txt/auth.php and authorize this Telegram username, then run /wake test again.'
+        };
+    }
+
+    if (lower.includes('two calls to the same user') || lower.includes('within 65 seconds is not allowed')) {
+        return {
+            ok: false,
+            status: 'rate_limited',
+            title: 'CallMeBot rate limit',
+            description: 'CallMeBot blocks repeated calls to the same user within 65 seconds.',
+            hint: 'Wait about 65 seconds before testing again. Bot raid repeats now use a safer 75 second interval.'
         };
     }
 
@@ -181,6 +191,7 @@ module.exports = {
             };
         }
         if (!instance.wakeSettings.repeatSeconds) instance.wakeSettings.repeatSeconds = DEFAULT_REPEAT_SECONDS;
+        if (instance.wakeSettings.repeatSeconds < 75) instance.wakeSettings.repeatSeconds = DEFAULT_REPEAT_SECONDS;
         if (!instance.wakeSettings.maxCalls) instance.wakeSettings.maxCalls = DEFAULT_MAX_CALLS;
     },
 

@@ -76,7 +76,7 @@ module.exports = (client, guild) => {
             aliases: [],
             wakeProfiles: {},
             wakeSettings: {
-                repeatSeconds: 60,
+                repeatSeconds: 75,
                 maxCalls: 3
             }
         };
@@ -205,11 +205,12 @@ module.exports = (client, guild) => {
         if (!instance.hasOwnProperty('wakeProfiles')) instance.wakeProfiles = {};
         if (!instance.hasOwnProperty('wakeSettings')) {
             instance.wakeSettings = {
-                repeatSeconds: 60,
+                repeatSeconds: 75,
                 maxCalls: 3
             };
         }
-        if (!instance.wakeSettings.hasOwnProperty('repeatSeconds')) instance.wakeSettings.repeatSeconds = 60;
+        if (!instance.wakeSettings.hasOwnProperty('repeatSeconds')) instance.wakeSettings.repeatSeconds = 75;
+        if (instance.wakeSettings.repeatSeconds < 75) instance.wakeSettings.repeatSeconds = 75;
         if (!instance.wakeSettings.hasOwnProperty('maxCalls')) instance.wakeSettings.maxCalls = 3;
 
         for (const serverId of Object.keys(instance.serverList)) {
