@@ -333,8 +333,7 @@ module.exports = {
         client.setInstance(rustplus.guildId, instance);
 
         /* Save upscaled PNG to disk */
-        const filePath = Path.join(__dirname, '..', '..', 'cameras',
-            `${rustplus.guildId}_${identifier}.png`);
+        const filePath = module.exports.getCameraImagePath(rustplus.guildId, rustplus.serverId, identifier);
         const image = await Jimp.read(frame);
         image.resize(image.bitmap.width * CAMERA_FRAME_SCALE, image.bitmap.height * CAMERA_FRAME_SCALE,
             Jimp.RESIZE_NEAREST_NEIGHBOR);
@@ -375,6 +374,49 @@ module.exports = {
             rustplus.log(client.intlGet(null, 'warningCap'), client.intlGet(null, 'cameraFrameSendFailed', {
                 camera: identifier
             }));
+        }
+    },
+
+    clearCameraChannelMessages: async function (client, guildId, deleteFiles = false) {
+        const instance = client.getInstance(guildId);
+        await DiscordTools.clearTextChannel(guildId, instance.channelId.cameras, 100);
+
+        for (const [serverId, server] of Object.entries(instance.serverList)) {
+            if (!server.cameras) continue;
+            for (const [identifier, camera] of Object.entries(server.cameras)) {
+                camera.messageId = null;
+                if (deleteFiles) module.exports.deleteCameraImage(guildId, serverId, identifier);
+            }
+        }
+
+        client.setInstance(guildId, instance);
+    },
+
+    deleteCameraArtifacts: async function (client, guildId, serverId, identifier) {
+        const instance = client.getInstance(guildId);
+        const camera = instance.serverList[serverId]?.cameras?.[identifier];
+        if (camera && camera.messageId) {
+            const message = await DiscordTools.getMessageById(guildId, instance.channelId.cameras, camera.messageId);
+            if (message) await message.delete().catch(() => { /* Ignore */ });
+            camera.messageId = null;
+        }
+        module.exports.deleteCameraImage(guildId, serverId, identifier);
+        client.setInstance(guildId, instance);
+    },
+
+    getCameraImagePath: function (guildId, serverId, identifier) {
+        const safeServerId = `${serverId}`.replace(/[^a-zA-Z0-9.-]/g, '_');
+        const safeIdentifier = `${identifier}`.replace(/[^a-zA-Z0-9.-]/g, '_');
+        return Path.join(__dirname, '..', '..', 'cameras', `${guildId}_${safeServerId}_${safeIdentifier}.png`);
+    },
+
+    deleteCameraImage: function (guildId, serverId, identifier) {
+        const filePaths = [
+            module.exports.getCameraImagePath(guildId, serverId, identifier),
+            Path.join(__dirname, '..', '..', 'cameras', `${guildId}_${identifier}.png`)
+        ];
+        for (const filePath of filePaths) {
+            if (Fs.existsSync(filePath)) Fs.unlinkSync(filePath);
         }
     },
 

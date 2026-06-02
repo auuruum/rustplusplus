@@ -152,11 +152,13 @@ module.exports = {
                     return;
                 }
 
+                const CameraHandler = require('../handlers/cameraHandler.js');
+                await CameraHandler.deleteCameraArtifacts(client, interaction.guildId, serverId, identifier);
+
                 delete server.cameras[identifier];
                 client.setInstance(interaction.guildId, instance);
 
                 if (Object.keys(server.cameras).length === 0) {
-                    const CameraHandler = require('../handlers/cameraHandler.js');
                     CameraHandler.stopCycling(rustplus);
                 }
 

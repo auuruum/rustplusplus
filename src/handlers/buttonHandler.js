@@ -460,6 +460,9 @@ module.exports = async (client, interaction) => {
             return;
         }
 
+        const CameraHandler = require('./cameraHandler.js');
+        await CameraHandler.clearCameraChannelMessages(client, guildId);
+
         client.resetRustplusVariables(guildId);
 
         if (instance.activeServer !== null) {
@@ -605,6 +608,9 @@ module.exports = async (client, interaction) => {
             await interaction.message.delete();
             return;
         }
+        const CameraHandler = require('./cameraHandler.js');
+        await CameraHandler.clearCameraChannelMessages(client, guildId);
+
         instance.activeServer = null;
         client.setInstance(guildId, instance);
 

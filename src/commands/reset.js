@@ -99,7 +99,7 @@ module.exports = {
 				await DiscordTools.clearTextChannel(guild.id, instance.channelId.switches, 100);
 				await DiscordTools.clearTextChannel(guild.id, instance.channelId.switchGroups, 100);
 				await DiscordTools.clearTextChannel(guild.id, instance.channelId.storageMonitors, 100);
-				await DiscordTools.clearTextChannel(guild.id, instance.channelId.cameras, 100);
+				await require('../handlers/cameraHandler.js').clearCameraChannelMessages(client, guild.id);
 
 				instance.informationMessageId.map = null;
 				instance.informationMessageId.server = null;
@@ -285,7 +285,7 @@ module.exports = {
 			} break;
 
 			case 'cameras': {
-				await DiscordTools.clearTextChannel(guild.id, instance.channelId.cameras, 100);
+				await require('../handlers/cameraHandler.js').clearCameraChannelMessages(client, guild.id);
 
 				client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'slashCommandValueChange', {
 					id: `${verifyId}`,
