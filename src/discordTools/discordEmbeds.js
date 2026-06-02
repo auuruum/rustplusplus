@@ -1585,13 +1585,15 @@ module.exports = {
     },
 
     getCameraFrameEmbed: function (guildId, serverId, identifier, cameraName, frame, players = [], status = null,
-        showImage = true) {
+        showImage = true, cameraType = null) {
         const instance = Client.client.getInstance(guildId);
         const server = instance.serverList[serverId];
         const playerText = players.length === 0 ?
             Client.client.intlGet(guildId, 'cameraNoPlayersDetected') :
             players.map(player => `\`${player}\``).join(', ');
         let description = `**${Client.client.intlGet(guildId, 'camera')}**: \`${identifier}\`\n` +
+            `**${Client.client.intlGet(guildId, 'cameraType')}**: ` +
+            `\`${module.exports.getCameraTypeName(guildId, cameraType)}\`\n` +
             `**${Client.client.intlGet(guildId, 'cameraFrame')}**: \`${frame}\`\n` +
             `**${Client.client.intlGet(guildId, 'cameraPlayersDetected')}**: ${playerText}`;
         if (status) {
@@ -1607,5 +1609,20 @@ module.exports = {
         });
         if (showImage) embed.setImage(`attachment://${identifier}.png`);
         return embed;
+    },
+
+    getCameraTypeName: function (guildId, cameraType) {
+        switch (cameraType) {
+            case 'ptz':
+                return Client.client.intlGet(guildId, 'cameraTypePtz');
+            case 'drone':
+                return Client.client.intlGet(guildId, 'cameraTypeDrone');
+            case 'turret':
+                return Client.client.intlGet(guildId, 'cameraTypeTurret');
+            case 'cctv':
+                return Client.client.intlGet(guildId, 'cameraTypeCctv');
+            default:
+                return Client.client.intlGet(guildId, 'unknown');
+        }
     },
 }

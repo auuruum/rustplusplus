@@ -981,7 +981,7 @@ module.exports = async (client, interaction) => {
         }));
 
         await client.interactionUpdate(interaction, {
-            components: [DiscordButtons.getCameraButtons(guildId, ids.serverId, ids.cameraId)]
+            components: DiscordButtons.getCameraComponents(guildId, ids.serverId, ids.cameraId)
         });
     }
     else if (interaction.customId.startsWith('CameraNotifyDiscord')) {
@@ -1001,7 +1001,7 @@ module.exports = async (client, interaction) => {
         }));
 
         await client.interactionUpdate(interaction, {
-            components: [DiscordButtons.getCameraButtons(guildId, ids.serverId, ids.cameraId)]
+            components: DiscordButtons.getCameraComponents(guildId, ids.serverId, ids.cameraId)
         });
     }
     else if (interaction.customId.startsWith('CameraMode')) {
@@ -1017,7 +1017,7 @@ module.exports = async (client, interaction) => {
         }));
 
         await client.interactionUpdate(interaction, {
-            components: [DiscordButtons.getCameraButtons(guildId, ids.serverId, ids.cameraId)]
+            components: DiscordButtons.getCameraComponents(guildId, ids.serverId, ids.cameraId)
         });
     }
     else if (interaction.customId.startsWith('CameraRefresh')) {
@@ -1037,8 +1037,32 @@ module.exports = async (client, interaction) => {
         }));
 
         await client.interactionUpdate(interaction, {
-            components: [DiscordButtons.getCameraButtons(guildId, ids.serverId, ids.cameraId)]
+            components: DiscordButtons.getCameraComponents(guildId, ids.serverId, ids.cameraId)
         });
+    }
+    else if (interaction.customId.startsWith('CameraControl')) {
+        const ids = JSON.parse(interaction.customId.replace('CameraControl', ''));
+        const server = instance.serverList[ids.serverId];
+
+        if (!server || !server.cameras || !server.cameras.hasOwnProperty(ids.cameraId)) {
+            await interaction.message.delete();
+            return;
+        }
+
+        await interaction.deferUpdate();
+
+        if (rustplus && rustplus.serverId === ids.serverId) {
+            const CameraHandler = require('./cameraHandler.js');
+            await CameraHandler.controlCamera(rustplus, client, ids.cameraId, ids.action);
+            server.cameras[ids.cameraId].refreshRequested = true;
+            client.setInstance(guildId, instance);
+            CameraHandler.requestImmediateCameraRefresh(rustplus, client, ids.cameraId);
+        }
+
+        client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'buttonValueChange', {
+            id: `${verifyId}`,
+            value: `camera, ${ids.cameraId}, control, ${ids.action}`
+        }));
     }
     else if (interaction.customId.startsWith('CameraDelete')) {
         const ids = JSON.parse(interaction.customId.replace('CameraDelete', ''));

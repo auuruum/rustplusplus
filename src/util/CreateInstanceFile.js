@@ -239,6 +239,8 @@ module.exports = (client, guild) => {
             if (!camera.hasOwnProperty('notifyDiscord')) camera.notifyDiscord = false;
             if (!camera.hasOwnProperty('mode')) camera.mode = 'slow';
             if (!camera.hasOwnProperty('refreshRequested')) camera.refreshRequested = false;
+            if (!camera.hasOwnProperty('controlFlags')) camera.controlFlags = 0;
+            if (!camera.hasOwnProperty('type')) camera.type = 'unknown';
         }
     }
 

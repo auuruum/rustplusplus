@@ -24,6 +24,7 @@ const Fs = require('fs');
 const Jimp = require('jimp');
 const Path = require('path');
 const RustPlusLib = require('@liamcottle/rustplus.js');
+const CameraLib = require('@liamcottle/rustplus.js/camera');
 
 const DiscordButtons = require('../discordTools/discordButtons.js');
 const DiscordEmbeds = require('../discordTools/discordEmbeds.js');
@@ -33,6 +34,7 @@ const DiscordTools = require('../discordTools/discordTools.js');
 const CAMERA_FRAME_CAPTURE_TIMEOUT_MS = 15000;
 const CAMERA_CYCLING_GAP_MS = 1000;
 const CAMERA_FRAME_SCALE = 4;
+const CAMERA_PTZ_MOVE_DELTA = 1.4;
 
 module.exports = {
     startCycling: function (rustplus, client) {
@@ -170,6 +172,8 @@ module.exports = {
         }
 
         camera.reachable = true;
+        camera.controlFlags = cameraClient.cameraSubscribeInfo ? cameraClient.cameraSubscribeInfo.controlFlags : 0;
+        camera.type = module.exports.getCameraType(camera.controlFlags);
         client.setInstance(rustplus.guildId, instance);
 
         const frame = await framePromise;
@@ -371,8 +375,8 @@ module.exports = {
         const content = {
             embeds: [DiscordEmbeds.getCameraFrameEmbed(rustplus.guildId, rustplus.serverId, identifier,
                 storedCamera.name || camera.name, storedCamera.frame,
-                visiblePlayers)],
-            components: [DiscordButtons.getCameraButtons(rustplus.guildId, rustplus.serverId, identifier)],
+                visiblePlayers, null, true, storedCamera.type)],
+            components: DiscordButtons.getCameraComponents(rustplus.guildId, rustplus.serverId, identifier),
             files: [new Discord.AttachmentBuilder(filePath, { name: `${identifier}.png` })],
         }
 
@@ -425,8 +429,8 @@ module.exports = {
         const content = {
             embeds: [DiscordEmbeds.getCameraFrameEmbed(rustplus.guildId, rustplus.serverId, identifier,
                 storedCamera.name || camera.name, storedCamera.frame || 0,
-                rustplus.cameraVisiblePlayers[identifier] || [], status, hasLastFrame)],
-            components: [DiscordButtons.getCameraButtons(rustplus.guildId, rustplus.serverId, identifier)]
+                rustplus.cameraVisiblePlayers[identifier] || [], status, hasLastFrame, storedCamera.type)],
+            components: DiscordButtons.getCameraComponents(rustplus.guildId, rustplus.serverId, identifier)
         };
         if (hasLastFrame) {
             content.files = [new Discord.AttachmentBuilder(filePath, { name: `${identifier}.png` })];
@@ -446,6 +450,80 @@ module.exports = {
             storedCamera.messageId = sentMessage.id;
             client.setInstance(rustplus.guildId, instance);
         }
+    },
+
+    controlCamera: async function (rustplus, client, identifier, action) {
+        const instance = client.getInstance(rustplus.guildId);
+        const cameraSession = await module.exports.getCameraSession(rustplus, client, instance);
+        if (!cameraSession) return false;
+
+        const cameraClientKey = `${cameraSession.steamId}:${identifier}`;
+        if (!rustplus.cameraClients[cameraClientKey]) {
+            rustplus.cameraClients[cameraClientKey] = cameraSession.session.getCamera(identifier);
+        }
+        const cameraClient = rustplus.cameraClients[cameraClientKey];
+        const wasSubscribed = cameraClient.isSubscribed;
+        try {
+            if (!wasSubscribed) await cameraClient.subscribe();
+            switch (action) {
+                case 'up':
+                    await cameraClient.move(CameraLib.Buttons.NONE, 0, CAMERA_PTZ_MOVE_DELTA);
+                    break;
+                case 'down':
+                    await cameraClient.move(CameraLib.Buttons.NONE, 0, -CAMERA_PTZ_MOVE_DELTA);
+                    break;
+                case 'left':
+                    await cameraClient.move(CameraLib.Buttons.NONE, -CAMERA_PTZ_MOVE_DELTA, 0);
+                    break;
+                case 'right':
+                    await cameraClient.move(CameraLib.Buttons.NONE, CAMERA_PTZ_MOVE_DELTA, 0);
+                    break;
+                case 'zoom':
+                    await cameraClient.zoom();
+                    break;
+                default:
+                    return false;
+            }
+            await cameraClient.move(CameraLib.Buttons.NONE, 0, 0).catch(() => { /* Ignore */ });
+            return true;
+        }
+        catch (e) {
+            rustplus.log(client.intlGet(null, 'warningCap'), client.intlGet(null, 'cameraControlFailed', {
+                camera: identifier,
+                error: module.exports.formatError(e)
+            }));
+            return false;
+        }
+        finally {
+            if (!wasSubscribed) await cameraClient.unsubscribe().catch(() => { /* Ignore */ });
+        }
+    },
+
+    requestImmediateCameraRefresh: function (rustplus, client, identifier) {
+        const instance = client.getInstance(rustplus.guildId);
+        const cameraKeys = Object.keys(instance.serverList[rustplus.serverId]?.cameras || {});
+        const index = cameraKeys.indexOf(identifier);
+        if (index === -1) return;
+
+        rustplus.cameraCyclingIndex = index;
+        if (!rustplus.cameraCyclingActive) {
+            module.exports.startCycling(rustplus, client);
+            return;
+        }
+
+        if (rustplus.cameraCurrentCamera !== null) return;
+        if (rustplus.cameraCyclingTaskId) {
+            clearTimeout(rustplus.cameraCyclingTaskId);
+        }
+        rustplus.cameraCyclingTaskId = setTimeout(module.exports.cycleStep, 0, rustplus, client);
+    },
+
+    getCameraType: function (controlFlags = 0) {
+        const has = flag => (controlFlags & flag) === flag;
+        if (has(CameraLib.ControlFlags.CROSSHAIR)) return 'turret';
+        if (has(CameraLib.ControlFlags.MOVEMENT)) return 'drone';
+        if (has(CameraLib.ControlFlags.MOUSE) || has(CameraLib.ControlFlags.FIRE)) return 'ptz';
+        return 'cctv';
     },
 
     getCameraUnavailableStatus: function (client, guildId, error) {

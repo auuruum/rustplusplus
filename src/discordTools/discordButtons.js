@@ -37,7 +37,7 @@ module.exports = {
         if (options.hasOwnProperty('label')) button.setLabel(options.label);
         if (options.hasOwnProperty('style')) button.setStyle(options.style);
         if (options.hasOwnProperty('url') && options.url !== '') button.setURL(options.url);
-        if (options.hasOwnProperty('emoji')) button.setEmoji(options.emoji);
+        if (options.hasOwnProperty('emoji') && !`${options.emoji}`.includes('ð')) button.setEmoji(options.emoji);
         if (options.hasOwnProperty('disabled')) button.setDisabled(options.disabled);
 
         return button;
@@ -315,8 +315,54 @@ module.exports = {
             }),
             module.exports.getButton({
                 customId: `CameraDelete${identifier}`,
-                style: SECONDARY,
+                label: 'Delete',
+                style: DANGER,
                 emoji: '🗑️'
+            }));
+    },
+
+    getCameraComponents: function (guildId, serverId, cameraId) {
+        const rows = [module.exports.getCameraButtons(guildId, serverId, cameraId)];
+        const instance = Client.client.getInstance(guildId);
+        const camera = instance.serverList[serverId].cameras[cameraId];
+        if (camera.type === 'ptz') {
+            rows.push(module.exports.getCameraControlButtons(serverId, cameraId));
+        }
+        return rows;
+    },
+
+    getCameraControlButtons: function (serverId, cameraId) {
+        const identifier = action => JSON.stringify({ "serverId": serverId, "cameraId": cameraId, "action": action });
+        return new Discord.ActionRowBuilder().addComponents(
+            module.exports.getButton({
+                customId: `CameraControl${identifier('left')}`,
+                label: 'Left',
+                emoji: '⬅️',
+                style: SECONDARY
+            }),
+            module.exports.getButton({
+                customId: `CameraControl${identifier('up')}`,
+                label: 'Up',
+                emoji: '⬆️',
+                style: SECONDARY
+            }),
+            module.exports.getButton({
+                customId: `CameraControl${identifier('down')}`,
+                label: 'Down',
+                emoji: '⬇️',
+                style: SECONDARY
+            }),
+            module.exports.getButton({
+                customId: `CameraControl${identifier('right')}`,
+                label: 'Right',
+                emoji: '➡️',
+                style: SECONDARY
+            }),
+            module.exports.getButton({
+                customId: `CameraControl${identifier('zoom')}`,
+                label: 'Zoom',
+                emoji: '🔍',
+                style: PRIMARY
             }));
     },
 
