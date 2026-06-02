@@ -3,11 +3,10 @@ const Discord = require('discord.js');
 const Client = require('../../index.ts');
 const DiscordEmbeds = require('../discordTools/discordEmbeds.js');
 const DiscordMessages = require('../discordTools/discordMessages.js');
-const DiscordTools = require('../discordTools/discordTools.js');
 
 const CALLMEBOT_URL = 'http://api.callmebot.com/start.php';
 const CALLMEBOT_TEXT_URL = 'https://api.callmebot.com/text.php';
-const DEFAULT_REPEAT_SECONDS = 75;
+const DEFAULT_REPEAT_SECONDS = 90;
 const DEFAULT_MAX_CALLS = 3;
 
 function getWakeProfiles(instance) {
@@ -125,19 +124,6 @@ async function callProfile(profile, alertText, mode = 'call') {
     return text;
 }
 
-async function sendWakeDm(guildId, discordUserId, alarmName, alertText, alertId) {
-    const user = await DiscordTools.getUserById(guildId, discordUserId);
-    if (!user) return;
-
-    await Client.client.messageSend(user, {
-        embeds: [DiscordEmbeds.getEmbed({
-            color: 0xff0000,
-            title: 'RAID WAKE ALERT',
-            description: `${alarmName}\n${alertText}`
-        })]
-    });
-}
-
 async function sendWakeActivityMessage(guildId, serverId, alarmName, count, alertId) {
     const instance = Client.client.getInstance(guildId);
     const text = `Wake calls started for ${count} profile(s): ${alarmName}`;
@@ -191,7 +177,7 @@ module.exports = {
             };
         }
         if (!instance.wakeSettings.repeatSeconds) instance.wakeSettings.repeatSeconds = DEFAULT_REPEAT_SECONDS;
-        if (instance.wakeSettings.repeatSeconds < 75) instance.wakeSettings.repeatSeconds = DEFAULT_REPEAT_SECONDS;
+        if (instance.wakeSettings.repeatSeconds < 90) instance.wakeSettings.repeatSeconds = DEFAULT_REPEAT_SECONDS;
         if (!instance.wakeSettings.maxCalls) instance.wakeSettings.maxCalls = DEFAULT_MAX_CALLS;
     },
 
@@ -262,9 +248,6 @@ module.exports = {
         };
 
         await sendWakeActivityMessage(guildId, serverId, alarm.name, targets.length, alertId);
-        for (const target of targets) {
-            await sendWakeDm(guildId, target.discordUserId, alarm.name, alertText, alertId);
-        }
         await runCallRound(guildId, alertId);
     },
 
