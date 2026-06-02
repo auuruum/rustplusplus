@@ -73,7 +73,12 @@ module.exports = (client, guild) => {
             whitelist: {
                 steamIds: []
             },
-            aliases: []
+            aliases: [],
+            wakeProfiles: {},
+            wakeSettings: {
+                repeatSeconds: 60,
+                maxCalls: 3
+            }
         };
     }
     else {
@@ -197,6 +202,15 @@ module.exports = (client, guild) => {
         }
         if (!instance.whitelist.hasOwnProperty('steamIds')) instance.whitelist['steamIds'] = [];
         if (!instance.hasOwnProperty('aliases')) instance.aliases = [];
+        if (!instance.hasOwnProperty('wakeProfiles')) instance.wakeProfiles = {};
+        if (!instance.hasOwnProperty('wakeSettings')) {
+            instance.wakeSettings = {
+                repeatSeconds: 60,
+                maxCalls: 3
+            };
+        }
+        if (!instance.wakeSettings.hasOwnProperty('repeatSeconds')) instance.wakeSettings.repeatSeconds = 60;
+        if (!instance.wakeSettings.hasOwnProperty('maxCalls')) instance.wakeSettings.maxCalls = 3;
 
         for (const serverId of Object.keys(instance.serverList)) {
             if (!Object.keys(instance.serverListLite).includes(serverId)) {

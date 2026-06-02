@@ -27,6 +27,7 @@ const SmartSwitchGroupHandler = require('../handlers/smartSwitchGroupHandler.js'
 const SmartSwitchHandler = require('../handlers/smartSwitchHandler.js');
 const TeamChatHandler = require("../handlers/teamChatHandler.js");
 const TeamHandler = require('../handlers/teamHandler.js');
+const WakeAlert = require('../util/wakeAlert.js');
 
 module.exports = {
     name: 'message',
@@ -204,6 +205,7 @@ async function messageBroadcastEntityChangedSmartAlarm(rustplus, client, message
         server.alarms[entityId].lastTrigger = Math.floor(new Date() / 1000);
         client.setInstance(rustplus.guildId, instance);
         await DiscordMessages.sendSmartAlarmTriggerMessage(rustplus.guildId, serverId, entityId);
+        await WakeAlert.trigger(rustplus.guildId, serverId, entityId);
 
         if (instance.generalSettings.smartAlarmNotifyInGame) {
             rustplus.sendInGameMessage(`${server.alarms[entityId].name}: ${server.alarms[entityId].message}`);

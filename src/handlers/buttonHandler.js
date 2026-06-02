@@ -30,6 +30,7 @@ const DiscordButtons = require('../discordTools/discordButtons.js');
 const DiscordModals = require('../discordTools/discordModals.js');
 const PlayerActivityDB = require('../util/database.js');
 const TrackerActivityReport = require('../util/trackerActivityReport.js');
+const WakeAlert = require('../util/wakeAlert.js');
 
 module.exports = async (client, interaction) => {
     const instance = client.getInstance(interaction.guildId);
@@ -38,6 +39,12 @@ module.exports = async (client, interaction) => {
 
     const verifyId = Math.floor(100000 + Math.random() * 900000);
     client.logInteraction(interaction, verifyId, 'userButton');
+
+    if (interaction.customId.startsWith('WakeAck')) {
+        const ids = JSON.parse(interaction.customId.replace('WakeAck', ''));
+        await WakeAlert.ack(client, interaction, ids.alertId);
+        return;
+    }
 
     if (instance.blacklist['discordIds'].includes(interaction.user.id) &&
         !interaction.member.permissions.has(Discord.PermissionsBitField.Flags.Administrator)) {

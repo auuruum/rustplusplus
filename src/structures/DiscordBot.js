@@ -73,6 +73,7 @@ class DiscordBot extends Discord.Client {
         this.battlemetricsIntervalCounter = 0;
 
         this.voiceLeaveTimeouts = new Object();
+        this.activeWakeAlerts = new Object();
         this.streamDeckBridge = new StreamDeckBridge(this);
 
         this.loadDiscordCommands();
