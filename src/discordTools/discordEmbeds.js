@@ -1573,22 +1573,27 @@ module.exports = {
         });
     },
 
-    getCameraFrameEmbed: function (guildId, serverId, identifier, cameraName, frame, players = []) {
+    getCameraFrameEmbed: function (guildId, serverId, identifier, cameraName, frame, players = [], status = null) {
         const instance = Client.client.getInstance(guildId);
         const server = instance.serverList[serverId];
         const playerText = players.length === 0 ?
             Client.client.intlGet(guildId, 'cameraNoPlayersDetected') :
             players.map(player => `\`${player}\``).join(', ');
+        let description = `**${Client.client.intlGet(guildId, 'camera')}**: \`${identifier}\`\n` +
+            `**${Client.client.intlGet(guildId, 'cameraFrame')}**: \`${frame}\`\n` +
+            `**${Client.client.intlGet(guildId, 'cameraPlayersDetected')}**: ${playerText}`;
+        if (status) {
+            description += `\n**${Client.client.intlGet(guildId, 'status')}**: ${status}`;
+        }
 
-        return module.exports.getEmbed({
+        const embed = module.exports.getEmbed({
             color: Constants.COLOR_DEFAULT,
             title: `${cameraName}`,
-            description: `**${Client.client.intlGet(guildId, 'camera')}**: \`${identifier}\`\n` +
-                `**${Client.client.intlGet(guildId, 'cameraFrame')}**: \`${frame}\`\n` +
-                `**${Client.client.intlGet(guildId, 'cameraPlayersDetected')}**: ${playerText}`,
-            image: `attachment://${identifier}.png`,
+            description: description,
             footer: { text: server.title },
             timestamp: true
         });
+        if (!status) embed.setImage(`attachment://${identifier}.png`);
+        return embed;
     },
 }

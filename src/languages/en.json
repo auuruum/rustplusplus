@@ -962,6 +962,8 @@
     "cameraUnreachable": "Camera {camera} is unreachable.",
     "cameraMonitoringRequiresInactivePlayer": "Camera monitoring starts only when the paired Rust+ player is offline from the server.",
     "cameraWaitingForPlayerInactive": "Camera monitoring paused because no offline Rust+ credential is available for cameras.",
+    "cameraNoOfflineCredentialStatus": "No offline Rust+ credential is available. Connect a paired account that is offline on the server.",
+    "cameraUnavailableStatus": "Camera image unavailable: {error}",
     "cameraUsingAlternateCredentials": "Camera monitoring using alternate Rust+ credential: {steamId}.",
     "cameraUnreachableWithError": "Camera {camera} is unreachable: {error}",
     "cameraFrameTimedOut": "Camera {camera} did not produce a frame before timeout.",

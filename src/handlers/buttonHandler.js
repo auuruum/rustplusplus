@@ -463,6 +463,7 @@ module.exports = async (client, interaction) => {
         const CameraHandler = require('./cameraHandler.js');
         await CameraHandler.clearCameraChannelMessages(client, guildId);
 
+        if (rustplus) CameraHandler.stopCycling(rustplus);
         client.resetRustplusVariables(guildId);
 
         if (instance.activeServer !== null) {
@@ -611,6 +612,7 @@ module.exports = async (client, interaction) => {
         const CameraHandler = require('./cameraHandler.js');
         await CameraHandler.clearCameraChannelMessages(client, guildId);
 
+        if (rustplus) CameraHandler.stopCycling(rustplus);
         instance.activeServer = null;
         client.setInstance(guildId, instance);
 

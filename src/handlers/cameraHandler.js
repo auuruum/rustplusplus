@@ -85,6 +85,8 @@ module.exports = {
     },
 
     cycleStep: async function (rustplus, client) {
+        if (!rustplus.cameraCyclingActive || rustplus.isDeleted) return;
+
         if (!rustplus.isOperational) {
             module.exports.stopCycling(rustplus);
             return;
@@ -97,18 +99,6 @@ module.exports = {
             return;
         }
 
-        const cameraSession = await module.exports.getCameraSession(rustplus, client, instance);
-        if (!cameraSession) {
-            if (!rustplus.cameraWaitingForPlayerInactiveLogged) {
-                rustplus.cameraWaitingForPlayerInactiveLogged = true;
-                rustplus.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'cameraWaitingForPlayerInactive'));
-            }
-            rustplus.cameraCyclingTaskId = setTimeout(
-                module.exports.cycleStep, CAMERA_CYCLING_GAP_MS, rustplus, client);
-            return;
-        }
-        rustplus.cameraWaitingForPlayerInactiveLogged = false;
-
         const cameraKeys = Object.keys(server.cameras);
         if (rustplus.cameraCyclingIndex >= cameraKeys.length) {
             rustplus.cameraCyclingIndex = 0;
@@ -116,6 +106,21 @@ module.exports = {
 
         const identifier = cameraKeys[rustplus.cameraCyclingIndex];
         const camera = server.cameras[identifier];
+
+        const cameraSession = await module.exports.getCameraSession(rustplus, client, instance);
+        if (!cameraSession) {
+            const status = client.intlGet(rustplus.guildId, 'cameraNoOfflineCredentialStatus');
+            if (!rustplus.cameraWaitingForPlayerInactiveLogged) {
+                rustplus.cameraWaitingForPlayerInactiveLogged = true;
+                rustplus.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'cameraWaitingForPlayerInactive'));
+            }
+            await module.exports.sendUnavailableFrame(rustplus, client, identifier, camera, status);
+            rustplus.cameraCyclingIndex++;
+            rustplus.cameraCyclingTaskId = setTimeout(
+                module.exports.cycleStep, CAMERA_CYCLING_GAP_MS, rustplus, client);
+            return;
+        }
+        rustplus.cameraWaitingForPlayerInactiveLogged = false;
 
         /* Subscribe to the camera */
         const cameraClientKey = `${cameraSession.steamId}:${identifier}`;
@@ -144,6 +149,7 @@ module.exports = {
             }
             rustplus.cameraCurrentCamera = null;
             rustplus.cameraCurrentSubscription = null;
+            if (!rustplus.cameraCyclingActive || rustplus.isDeleted) return;
             if (camera.reachable) {
                 camera.reachable = false;
                 client.setInstance(rustplus.guildId, instance);
@@ -153,6 +159,10 @@ module.exports = {
                         error: module.exports.formatError(e)
                     }));
             }
+            await module.exports.sendUnavailableFrame(rustplus, client, identifier, camera,
+                client.intlGet(rustplus.guildId, 'cameraUnavailableStatus', {
+                    error: module.exports.formatError(e)
+                }));
 
             rustplus.cameraCyclingIndex++;
             rustplus.cameraCyclingTaskId = setTimeout(
@@ -164,6 +174,15 @@ module.exports = {
         client.setInstance(rustplus.guildId, instance);
 
         const frame = await framePromise;
+        if (!rustplus.cameraCyclingActive || rustplus.isDeleted) {
+            await cameraClient.unsubscribe().catch(() => { /* Ignore */ });
+            if (cameraSession.session !== rustplus) {
+                cameraSession.session.off('message', onCameraMessage);
+            }
+            rustplus.cameraCurrentCamera = null;
+            rustplus.cameraCurrentSubscription = null;
+            return;
+        }
         if (frame) {
             await module.exports.waitForCameraRays(rustplus, identifier, 250);
             await module.exports.sendFrame(rustplus, client, identifier, camera, frame);
@@ -171,6 +190,8 @@ module.exports = {
         else {
             rustplus.log(client.intlGet(null, 'warningCap'),
                 client.intlGet(null, 'cameraFrameTimedOut', { camera: identifier }));
+            await module.exports.sendUnavailableFrame(rustplus, client, identifier, camera,
+                client.intlGet(rustplus.guildId, 'cameraFrameTimedOut', { camera: identifier }));
         }
 
         /* Unsubscribe */
@@ -329,6 +350,7 @@ module.exports = {
 
         storedCamera.frame = (storedCamera.frame || 0) + 1;
         storedCamera.refreshRequested = false;
+        storedCamera.status = null;
         rustplus.cameraDisplayedPlayerKeys[identifier] = visiblePlayerKeys;
         client.setInstance(rustplus.guildId, instance);
 
@@ -379,6 +401,46 @@ module.exports = {
                 camera: identifier,
                 error: module.exports.formatError(sendError)
             }));
+        }
+    },
+
+    sendUnavailableFrame: async function (rustplus, client, identifier, camera, status) {
+        const instance = client.getInstance(rustplus.guildId);
+        const storedCamera = instance.serverList[rustplus.serverId]?.cameras?.[identifier];
+        if (!storedCamera) return;
+        if (storedCamera.messageId && storedCamera.status === status) return;
+
+        storedCamera.status = status;
+        storedCamera.refreshRequested = false;
+        client.setInstance(rustplus.guildId, instance);
+
+        const channelId = instance.channelId.cameras;
+        const channel = DiscordTools.getTextChannelById(rustplus.guildId, channelId);
+        if (!channel) {
+            rustplus.log(client.intlGet(null, 'warningCap'), client.intlGet(null, 'cameraChannelNotFound'));
+            return;
+        }
+
+        const content = {
+            embeds: [DiscordEmbeds.getCameraFrameEmbed(rustplus.guildId, rustplus.serverId, identifier,
+                storedCamera.name || camera.name, storedCamera.frame || 0,
+                rustplus.cameraVisiblePlayers[identifier] || [], status)],
+            components: [DiscordButtons.getCameraButtons(rustplus.guildId, rustplus.serverId, identifier)]
+        };
+
+        if (storedCamera.messageId) {
+            const existingMessage = await DiscordTools.getMessageById(
+                rustplus.guildId, channelId, storedCamera.messageId);
+            if (existingMessage) {
+                await existingMessage.edit(content).catch(() => { /* Ignore */ });
+                return;
+            }
+        }
+
+        const sentMessage = await channel.send(content).catch(() => null);
+        if (sentMessage) {
+            storedCamera.messageId = sentMessage.id;
+            client.setInstance(rustplus.guildId, instance);
         }
     },
 
