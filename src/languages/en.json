@@ -694,6 +694,7 @@
     "responseIsUndefined": "Response is undefined.",
     "responseTimeout": "Timeout reached while waiting for response.",
     "resultRecycling": "Result of recycling",
+    "restrictedServerWarning": "{server} may ban players for using Rust+ bots like rustplusplus. Check the server rules before connecting.",
     "roleCleared": "rustplusplus role has been cleared.",
     "roleSet": "rustplusplus role has been set to {name}.",
     "rustMonument": "Rust Monument",

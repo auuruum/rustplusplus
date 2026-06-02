@@ -28,6 +28,7 @@ const DiscordEmbeds = require('./discordEmbeds.js');
 const DiscordSelectMenus = require('./discordSelectMenus.js');
 const DiscordTools = require('./discordTools.js');
 const Scrape = require('../util/scrape.js');
+const ServerRestrictions = require('../util/serverRestrictions.js');
 
 function broadcastStreamDeck(guildId, endpoints) {
     if (!Client.client.streamDeckBridge) return;
@@ -45,27 +46,37 @@ module.exports = {
             await DiscordTools.getMessageById(guildId, channelId, messageId) : undefined;
 
         if (message !== undefined) {
-            return await Client.client.messageEdit(message, content);
-        }
-        else {
-            const channel = DiscordTools.getTextChannelById(guildId, channelId);
-
-            if (!channel) {
-                Client.client.log(Client.client.intlGet(null, 'errorCap'),
-                    Client.client.intlGet(null, 'couldNotGetChannelWithId', { id: channelId }), 'error');
-                return;
+            const editedMessage = await Client.client.messageEdit(message, content);
+            if (editedMessage !== undefined) {
+                return editedMessage;
             }
-
-            return await Client.client.messageSend(channel, content);
         }
+
+        const channel = DiscordTools.getTextChannelById(guildId, channelId);
+
+        if (!channel) {
+            Client.client.log(Client.client.intlGet(null, 'errorCap'),
+                Client.client.intlGet(null, 'couldNotGetChannelWithId', { id: channelId }), 'error');
+            return;
+        }
+
+        return await Client.client.messageSend(channel, content);
     },
 
     sendServerMessage: async function (guildId, serverId, state = null, interaction = null) {
         const instance = Client.client.getInstance(guildId);
         const server = instance.serverList[serverId];
+        const restriction = ServerRestrictions.getRestriction(serverId, server);
+        const embeds = [];
+
+        if (restriction) {
+            embeds.push(DiscordEmbeds.getRestrictedServerWarningEmbed(guildId, restriction));
+        }
+
+        embeds.push(await DiscordEmbeds.getServerEmbed(guildId, serverId));
 
         const content = {
-            embeds: [await DiscordEmbeds.getServerEmbed(guildId, serverId)],
+            embeds: embeds,
             components: DiscordButtons.getServerButtons(guildId, serverId, state)
         }
 

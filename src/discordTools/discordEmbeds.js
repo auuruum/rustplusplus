@@ -24,6 +24,7 @@ const Client = require('../../index.ts');
 const Constants = require('../util/constants.js');
 const DiscordTools = require('./discordTools.js');
 const InstanceUtils = require('../util/instanceUtils.js');
+const ServerRestrictions = require('../util/serverRestrictions.js');
 const Timer = require('../util/timer');
 
 module.exports = {
@@ -91,7 +92,7 @@ module.exports = {
 
         return module.exports.getEmbed({
             title: `${server.title}`,
-            color: Constants.COLOR_DEFAULT,
+            color: ServerRestrictions.isRestricted(serverId, server) ? Constants.COLOR_INACTIVE : Constants.COLOR_DEFAULT,
             description: description,
             thumbnail: `${server.img}`,
             fields: [{
@@ -105,6 +106,16 @@ module.exports = {
                 value: `\`${hoster} (${server.steamId})\``,
                 inline: false
             }]
+        });
+    },
+
+    getRestrictedServerWarningEmbed: function (guildId, restriction) {
+        return module.exports.getEmbed({
+            title: `${Client.client.intlGet(guildId, 'warningCap')}: ${restriction.name}`,
+            color: Constants.COLOR_INACTIVE,
+            description: Client.client.intlGet(guildId, 'restrictedServerWarning', {
+                server: restriction.name
+            })
         });
     },
 
@@ -1045,7 +1056,7 @@ module.exports = {
 
     getHelpEmbed: function (guildId) {
         const repository = 'https://github.com/auuruum/rustplusplus';
-        const credentials = `${repository}/blob/master/docs/credentials.md`;
+        const credentials = `${repository}/blob/master/docs/credentials_web_version.md`;
         const pairServer = `${repository}/blob/master/docs/pair_and_connect_to_server.md`;
         const commands = `${repository}/blob/master/docs/commands.md`;
 
