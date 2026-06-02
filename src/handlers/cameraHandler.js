@@ -35,6 +35,7 @@ const CAMERA_FRAME_CAPTURE_TIMEOUT_MS = 15000;
 const CAMERA_CYCLING_GAP_MS = 1000;
 const CAMERA_FRAME_SCALE = 4;
 const CAMERA_PTZ_MOVE_DELTA = 1.4;
+const CAMERA_PRIORITY_WEIGHT = 3;
 
 module.exports = {
     startCycling: function (rustplus, client) {
@@ -101,7 +102,7 @@ module.exports = {
             return;
         }
 
-        const cameraKeys = Object.keys(server.cameras);
+        const cameraKeys = module.exports.getCameraCycleKeys(server.cameras);
         if (rustplus.cameraCyclingIndex >= cameraKeys.length) {
             rustplus.cameraCyclingIndex = 0;
         }
@@ -245,6 +246,17 @@ module.exports = {
         }
 
         return null;
+    },
+
+    getCameraCycleKeys: function (cameras) {
+        const keys = [];
+        for (const [identifier, camera] of Object.entries(cameras)) {
+            const weight = camera.priority ? CAMERA_PRIORITY_WEIGHT : 1;
+            for (let i = 0; i < weight; i++) {
+                keys.push(identifier);
+            }
+        }
+        return keys;
     },
 
     getCredentialCameraClient: async function (rustplus, steamId, serverLite) {

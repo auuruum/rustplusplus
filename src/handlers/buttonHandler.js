@@ -1040,6 +1040,22 @@ module.exports = async (client, interaction) => {
             components: DiscordButtons.getCameraComponents(guildId, ids.serverId, ids.cameraId)
         });
     }
+    else if (interaction.customId.startsWith('CameraPriority')) {
+        const ids = JSON.parse(interaction.customId.replace('CameraPriority', ''));
+        const camera = instance.serverList[ids.serverId].cameras[ids.cameraId];
+
+        camera.priority = !camera.priority;
+        client.setInstance(guildId, instance);
+
+        client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'buttonValueChange', {
+            id: `${verifyId}`,
+            value: `camera, ${ids.cameraId}, priority, ${camera.priority}`
+        }));
+
+        await client.interactionUpdate(interaction, {
+            components: DiscordButtons.getCameraComponents(guildId, ids.serverId, ids.cameraId)
+        });
+    }
     else if (interaction.customId.startsWith('CameraControl')) {
         const ids = JSON.parse(interaction.customId.replace('CameraControl', ''));
         const server = instance.serverList[ids.serverId];

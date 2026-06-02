@@ -241,6 +241,7 @@ module.exports = (client, guild) => {
             if (!camera.hasOwnProperty('refreshRequested')) camera.refreshRequested = false;
             if (!camera.hasOwnProperty('controlFlags')) camera.controlFlags = 0;
             if (!camera.hasOwnProperty('type')) camera.type = 'unknown';
+            if (!camera.hasOwnProperty('priority')) camera.priority = false;
         }
     }
 

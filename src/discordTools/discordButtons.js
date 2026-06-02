@@ -322,13 +322,28 @@ module.exports = {
     },
 
     getCameraComponents: function (guildId, serverId, cameraId) {
-        const rows = [module.exports.getCameraButtons(guildId, serverId, cameraId)];
+        const rows = [
+            module.exports.getCameraButtons(guildId, serverId, cameraId),
+            module.exports.getCameraPriorityButtons(guildId, serverId, cameraId)
+        ];
         const instance = Client.client.getInstance(guildId);
         const camera = instance.serverList[serverId].cameras[cameraId];
         if (camera.type === 'ptz') {
             rows.push(module.exports.getCameraControlButtons(serverId, cameraId));
         }
         return rows;
+    },
+
+    getCameraPriorityButtons: function (guildId, serverId, cameraId) {
+        const instance = Client.client.getInstance(guildId);
+        const camera = instance.serverList[serverId].cameras[cameraId];
+        const identifier = JSON.stringify({ "serverId": serverId, "cameraId": cameraId });
+        return new Discord.ActionRowBuilder().addComponents(
+            module.exports.getButton({
+                customId: `CameraPriority${identifier}`,
+                label: camera.priority ? 'Priority On' : 'Priority Off',
+                style: camera.priority ? SUCCESS : SECONDARY
+            }));
     },
 
     getCameraControlButtons: function (serverId, cameraId) {

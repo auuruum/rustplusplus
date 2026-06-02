@@ -115,7 +115,8 @@ module.exports = {
                     mode: 'slow',
                     refreshRequested: true,
                     controlFlags: 0,
-                    type: 'unknown'
+                    type: 'unknown',
+                    priority: false
                 };
                 client.setInstance(interaction.guildId, instance);
 
