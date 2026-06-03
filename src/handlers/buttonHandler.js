@@ -466,7 +466,7 @@ module.exports = async (client, interaction) => {
         if (rustplus) CameraHandler.stopCycling(rustplus);
         client.resetRustplusVariables(guildId);
 
-        if (instance.activeServer !== null) {
+        if (instance.activeServer !== null && instance.serverList[instance.activeServer]) {
             await DiscordMessages.sendServerMessage(guildId, instance.activeServer, null);
         }
 

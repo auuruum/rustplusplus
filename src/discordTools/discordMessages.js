@@ -66,6 +66,13 @@ module.exports = {
     sendServerMessage: async function (guildId, serverId, state = null, interaction = null) {
         const instance = Client.client.getInstance(guildId);
         const server = instance.serverList[serverId];
+
+        if (!server) {
+            Client.client.log(Client.client.intlGet(null, 'errorCap'),
+                `Cannot send server message for missing serverId: ${serverId}`, 'error');
+            return;
+        }
+
         const restriction = ServerRestrictions.getRestriction(serverId, server);
         const embeds = [];
 

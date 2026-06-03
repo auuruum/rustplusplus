@@ -69,6 +69,15 @@ module.exports = {
         const instance = Client.client.getInstance(guildId);
         const credentials = InstanceUtils.readCredentialsFile(guildId);
         const server = instance.serverList[serverId];
+
+        if (!server) {
+            return module.exports.getEmbed({
+                title: Client.client.intlGet(guildId, 'unknown'),
+                color: Constants.COLOR_INACTIVE,
+                description: `Missing server: ${serverId}`
+            });
+        }
+
         let hoster = Client.client.intlGet(guildId, 'unknown');
         if (credentials.hasOwnProperty(server.steamId)) {
             hoster = await DiscordTools.getUserById(guildId, credentials[server.steamId].discord_user_id);
