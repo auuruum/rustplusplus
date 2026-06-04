@@ -349,6 +349,7 @@ module.exports = async (client, interaction) => {
         }
     
         client.setInstance(guildId, instance);
+        client.streamDeckBridge?.broadcastSnapshot(guildId, ['trackers'], 'immediate_update');
     
         client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'modalValueChange', {
             id: `${verifyId}`,
@@ -430,6 +431,7 @@ module.exports = async (client, interaction) => {
         }));
 
         await DiscordMessages.sendTrackerMessage(interaction.guildId, ids.trackerId);
+        client.streamDeckBridge?.broadcastSnapshot(interaction.guildId, ['trackers'], 'immediate_update');
     }
     else if (interaction.customId.startsWith('TrackerRemovePlayer')) {
         const ids = JSON.parse(interaction.customId.replace('TrackerRemovePlayer', ''));
@@ -484,6 +486,7 @@ module.exports = async (client, interaction) => {
         }));
 
         await DiscordMessages.sendTrackerMessage(interaction.guildId, ids.trackerId);
+        client.streamDeckBridge?.broadcastSnapshot(interaction.guildId, ['trackers'], 'immediate_update');
     }
 
     client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'userModalInteractionSuccess', {

@@ -569,6 +569,7 @@ module.exports = async (client, interaction) => {
         await interaction.deferUpdate();
     
         await DiscordMessages.sendTrackerMessage(guildId, trackerId);
+        client.streamDeckBridge?.broadcastSnapshot(guildId, ['trackers'], 'immediate_update');
     }
     else if (interaction.customId.startsWith('CreateGroup')) {
         const ids = JSON.parse(interaction.customId.replace('CreateGroup', ''));
@@ -1226,6 +1227,7 @@ module.exports = async (client, interaction) => {
         }));
 
         await DiscordMessages.sendTrackerMessage(guildId, ids.trackerId, interaction);
+        client.streamDeckBridge?.broadcastSnapshot(guildId, ['trackers'], 'immediate_update');
     }
     else if (interaction.customId.startsWith('TrackerUpdate')) {
         const ids = JSON.parse(interaction.customId.replace('TrackerUpdate', ''));
@@ -1239,6 +1241,7 @@ module.exports = async (client, interaction) => {
         // TODO! Remove name change icon from status
 
         await DiscordMessages.sendTrackerMessage(guildId, ids.trackerId, interaction);
+        client.streamDeckBridge?.broadcastSnapshot(guildId, ['trackers'], 'immediate_update');
     }
     else if (interaction.customId.startsWith('TrackerReport')) {
         const ids = JSON.parse(interaction.customId.replace('TrackerReport', ''));
@@ -1348,6 +1351,7 @@ module.exports = async (client, interaction) => {
 
         delete instance.trackers[ids.trackerId];
         client.setInstance(guildId, instance);
+        client.streamDeckBridge?.broadcastSnapshot(guildId, ['trackers'], 'immediate_update');
     }
     else if (interaction.customId.startsWith('TrackerAddPlayer')) {
         const ids = JSON.parse(interaction.customId.replace('TrackerAddPlayer', ''));
@@ -1392,6 +1396,7 @@ module.exports = async (client, interaction) => {
         }));
 
         await DiscordMessages.sendTrackerMessage(guildId, ids.trackerId, interaction);
+        client.streamDeckBridge?.broadcastSnapshot(guildId, ['trackers'], 'immediate_update');
     }
 
     client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'userButtonInteractionSuccess', {

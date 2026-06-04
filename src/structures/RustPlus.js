@@ -3822,6 +3822,7 @@ class RustPlus extends RustPlusLib {
         }
     
         await DiscordMessages.sendTrackerMessage(this.guildId, trackerId);
+        Client.client.streamDeckBridge?.broadcastSnapshot(this.guildId, ['trackers'], 'immediate_update');
     
         return Client.client.intlGet(this.guildId, 'trackerCreated', { trackerId });
     }
@@ -3916,6 +3917,7 @@ class RustPlus extends RustPlusLib {
         Client.client.setInstance(this.guildId, instance);
     
         await DiscordMessages.sendTrackerMessage(this.guildId, targetTrackerId);
+        Client.client.streamDeckBridge?.broadcastSnapshot(this.guildId, ['trackers'], 'immediate_update');
     
         return Client.client.intlGet(this.guildId, 'playerAddedToTracker', {
             name,
@@ -3983,6 +3985,7 @@ class RustPlus extends RustPlusLib {
         Client.client.setInstance(this.guildId, instance);
     
         await DiscordMessages.sendTrackerMessage(this.guildId, targetTrackerId);
+        Client.client.streamDeckBridge?.broadcastSnapshot(this.guildId, ['trackers'], 'immediate_update');
     
         return Client.client.intlGet(this.guildId, 'playerRemovedFromTracker', {
             id,
