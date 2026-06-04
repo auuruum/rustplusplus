@@ -14,9 +14,9 @@ function getWakeProfiles(instance) {
     return instance.wakeProfiles;
 }
 
-function getEnabledProfiles(instance) {
+function getEnabledSleepingProfiles(instance) {
     return Object.entries(getWakeProfiles(instance))
-        .filter(([, profile]) => profile.enabled && profile.callmebotTelegramUser)
+        .filter(([, profile]) => profile.enabled && profile.sleeping && profile.callmebotTelegramUser)
         .map(([discordUserId, profile]) => ({ discordUserId, profile }));
 }
 
@@ -192,9 +192,22 @@ module.exports = {
 
         instance.wakeProfiles[discordUserId] = {
             enabled,
+            sleeping: instance.wakeProfiles[discordUserId] ?
+                Boolean(instance.wakeProfiles[discordUserId].sleeping) : false,
             callmebotTelegramUser: telegramUser,
             updatedAt: Date.now()
         };
+        client.setInstance(guildId, instance);
+        return instance.wakeProfiles[discordUserId];
+    },
+
+    setProfileSleeping(client, guildId, discordUserId, sleeping) {
+        const instance = client.getInstance(guildId);
+        this.ensureInstance(instance);
+
+        if (!instance.wakeProfiles[discordUserId]) return null;
+        instance.wakeProfiles[discordUserId].sleeping = sleeping;
+        instance.wakeProfiles[discordUserId].updatedAt = Date.now();
         client.setInstance(guildId, instance);
         return instance.wakeProfiles[discordUserId];
     },
@@ -233,7 +246,7 @@ module.exports = {
 
         if (!server.alarms[entityId].wakeCall) return;
 
-        const targets = getEnabledProfiles(instance);
+        const targets = getEnabledSleepingProfiles(instance);
         if (targets.length === 0) return;
 
         if (hasActiveGuildAlert(guildId)) {
@@ -286,7 +299,8 @@ module.exports = {
 
         return rows.map(([discordUserId, profile]) => {
             const state = profile.enabled ? 'enabled' : 'disabled';
-            return `<@${discordUserId}>: ${state}, ${profile.callmebotTelegramUser}`;
+            const sleepState = profile.sleeping ? 'sleeping' : 'awake';
+            return `<@${discordUserId}>: ${state}, ${sleepState}, ${profile.callmebotTelegramUser}`;
         }).join('\n');
     }
 };

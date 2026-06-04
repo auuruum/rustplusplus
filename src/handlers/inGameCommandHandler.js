@@ -21,6 +21,7 @@
 const SmartAlarmHandler = require('./smartAlarmHandler.js');
 const SmartSwitchGroupHandler = require('./smartSwitchGroupHandler.js');
 const SmartSwitchHandler = require('./smartSwitchHandler.js');
+const WakeAlert = require('../util/wakeAlert.js');
 
 module.exports = {
     inGameCommandHandler: async function (rustplus, client, message) {
@@ -54,6 +55,12 @@ module.exports = {
         else if (commandLowerCase === `${prefix}${client.intlGet('en', 'commandSyntaxCargo')}` ||
             commandLowerCase === `${prefix}${client.intlGet(guildId, 'commandSyntaxCargo')}`) {
             rustplus.sendInGameMessage(rustplus.getCommandCargo());
+        }
+        else if (commandLowerCase === `${prefix}sleep` ||
+            commandLowerCase === `${prefix}awake` ||
+            commandLowerCase === `${prefix}wakestatus`) {
+            rustplus.sendInGameMessage(setWakeSleepStatus(
+                rustplus, client, callerSteamId, commandLowerCase.replace(prefix, '')));
         }
         else if (commandLowerCase === `${prefix}${client.intlGet('en', 'commandSyntaxChinook')}` ||
             commandLowerCase === `${prefix}${client.intlGet(guildId, 'commandSyntaxChinook')}`) {
@@ -275,3 +282,24 @@ module.exports = {
         return true;
     },
 };
+
+function setWakeSleepStatus(rustplus, client, callerSteamId, action) {
+    const discordUserId = rustplus.getLinkedDiscordUserId(callerSteamId);
+    if (!discordUserId) return 'No linked Discord user found for your SteamID.';
+
+    const instance = client.getInstance(rustplus.guildId);
+    WakeAlert.ensureInstance(instance);
+
+    const profile = instance.wakeProfiles[discordUserId];
+    if (!profile) return 'No wake profile. Run /wake setup in Discord first.';
+
+    if (action === 'wakestatus') {
+        return `Wake calls ${profile.enabled ? 'enabled' : 'disabled'}. ` +
+            `IRL status: ${profile.sleeping ? 'sleeping' : 'awake'}.`;
+    }
+
+    const sleeping = action === 'sleep';
+    WakeAlert.setProfileSleeping(client, rustplus.guildId, discordUserId, sleeping);
+    return sleeping ? 'IRL sleep mode ON. Wake calls armed.' :
+        'IRL sleep mode OFF. Wake calls disarmed.';
+}

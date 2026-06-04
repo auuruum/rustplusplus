@@ -34,6 +34,15 @@ module.exports = {
                 .setName('disable')
                 .setDescription('Disable your wake calls.'))
             .addSubcommand(subcommand => subcommand
+                .setName('sleep')
+                .setDescription('Arm wake calls because you are sleeping IRL.'))
+            .addSubcommand(subcommand => subcommand
+                .setName('awake')
+                .setDescription('Disarm wake calls because you are awake IRL.'))
+            .addSubcommand(subcommand => subcommand
+                .setName('status')
+                .setDescription('Show your wake status.'))
+            .addSubcommand(subcommand => subcommand
                 .setName('remove')
                 .setDescription('Remove your wake profile.'))
             .addSubcommand(subcommand => subcommand
@@ -109,6 +118,33 @@ module.exports = {
                 const profile = WakeAlert.setProfileEnabled(client, guildId, userId, false);
                 await client.interactionEditReply(interaction, DiscordEmbeds.getActionInfoEmbed(
                     profile ? 0 : 1, profile ? 'Wake calls disabled.' : 'No wake profile. Run /wake setup first.'));
+            } break;
+
+            case 'sleep': {
+                const profile = WakeAlert.setProfileSleeping(client, guildId, userId, true);
+                await client.interactionEditReply(interaction, DiscordEmbeds.getActionInfoEmbed(
+                    profile ? 0 : 1, profile ? 'IRL sleep mode ON. Wake calls armed.' :
+                        'No wake profile. Run /wake setup first.'));
+            } break;
+
+            case 'awake': {
+                const profile = WakeAlert.setProfileSleeping(client, guildId, userId, false);
+                await client.interactionEditReply(interaction, DiscordEmbeds.getActionInfoEmbed(
+                    profile ? 0 : 1, profile ? 'IRL sleep mode OFF. Wake calls disarmed.' :
+                        'No wake profile. Run /wake setup first.'));
+            } break;
+
+            case 'status': {
+                const instance = client.getInstance(guildId);
+                WakeAlert.ensureInstance(instance);
+                const profile = instance.wakeProfiles[userId];
+                const description = profile ?
+                    `Wake calls: ${profile.enabled ? 'enabled' : 'disabled'}\n` +
+                    `IRL status: ${profile.sleeping ? 'sleeping' : 'awake'}\n` +
+                    `Telegram: ${profile.callmebotTelegramUser}` :
+                    'No wake profile. Run /wake setup first.';
+                await client.interactionEditReply(interaction, DiscordEmbeds.getActionInfoEmbed(
+                    profile ? 0 : 1, description));
             } break;
 
             case 'remove': {
