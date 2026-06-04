@@ -812,6 +812,25 @@ module.exports = async (client, interaction) => {
 
         await DiscordMessages.sendSmartAlarmMessage(guildId, ids.serverId, ids.entityId, interaction);
     }
+    else if (interaction.customId.startsWith('SmartAlarmWake')) {
+        const ids = JSON.parse(interaction.customId.replace('SmartAlarmWake', ''));
+        const server = instance.serverList[ids.serverId];
+
+        if (!server || (server && !server.alarms.hasOwnProperty(ids.entityId))) {
+            await interaction.message.delete();
+            return;
+        }
+
+        server.alarms[ids.entityId].wakeCall = !server.alarms[ids.entityId].wakeCall;
+        client.setInstance(guildId, instance);
+
+        client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'buttonValueChange', {
+            id: `${verifyId}`,
+            value: `wakeCall, ${server.alarms[ids.entityId].wakeCall}`
+        }));
+
+        await DiscordMessages.sendSmartAlarmMessage(guildId, ids.serverId, ids.entityId, interaction);
+    }
     else if (interaction.customId.startsWith('SmartAlarmDelete')) {
         const ids = JSON.parse(interaction.customId.replace('SmartAlarmDelete', ''));
         const server = instance.serverList[ids.serverId];

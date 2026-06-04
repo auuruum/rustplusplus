@@ -225,6 +225,11 @@ module.exports = {
                 style: entity.everyone ? SUCCESS : DANGER
             }),
             module.exports.getButton({
+                customId: `SmartAlarmWake${identifier}`,
+                label: 'WAKE',
+                style: entity.wakeCall ? SUCCESS : DANGER
+            }),
+            module.exports.getButton({
                 customId: `SmartAlarmEdit${identifier}`,
                 label: Client.client.intlGet(guildId, 'editCap'),
                 style: PRIMARY

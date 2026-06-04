@@ -111,6 +111,11 @@ function getAckButton(alertId) {
     );
 }
 
+function hasActiveGuildAlert(guildId) {
+    return Object.values(Client.client.activeWakeAlerts)
+        .some(alert => alert.guildId === guildId && !alert.acked);
+}
+
 async function callProfile(profile, alertText, mode = 'call') {
     const url = buildUrl(profile.callmebotTelegramUser, alertText, mode);
     Client.client.log(Client.client.intlGet(null, 'infoCap'),
@@ -226,8 +231,16 @@ module.exports = {
         const server = instance.serverList[serverId];
         if (!server || !server.alarms[entityId]) return;
 
+        if (!server.alarms[entityId].wakeCall) return;
+
         const targets = getEnabledProfiles(instance);
         if (targets.length === 0) return;
+
+        if (hasActiveGuildAlert(guildId)) {
+            Client.client.log(Client.client.intlGet(null, 'infoCap'),
+                `Wake alert ignored for ${serverId}/${entityId}: another wake alert is already active.`);
+            return;
+        }
 
         const alarm = server.alarms[entityId];
         const grid = alarm.location ? ` (${alarm.location})` : '';

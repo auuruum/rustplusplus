@@ -272,6 +272,10 @@ module.exports = {
                 value: `\`${entity.message}\``,
                 inline: true
             }, {
+                name: 'Wake calls',
+                value: entity.wakeCall ? '`ON`' : '`OFF`',
+                inline: true
+            }, {
                 name: Client.client.intlGet(guildId, 'customCommand'),
                 value: `\`${instance.generalSettings.prefix}${entity.command}\``,
                 inline: false
