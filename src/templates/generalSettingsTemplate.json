@@ -1,9 +1,9 @@
 {
     "language": "en",
     "voiceGender": "male",
-    "prefix": "!",
+    "prefix": ".",
     "muteInGameBotMessages": false,
-    "trademark": "rustplusplus",
+    "trademark": "N0rth++",
     "inGameCommandsEnabled": true,
     "inGameCommandAccessMode": "blacklist",
     "fcmAlarmNotificationEnabled": false,
