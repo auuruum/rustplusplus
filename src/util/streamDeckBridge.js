@@ -22,8 +22,6 @@ class StreamDeckBridge {
         this.server = null;
         this.wss = null;
         this.wsClients = new Map();
-        this.timeSamples = new Map();
-        this.realtimeTimer = null;
     }
 
     start() {
@@ -49,7 +47,6 @@ class StreamDeckBridge {
         this.server.listen(this.port, this.host, () => {
             this.log('info', `Stream Deck bridge listening on http://${this.host}:${this.port}`);
         });
-        this.realtimeTimer = setInterval(this.broadcastRealtimeSnapshot.bind(this), 1000);
 
         this.server.on('error', error => {
             this.log('error', `Stream Deck bridge failed: ${error.message}`);
@@ -65,12 +62,7 @@ class StreamDeckBridge {
             this.server.close();
             this.server = null;
         }
-        if (this.realtimeTimer) {
-            clearInterval(this.realtimeTimer);
-            this.realtimeTimer = null;
-        }
         this.wsClients.clear();
-        this.timeSamples.clear();
     }
 
     async handleHttpRequest(req, res) {
@@ -264,18 +256,6 @@ class StreamDeckBridge {
         return data;
     }
 
-    broadcastRealtimeSnapshot() {
-        const guildIds = new Set();
-        for (const [, state] of this.wsClients.entries()) {
-            if (!state.authenticated || !state.endpoints.includes('time')) continue;
-            guildIds.add(state.guildId);
-        }
-
-        for (const guildId of guildIds) {
-            this.broadcastSnapshot(guildId, ['time'], 'update');
-        }
-    }
-
     getServerData(guildId) {
         const context = this.getContext(guildId);
         if (!context.instance || !context.server) {
@@ -308,14 +288,11 @@ class StreamDeckBridge {
             };
         }
 
-        const currentTime = this.getProjectedTime(guildId, time);
-        const isDay = currentTime >= time.sunrise && currentTime < time.sunset;
-
         return {
             connected,
-            currentTime,
-            currentTimeFormatted: Timer.convertDecimalToHoursMinutes(currentTime),
-            isDay,
+            currentTime: time.time,
+            currentTimeFormatted: Timer.convertDecimalToHoursMinutes(time.time),
+            isDay: time.isDay(),
             timeTillChange: time.getTimeTillDayOrNight(),
             sunrise: time.sunrise,
             sunriseFormatted: Timer.convertDecimalToHoursMinutes(time.sunrise),
@@ -324,31 +301,6 @@ class StreamDeckBridge {
             dayLengthMinutes: time.dayLengthMinutes,
             timeScale: time.timeScale
         };
-    }
-
-    getProjectedTime(guildId, time) {
-        const key = `${guildId}`;
-        const now = Date.now();
-        const sample = this.timeSamples.get(key);
-        const sourceTime = Number(time.time);
-        const dayLengthMinutes = Number(time.dayLengthMinutes);
-
-        if (!sample || sample.sourceTime !== sourceTime || sample.dayLengthMinutes !== dayLengthMinutes) {
-            this.timeSamples.set(key, {
-                sourceTime,
-                dayLengthMinutes,
-                sampledAtMs: now
-            });
-            return sourceTime;
-        }
-
-        if (!Number.isFinite(dayLengthMinutes) || dayLengthMinutes <= 0) {
-            return sourceTime;
-        }
-
-        const elapsedMs = now - sample.sampledAtMs;
-        const elapsedHours = (elapsedMs / 1000 / 60 / dayLengthMinutes) * 24;
-        return (sample.sourceTime + elapsedHours) % 24;
     }
 
     getPopData(guildId) {
