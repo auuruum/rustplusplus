@@ -30,6 +30,7 @@ module.exports = {
         }
 
         rustplus.log(client.intlGet(null, 'disconnectedCap'), client.intlGet(null, 'disconnectedFromServer'));
+        rustplus.isOperational = false;
 
         const guildId = rustplus.guildId;
         const serverId = rustplus.serverId;
@@ -85,6 +86,12 @@ module.exports = {
                     };
                 }
             }
+
+            client.streamDeckBridge?.broadcastSnapshot(
+                guildId,
+                ['server', 'time', 'pop', 'switches', 'alarms', 'switchgroups', 'storagemonitors', 'trackers'],
+                'immediate_update'
+            );
 
             delete client.rustplusInstances[guildId];
 

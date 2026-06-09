@@ -126,5 +126,11 @@ module.exports = {
         CameraHandler.startCycling(rustplus, client);
 
         rustplus.updateLeaderRustPlusLiteInstance();
+
+        client.streamDeckBridge?.broadcastSnapshot(
+            guildId,
+            ['server', 'time', 'pop', 'switches', 'alarms', 'switchgroups', 'storagemonitors', 'trackers'],
+            'immediate_update'
+        );
     },
 };
