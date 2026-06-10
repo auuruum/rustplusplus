@@ -88,6 +88,11 @@ module.exports = {
     battlemetrics: {
         token: getString('RPP_BATTLEMETRICS_TOKEN', ''),
     },
+    teamDetector: {
+        path: getString('RPP_TEAM_DETECTOR_PATH', path.resolve(__dirname, '..', '..', 'team-detector')),
+        command: getString('RPP_TEAM_DETECTOR_COMMAND', 'uv run python'),
+        timeoutMs: getNumber('RPP_TEAM_DETECTOR_TIMEOUT_MS', 180000),
+    },
     streamDeck: {
         enabled: getBoolean('RPP_STREAM_DECK_ENABLED', false),
         host: getString('RPP_STREAM_DECK_HOST', 'localhost'),
