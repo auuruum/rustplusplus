@@ -19,8 +19,8 @@
 */
 
 const Builder = require('@discordjs/builders');
-const Canvas = require('canvas');
 const Discord = require('discord.js');
+const Jimp = require('jimp');
 
 const Constants = require('../util/constants.js');
 const DiscordEmbeds = require('../discordTools/discordEmbeds.js');
@@ -130,7 +130,7 @@ async function discoverHandler(client, interaction) {
             embeds: [embed]
         };
 
-        const graphImage = buildConnectionGraphImage(result);
+        const graphImage = await buildConnectionGraphImage(result);
         if (graphImage) {
             embed.setImage('attachment://teamfinder_graph.png');
             reply.files = [new Discord.AttachmentBuilder(graphImage, { name: 'teamfinder_graph.png' })];
@@ -266,7 +266,7 @@ function formatEvidence(candidate) {
     return `Friend/comment connection with ${connectionNames.join(', ')}${suffix}.`;
 }
 
-function buildConnectionGraphImage(result) {
+async function buildConnectionGraphImage(result) {
     const candidates = Array.isArray(result.candidates) ? result.candidates : [];
     const nonSeedCandidates = candidates.filter(candidate => !candidate.seed);
     const shownCandidates = (nonSeedCandidates.length > 0 ? nonSeedCandidates : candidates).slice(0, 10);
@@ -284,21 +284,16 @@ function buildConnectionGraphImage(result) {
     const width = 1100;
     const rowHeight = 88;
     const height = Math.max(520, 140 + Math.max(shownCandidates.length, connectionNames.length) * rowHeight);
-    const canvas = Canvas.createCanvas(width, height);
-    const ctx = canvas.getContext('2d');
+    const image = await new Jimp(width, height, color('#232428'));
+    const titleFont = await Jimp.loadFont(Jimp.FONT_SANS_32_WHITE);
+    const font = await Jimp.loadFont(Jimp.FONT_SANS_16_WHITE);
 
-    ctx.fillStyle = '#232428';
-    ctx.fillRect(0, 0, width, height);
+    image.print(titleFont, 42, 30, 'Team Finder Connection Map');
+    image.print(font, 42, 78,
+        `Server ${result.server_id} | inspected ${result.inspected_profiles ? result.inspected_profiles.length : 0} profiles`);
 
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 34px Arial';
-    ctx.fillText('Team Finder Connection Map', 42, 54);
-    ctx.fillStyle = '#b8bbc5';
-    ctx.font = '20px Arial';
-    ctx.fillText(`Server ${result.server_id} | inspected ${result.inspected_profiles ? result.inspected_profiles.length : 0} profiles`, 42, 88);
-
-    drawLabel(ctx, 62, 122, 'Connected profiles');
-    drawLabel(ctx, 684, 122, 'Likely teammates');
+    drawLabel(image, font, 62, 116, 'Connected profiles');
+    drawLabel(image, font, 684, 116, 'Likely teammates');
 
     const leftX = 54;
     const rightX = 650;
@@ -310,14 +305,14 @@ function buildConnectionGraphImage(result) {
     connectionNames.slice(0, 10).forEach((name, index) => {
         const y = startY + index * rowHeight;
         leftPositions[name] = { x: leftX + nodeW, y: y + nodeH / 2 };
-        drawNode(ctx, leftX, y, nodeW, nodeH, sanitizeImageText(name), '#2e3440', '#81a1c1');
+        drawNode(image, font, leftX, y, nodeW, nodeH, sanitizeImageText(name), '#2e3440', '#81a1c1');
     });
 
     shownCandidates.forEach((candidate, index) => {
         const y = startY + index * rowHeight;
         const title = sanitizeImageText(candidate.name || 'Unknown');
         const subtitle = `score ${candidate.score} | ${candidate.online ? 'online' : 'not online'} | ${formatSources(candidate.sources)}`;
-        drawNode(ctx, rightX, y, nodeW, nodeH, title, candidate.online ? '#254733' : '#3a3030',
+        drawNode(image, font, rightX, y, nodeW, nodeH, title, candidate.online ? '#254733' : '#3a3030',
             candidate.online ? '#6fcf7d' : '#d08770', subtitle);
 
         const connections = Array.isArray(candidate.connection_profile_names) && candidate.connection_profile_names.length > 0 ?
@@ -325,60 +320,80 @@ function buildConnectionGraphImage(result) {
         for (const connection of connections.slice(0, 3)) {
             const from = leftPositions[connection] || leftPositions[connectionNames[0]];
             if (!from) continue;
-            drawConnection(ctx, from.x, from.y, rightX, y + nodeH / 2, candidate.online);
+            drawConnection(image, from.x, from.y, rightX, y + nodeH / 2, candidate.online);
         }
     });
 
-    return canvas.toBuffer('image/png');
+    return await image.getBufferAsync(Jimp.MIME_PNG);
 }
 
-function drawLabel(ctx, x, y, text) {
-    ctx.fillStyle = '#d8dee9';
-    ctx.font = 'bold 18px Arial';
-    ctx.fillText(text, x, y);
+function drawLabel(image, font, x, y, text) {
+    image.print(font, x, y, text);
 }
 
-function drawConnection(ctx, x1, y1, x2, y2, online) {
-    ctx.strokeStyle = online ? '#6fcf7d' : '#6f7685';
-    ctx.lineWidth = online ? 4 : 3;
-    ctx.beginPath();
-    ctx.moveTo(x1 + 8, y1);
-    ctx.bezierCurveTo(x1 + 120, y1, x2 - 120, y2, x2 - 8, y2);
-    ctx.stroke();
+function drawConnection(image, x1, y1, x2, y2, online) {
+    const lineColor = color(online ? '#6fcf7d' : '#6f7685');
+    drawLine(image, Math.round(x1 + 8), Math.round(y1), Math.round(x2 - 8), Math.round(y2), lineColor,
+        online ? 4 : 3);
 }
 
-function drawNode(ctx, x, y, width, height, title, fill, accent, subtitle = '') {
-    roundRect(ctx, x, y, width, height, 10, fill);
-    ctx.fillStyle = accent;
-    ctx.beginPath();
-    ctx.arc(x + 24, y + height / 2, 8, 0, Math.PI * 2);
-    ctx.fill();
+function drawNode(image, font, x, y, width, height, title, fill, accent, subtitle = '') {
+    fillRect(image, x, y, width, height, color(fill));
+    fillCircle(image, x + 24, y + Math.round(height / 2), 8, color(accent));
 
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 20px Arial';
-    ctx.fillText(truncateImageText(title, 28), x + 44, y + 25);
+    image.print(font, x + 44, y + 10, truncateImageText(title, 32));
+    if (subtitle !== '') image.print(font, x + 44, y + 32, truncateImageText(subtitle, 45));
+}
 
-    if (subtitle !== '') {
-        ctx.fillStyle = '#c3c7d1';
-        ctx.font = '15px Arial';
-        ctx.fillText(truncateImageText(subtitle, 42), x + 44, y + 47);
+function fillRect(image, x, y, width, height, fill) {
+    image.scan(x, y, width, height, function (scanX, scanY, index) {
+        this.bitmap.data.writeUInt32BE(fill, index);
+    });
+}
+
+function fillCircle(image, centerX, centerY, radius, fill) {
+    for (let y = -radius; y <= radius; y++) {
+        for (let x = -radius; x <= radius; x++) {
+            if ((x * x) + (y * y) <= radius * radius) {
+                setPixelSafe(image, centerX + x, centerY + y, fill);
+            }
+        }
     }
 }
 
-function roundRect(ctx, x, y, width, height, radius, fill) {
-    ctx.fillStyle = fill;
-    ctx.beginPath();
-    ctx.moveTo(x + radius, y);
-    ctx.lineTo(x + width - radius, y);
-    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-    ctx.lineTo(x + width, y + height - radius);
-    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-    ctx.lineTo(x + radius, y + height);
-    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-    ctx.lineTo(x, y + radius);
-    ctx.quadraticCurveTo(x, y, x + radius, y);
-    ctx.closePath();
-    ctx.fill();
+function drawLine(image, x1, y1, x2, y2, fill, thickness) {
+    const dx = Math.abs(x2 - x1);
+    const dy = Math.abs(y2 - y1);
+    const sx = x1 < x2 ? 1 : -1;
+    const sy = y1 < y2 ? 1 : -1;
+    let error = dx - dy;
+
+    while (true) {
+        fillCircle(image, x1, y1, Math.max(1, Math.floor(thickness / 2)), fill);
+        if (x1 === x2 && y1 === y2) break;
+        const error2 = 2 * error;
+        if (error2 > -dy) {
+            error -= dy;
+            x1 += sx;
+        }
+        if (error2 < dx) {
+            error += dx;
+            y1 += sy;
+        }
+    }
+}
+
+function setPixelSafe(image, x, y, fill) {
+    if (x < 0 || y < 0 || x >= image.bitmap.width || y >= image.bitmap.height) return;
+    image.setPixelColor(fill, x, y);
+}
+
+function color(hex) {
+    const value = hex.replace('#', '');
+    const red = parseInt(value.slice(0, 2), 16);
+    const green = parseInt(value.slice(2, 4), 16);
+    const blue = parseInt(value.slice(4, 6), 16);
+    return Jimp.rgbaToInt(red, green, blue, 255);
 }
 
 function sanitizeImageText(value) {
