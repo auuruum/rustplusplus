@@ -35,6 +35,7 @@ const PermissionHandler = require('../handlers/permissionHandler.js');
 const RustLabs = require('../structures/RustLabs');
 const RustPlus = require('../structures/RustPlus');
 const StreamDeckBridge = require('../util/streamDeckBridge.js');
+const TeamDetectorSetup = require('../util/teamDetectorSetup.js');
 
 class DiscordBot extends Discord.Client {
     constructor(props) {
@@ -75,10 +76,23 @@ class DiscordBot extends Discord.Client {
         this.voiceLeaveTimeouts = new Object();
         this.streamDeckBridge = new StreamDeckBridge(this);
 
+        this.setupTeamDetector();
         this.loadDiscordCommands();
         this.loadDiscordEvents();
         this.loadEnIntl();
         this.loadBotIntl();
+    }
+
+    setupTeamDetector() {
+        if (!Config.teamDetector.autoSetup) return;
+
+        try {
+            TeamDetectorSetup.ensureTeamDetectorSync({ update: Config.teamDetector.autoUpdate });
+            this.log('INFO', `Team Detector ready at ${Config.teamDetector.path}`);
+        }
+        catch (e) {
+            this.log('WARNING', `Team Detector auto setup failed: ${e.message}`);
+        }
     }
 
     loadDiscordCommands() {

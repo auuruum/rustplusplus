@@ -5,6 +5,7 @@ credentials
 maps
 logs
 temp
+vendor/team-detector
 data/staticData.sqlite-shm
 data/staticData.sqlite-wal
 data/runtimeData.sqlite

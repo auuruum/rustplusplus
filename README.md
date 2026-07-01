@@ -35,6 +35,7 @@ A NodeJS Discord Bot that uses the [rustplus.js](https://github.com/liamcottle/r
 * Head over to the [Information Text Channel](docs/images/information_channel.png) to see all sorts of information about the server, ongoing events and team member status.
 * Communicate with teammates from [Discord to In-Game](docs/discord_text_channels.md#teamchat-channel) and vice versa.
 * Keep track of other teams on the server with the [Battlemetrics Player Tracker](docs/discord_text_channels.md#trackers-channel).
+* Find likely teammates with [Team Finder](docs/teamfinder.md).
 * Alot of [QoL Commands](docs/commands.md) that can be used In-Game or from Discord.
 * View the [Full list of features](docs/full_list_features.md).
 
@@ -55,6 +56,10 @@ A NodeJS Discord Bot that uses the [rustplus.js](https://github.com/liamcottle/r
 > To run the bot, simply open the terminal of your choice and run the following from repository root:
 
     $ npm start run
+
+> `/teamfinder discover` auto-installs `team-detector` on bot startup when missing. To install or update it manually, run:
+
+    $ npm run setup:team-detector
 
 
 ## **How to update the repository**
