@@ -23,6 +23,7 @@ const Discord = require('discord.js');
 const Jimp = require('jimp');
 
 const Constants = require('../util/constants.js');
+const BattlemetricsPlayer = require('../util/battlemetricsPlayer.js');
 const DiscordEmbeds = require('../discordTools/discordEmbeds.js');
 const Scrape = require('../util/scrape.js');
 const TeamDetectorBridge = require('../util/teamDetectorBridge.js');
@@ -180,6 +181,18 @@ async function resolveSeedSteamId(client, interaction) {
     if (parsed.valid && parsed.type === 'steamVanityUrl') {
         const steamId = await Scrape.scrapeSteamIdFromVanity(client, parsed.value);
         if (steamId) return steamId;
+    }
+
+    if (parsed.valid && parsed.type === 'battlemetricsId') {
+        const steamId = await BattlemetricsPlayer.resolveSteamIdFromPlayerId(parsed.value);
+        if (steamId) return steamId;
+
+        const str = client.intlGet(guildId, 'teamfinderBattlemetricsSeedNoSteamId', {
+            playerId: parsed.value
+        });
+        await client.interactionEditReply(interaction, DiscordEmbeds.getActionInfoEmbed(1, str));
+        client.log(client.intlGet(null, 'warningCap'), str);
+        return null;
     }
 
     const str = client.intlGet(guildId, 'teamfinderInvalidSeed');

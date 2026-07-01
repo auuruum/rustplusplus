@@ -38,6 +38,20 @@ After that `/teamfinder discover` can run the detector with:
 
     $ uv run python team_detector.py
 
+## Usage
+
+The `seed` option accepts:
+
+- SteamID64
+- Steam profile URL
+- Steam vanity URL
+- BattleMetrics player ID
+- BattleMetrics player URL, for example `https://www.battlemetrics.com/players/916315647`
+
+BattleMetrics player IDs are resolved to SteamID64 before the detector runs. If
+BattleMetrics only exposes name history for that player and no Steam identifier,
+use the player's SteamID64 or Steam profile URL instead.
+
 ## Optional Overrides
 
 Variable | Default
