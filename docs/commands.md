@@ -32,7 +32,6 @@ Slash Command | Description
 [**/switch**](commands.md#switch) | Operations on Smart Switches.
 [**/upkeep**](commands.md#upkeep) | Get the upkeep cost of an item.
 [**/uptime**](commands.md#uptime) | Display uptime of the bot and server.
-[**/wake**](rust-wake.md#discord-commands) | Link an Android phone and send Rust Wake raid alarms.
 [**/whitelist**](commands.md#whitelist) | Whitelist a user for in-game bot commands.
 [**/voice**](commands.md#voice) | Operations on Voice Feature.
 
