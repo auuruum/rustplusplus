@@ -101,5 +101,9 @@ module.exports = {
         host: getString('RPP_STREAM_DECK_HOST', 'localhost'),
         port: getNumber('RPP_STREAM_DECK_PORT', 8074),
         apiPasswords: getString('RPP_STREAM_DECK_API_PASSWORDS', ''),
+    },
+    rustWake: {
+        enabled: getBoolean('RPP_RUST_WAKE_ENABLED', false),
+        fcmServiceAccount: getString('RPP_RUST_WAKE_FCM_SERVICE_ACCOUNT', ''),
     }
 };

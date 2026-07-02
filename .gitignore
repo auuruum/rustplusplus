@@ -13,5 +13,8 @@ data/runtimeData.sqlite-shm
 data/runtimeData.sqlite-wal
 data/teamfinder/
 database
+rust-wake
+firebase-adminsdk*.json
+*-firebase-adminsdk-*.json
 
 /cameras
