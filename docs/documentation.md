@@ -9,3 +9,5 @@
 * [**Commands**](commands.md)
 * [**Discord Text Channels**](discord_text_channels.md)
 * [**Smart Devices**](smart_devices.md)
+* [**Rust Wake Android Alarms**](rust-wake.md)
+* [**Rust Wake Firestore Rules**](rust-wake-firebase-rules.md)
