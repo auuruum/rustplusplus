@@ -105,5 +105,6 @@ module.exports = {
     rustWake: {
         enabled: getBoolean('RPP_RUST_WAKE_ENABLED', false),
         fcmServiceAccount: getString('RPP_RUST_WAKE_FCM_SERVICE_ACCOUNT', ''),
+        firestoreCollection: getString('RPP_RUST_WAKE_FIRESTORE_COLLECTION', 'rustWakeLinks'),
     }
 };

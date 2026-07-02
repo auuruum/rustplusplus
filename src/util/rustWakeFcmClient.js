@@ -68,7 +68,7 @@ class RustWakeFcmClient {
         const header = { alg: 'RS256', typ: 'JWT' };
         const claim = {
             iss: sa.client_email,
-            scope: 'https://www.googleapis.com/auth/firebase.messaging',
+            scope: 'https://www.googleapis.com/auth/firebase.messaging https://www.googleapis.com/auth/datastore',
             aud: sa.token_uri,
             iat: now,
             exp: now + 3600

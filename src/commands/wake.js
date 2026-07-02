@@ -3,6 +3,7 @@ const Builder = require('@discordjs/builders');
 const Config = require('../../config');
 const DiscordEmbeds = require('../discordTools/discordEmbeds.js');
 const RustWakeFcmClient = require('../util/rustWakeFcmClient.js');
+const RustWakeFirestore = require('../util/rustWakeFirestore.js');
 const RustWakeStore = require('../util/rustWakeStore.js');
 
 module.exports = {
@@ -13,8 +14,18 @@ module.exports = {
             .setName('wake')
             .setDescription('Rust Wake phone alarms')
             .addSubcommand(subcommand => subcommand
+                .setName('link')
+                .setDescription('Create a short link code for the Rust Wake Android app'))
+            .addSubcommand(subcommand => subcommand
+                .setName('check')
+                .setDescription('Finish linking after entering the code in the Android app')
+                .addStringOption(option => option
+                    .setName('code')
+                    .setDescription('The 6-digit code from /wake link')
+                    .setRequired(true)))
+            .addSubcommand(subcommand => subcommand
                 .setName('token')
-                .setDescription('Link this Discord user to a Rust Wake Android FCM token')
+                .setDescription('Manual fallback: link this Discord user to an FCM token')
                 .addStringOption(option => option
                     .setName('value')
                     .setDescription('FCM token copied from the Rust Wake Android app')
@@ -58,6 +69,8 @@ module.exports = {
         await interaction.deferReply({ ephemeral: true });
 
         switch (interaction.options.getSubcommand()) {
+            case 'link': await linkHandler(client, interaction); break;
+            case 'check': await checkHandler(client, interaction); break;
             case 'token': await tokenHandler(client, interaction); break;
             case 'test': await testHandler(client, interaction); break;
             case 'status': await statusHandler(client, interaction); break;
@@ -69,6 +82,101 @@ module.exports = {
 
 function getFcmClient() {
     return new RustWakeFcmClient(Config.rustWake.fcmServiceAccount);
+}
+
+function getFirestore() {
+    return new RustWakeFirestore(Config.rustWake.fcmServiceAccount, Config.rustWake.firestoreCollection);
+}
+
+async function linkHandler(client, interaction) {
+    const firestore = getFirestore();
+    if (!Config.rustWake.enabled || !firestore.isConfigured()) {
+        await interaction.editReply({ embeds: [configErrorEmbed()] });
+        return;
+    }
+
+    const session = RustWakeStore.createLinkCode(interaction.guildId, interaction.user.id);
+    try {
+        await firestore.createLinkSession(session);
+        await interaction.editReply({
+            embeds: [DiscordEmbeds.getEmbed({
+                title: 'Rust Wake link code',
+                color: 0x2ECC71,
+                description: [
+                    'Open **Rust Wake** on Android and enter this code:',
+                    '',
+                    `# ${formatCode(session.code)}`,
+                    '',
+                    'Then run:',
+                    '`/wake check code:' + session.code + '`',
+                    '',
+                    'Expires in **10 minutes**.'
+                ].join('\n')
+            })]
+        });
+    }
+    catch (e) {
+        await interaction.editReply({
+            embeds: [DiscordEmbeds.getEmbed({
+                title: 'Rust Wake link failed',
+                color: 0xC0392B,
+                description: truncate(`Could not create Firestore link session.\n\`${e.message}\``)
+            })]
+        });
+    }
+}
+
+async function checkHandler(client, interaction) {
+    const firestore = getFirestore();
+    if (!Config.rustWake.enabled || !firestore.isConfigured()) {
+        await interaction.editReply({ embeds: [configErrorEmbed()] });
+        return;
+    }
+
+    const code = interaction.options.getString('code').replace(/\D/g, '');
+    try {
+        const doc = await firestore.getLinkSession(code);
+        if (!doc.fcmToken) {
+            await interaction.editReply({
+                embeds: [DiscordEmbeds.getEmbed({
+                    title: 'Rust Wake not linked yet',
+                    color: 0xF1C40F,
+                    description: 'Open the Android app, enter the code, press **Link device**, then run this command again.'
+                })]
+            });
+            return;
+        }
+
+        const device = RustWakeStore.consumeLinkCode(code, doc.fcmToken, doc.deviceName || 'Rust Wake Android');
+        if (!device) {
+            await interaction.editReply({
+                embeds: [DiscordEmbeds.getEmbed({
+                    title: 'Rust Wake code expired',
+                    color: 0xC0392B,
+                    description: 'Run `/wake link` again and enter the new code in the app.'
+                })]
+            });
+            return;
+        }
+
+        await firestore.deleteLinkSession(code).catch(() => null);
+        await interaction.editReply({
+            embeds: [DiscordEmbeds.getEmbed({
+                title: 'Rust Wake linked',
+                color: 0x2ECC71,
+                description: `Device saved: **${escapeMarkdown(device.deviceName)}**\nRun \`/wake test\` to send a test alarm.`
+            })]
+        });
+    }
+    catch (e) {
+        await interaction.editReply({
+            embeds: [DiscordEmbeds.getEmbed({
+                title: 'Rust Wake check failed',
+                color: 0xC0392B,
+                description: truncate(`\`${e.message}\``)
+            })]
+        });
+    }
 }
 
 async function tokenHandler(client, interaction) {
@@ -98,25 +206,8 @@ async function tokenHandler(client, interaction) {
 
 async function testHandler(client, interaction) {
     const fcm = getFcmClient();
-    if (!Config.rustWake.enabled) {
-        await interaction.editReply({
-            embeds: [DiscordEmbeds.getEmbed({
-                title: 'Rust Wake disabled',
-                color: 0xC0392B,
-                description: 'Set `RPP_RUST_WAKE_ENABLED=true` in `.env`.'
-            })]
-        });
-        return;
-    }
-
-    if (!fcm.isConfigured()) {
-        await interaction.editReply({
-            embeds: [DiscordEmbeds.getEmbed({
-                title: 'Rust Wake FCM not configured',
-                color: 0xC0392B,
-                description: 'Set `RPP_RUST_WAKE_FCM_SERVICE_ACCOUNT=/absolute/path/to/firebase-adminsdk.json` in `.env`.'
-            })]
-        });
+    if (!Config.rustWake.enabled || !fcm.isConfigured()) {
+        await interaction.editReply({ embeds: [configErrorEmbed()] });
         return;
     }
 
@@ -126,7 +217,7 @@ async function testHandler(client, interaction) {
             embeds: [DiscordEmbeds.getEmbed({
                 title: 'No Rust Wake device linked',
                 color: 0xC0392B,
-                description: 'Copy the FCM token from the Android app and run `/wake token value:<token>` first.'
+                description: 'Run `/wake link`, enter the code in Rust Wake Android, then run `/wake check code:<code>`.'
             })]
         });
         return;
@@ -170,7 +261,8 @@ async function statusHandler(client, interaction) {
             color: Config.rustWake.enabled && fcm.isConfigured() && device ? 0x2ECC71 : 0xF1C40F,
             description: [
                 `Enabled: **${Config.rustWake.enabled ? 'yes' : 'no'}**`,
-                `FCM service account: **${fcm.isConfigured() ? 'configured' : 'missing'}**`,
+                `Firebase service account: **${fcm.isConfigured() ? 'configured' : 'missing'}**`,
+                `Firestore collection: \`${Config.rustWake.firestoreCollection}\``,
                 `Linked device: **${device ? escapeMarkdown(device.deviceName) : 'none'}**`,
                 `Device store: \`${RustWakeStore.STORE_PATH}\``
             ].join('\n')
@@ -187,6 +279,23 @@ async function removeHandler(client, interaction) {
             description: existed ? 'Your linked device was removed.' : 'No linked device was found.'
         })]
     });
+}
+
+function configErrorEmbed() {
+    return DiscordEmbeds.getEmbed({
+        title: 'Rust Wake not configured',
+        color: 0xC0392B,
+        description: [
+            'Set these in `.env`:',
+            '`RPP_RUST_WAKE_ENABLED=true`',
+            '`RPP_RUST_WAKE_FCM_SERVICE_ACCOUNT=/absolute/path/to/firebase-adminsdk.json`',
+            '`RPP_RUST_WAKE_FIRESTORE_COLLECTION=rustWakeLinks`'
+        ].join('\n')
+    });
+}
+
+function formatCode(code) {
+    return `${code.slice(0, 3)}-${code.slice(3)}`;
 }
 
 function truncate(str, max = 3900) {
