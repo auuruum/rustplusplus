@@ -2,6 +2,16 @@
 
 Rust Wake is the optional Android wake-alarm companion for Rust++ `/wake`.
 
+Default behavior: enabled.
+
+If you want Rust Wake to disappear completely, set:
+
+```env
+RPP_RUST_WAKE_ENABLED=false
+```
+
+That hides the `/wake` slash command and the Rust Wake smart-alarm settings UI.
+
 ## Recommended structure
 
 Best setup is:

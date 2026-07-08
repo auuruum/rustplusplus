@@ -26,6 +26,7 @@ const DiscordButtons = require('./discordButtons.js');
 const DiscordEmbeds = require('./discordEmbeds.js');
 const DiscordSelectMenus = require('./discordSelectMenus.js');
 const DiscordTools = require('./discordTools.js');
+const Config = require('../../config');
 
 module.exports = async (client, guild, forced = false) => {
     const instance = client.getInstance(guild.id);
@@ -153,26 +154,28 @@ async function setupGeneralSettings(client, guildId, channel) {
             Path.join(__dirname, '..', 'resources/images/settings_logo.png'))]
     });
 
-    await client.messageSend(channel, {
-        embeds: [DiscordEmbeds.getEmbed({
-            color: Constants.COLOR_SETTINGS,
-            title: client.intlGet(guildId, 'shouldSmartAlarmNotifyNotConnectedSetting'),
-            thumbnail: `attachment://settings_logo.png`,
-            fields: [
-                {
-                    name: client.intlGet(guildId, 'noteCap'),
-                    value: client.intlGet(guildId, 'smartAlarmNotifyExtendSetting'),
-                    inline: true
-                }]
-        })],
-        components: [
-            DiscordButtons.getFcmAlarmNotificationButtons(
-                guildId,
-                instance.generalSettings.fcmAlarmNotificationEnabled,
-                instance.generalSettings.fcmAlarmNotificationEveryone)],
-        files: [new Discord.AttachmentBuilder(
-            Path.join(__dirname, '..', 'resources/images/settings_logo.png'))]
-    });
+    if (Config.rustWake.enabled) {
+        await client.messageSend(channel, {
+            embeds: [DiscordEmbeds.getEmbed({
+                color: Constants.COLOR_SETTINGS,
+                title: client.intlGet(guildId, 'shouldSmartAlarmNotifyNotConnectedSetting'),
+                thumbnail: `attachment://settings_logo.png`,
+                fields: [
+                    {
+                        name: client.intlGet(guildId, 'noteCap'),
+                        value: client.intlGet(guildId, 'smartAlarmNotifyExtendSetting'),
+                        inline: true
+                    }]
+            })],
+            components: [
+                DiscordButtons.getFcmAlarmNotificationButtons(
+                    guildId,
+                    instance.generalSettings.fcmAlarmNotificationEnabled,
+                    instance.generalSettings.fcmAlarmNotificationEveryone)],
+            files: [new Discord.AttachmentBuilder(
+                Path.join(__dirname, '..', 'resources/images/settings_logo.png'))]
+        });
+    }
 
     await client.messageSend(channel, {
         embeds: [DiscordEmbeds.getEmbed({

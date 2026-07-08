@@ -183,6 +183,10 @@ module.exports = async (client, interaction) => {
         });
     }
     else if (interaction.customId === 'FcmAlarmNotification') {
+        if (!Config.rustWake.enabled) {
+            await interaction.deferUpdate();
+            return;
+        }
         instance.generalSettings.fcmAlarmNotificationEnabled = !instance.generalSettings.fcmAlarmNotificationEnabled;
         client.setInstance(guildId, instance);
 
@@ -202,6 +206,10 @@ module.exports = async (client, interaction) => {
         });
     }
     else if (interaction.customId === 'FcmAlarmNotificationEveryone') {
+        if (!Config.rustWake.enabled) {
+            await interaction.deferUpdate();
+            return;
+        }
         instance.generalSettings.fcmAlarmNotificationEveryone = !instance.generalSettings.fcmAlarmNotificationEveryone;
         client.setInstance(guildId, instance);
 
