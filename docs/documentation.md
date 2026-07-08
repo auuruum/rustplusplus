@@ -9,3 +9,4 @@
 * [**Commands**](commands.md)
 * [**Discord Text Channels**](discord_text_channels.md)
 * [**Smart Devices**](smart_devices.md)
+* [**Rust Wake**](rust-wake.md)
