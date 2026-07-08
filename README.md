@@ -36,14 +36,13 @@ A NodeJS Discord Bot that uses the [rustplus.js](https://github.com/liamcottle/r
 * Communicate with teammates from [Discord to In-Game](docs/discord_text_channels.md#teamchat-channel) and vice versa.
 * Keep track of other teams on the server with the [Battlemetrics Player Tracker](docs/discord_text_channels.md#trackers-channel).
 * Find likely teammates with [Team Finder](docs/teamfinder.md).
-* Optional [Rust Wake](docs/rust-wake.md) Android companion for fullscreen wake alarms from `/wake`.
 * Alot of [QoL Commands](docs/commands.md) that can be used In-Game or from Discord.
 * View the [Full list of features](docs/full_list_features.md).
 
 
 ## **Documentation**
 
-> Documentation can be found [here](https://github.com/auuruum/rustplusplus/blob/master/docs/documentation.md). For Rust Wake, see [docs/rust-wake.md](docs/rust-wake.md). Recommended layout: keep bot-side `/wake` code in `rustplusplus`, keep the Android app in its own repo, and do not commit APK files into this repo.
+> Documentation can be found [here](https://github.com/auuruum/rustplusplus/blob/master/docs/documentation.md). The documentation explains the features as well as `how to setup the bot`, so make sure to take a look at it 😉
 
 ## **Credentials**
 
