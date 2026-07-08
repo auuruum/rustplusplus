@@ -20,6 +20,7 @@
 
 const Discord = require('discord.js');
 
+const Config = require('../../config');
 const Constants = require('../util/constants.js');
 const Client = require('../../index.ts');
 
@@ -217,13 +218,23 @@ module.exports = {
         const instance = Client.client.getInstance(guildId);
         const entity = instance.serverList[serverId].alarms[entityId];
         const identifier = JSON.stringify({ "serverId": serverId, "entityId": entityId });
-
-        return new Discord.ActionRowBuilder().addComponents(
+        const components = [
             module.exports.getButton({
                 customId: `SmartAlarmEveryone${identifier}`,
                 label: '@everyone',
                 style: entity.everyone ? SUCCESS : DANGER
-            }),
+            })
+        ];
+
+        if (Config.rustWake.enabled) {
+            components.push(module.exports.getButton({
+                customId: `SmartAlarmWake${identifier}`,
+                label: 'WAKE',
+                style: entity.wakeEnabled ? SUCCESS : DANGER
+            }));
+        }
+
+        components.push(
             module.exports.getButton({
                 customId: `SmartAlarmEdit${identifier}`,
                 label: Client.client.intlGet(guildId, 'editCap'),
@@ -233,7 +244,10 @@ module.exports = {
                 customId: `SmartAlarmDelete${identifier}`,
                 style: SECONDARY,
                 emoji: '🗑️'
-            }));
+            })
+        );
+
+        return new Discord.ActionRowBuilder().addComponents(...components);
     },
 
     getStorageMonitorToolCupboardButtons: function (guildId, serverId, entityId) {

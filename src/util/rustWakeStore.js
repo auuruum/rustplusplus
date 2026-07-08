@@ -74,6 +74,11 @@ function removeDevice(guildId, userId) {
     return existed;
 }
 
+function getDevicesByGuild(guildId) {
+    const store = readStore();
+    return Object.values(store.devices).filter(device => device.guildId === guildId);
+}
+
 function createLinkCode(guildId, userId) {
     const store = readStore();
     pruneExpiredLinkCodes(store);
@@ -128,6 +133,7 @@ module.exports = {
     LINK_CODE_TTL_MS,
     saveDevice,
     getDevice,
+    getDevicesByGuild,
     removeDevice,
     createLinkCode,
     consumeLinkCode

@@ -1,35 +1,35 @@
 # Rust Wake
 
-Rust Wake is an optional wake/phone-alarm feature for Rust++.
+Rust Wake is an optional wake/alarm feature for Rust++.
 
-## What it does
+## How it works
 
-When enabled, Rust++ can work with the Android app here:
+When `RPP_RUST_WAKE_ENABLED=true`, Rust++ can work with the Android app here:
 
 `https://github.com/auuruum/Rust-Awake`
 
-The idea is simple:
+Flow:
 
-- Rust++ detects/handles the event
-- the bot sends a wake push
+- Rust++ receives a Smart Alarm trigger
+- each Smart Alarm can have its own `WAKE` toggle
+- if `WAKE` is ON, Rust++ sends a wake push to linked Android device(s)
 - the Android app turns it into a loud fullscreen alarm
 
-## Current state
+## Current behavior
 
 - Default: off
-- Enable with `RPP_RUST_WAKE_ENABLED=true`
-- If disabled, `/wake` and Rust Wake UI are hidden
+- Enable the feature with `RPP_RUST_WAKE_ENABLED=true`
+- If the feature is disabled, `/wake` and Rust Wake UI stay hidden
+- If the feature is enabled, every Smart Alarm gets its own `WAKE` button
+- `WAKE ON` means that specific alarm is allowed to wake the phone
+- `WAKE OFF` means that alarm only stays a normal alarm/notification
 
-## Important note
+## Anti-spam
 
-Right now Rust Wake is a global feature toggle. It is **not yet** a per-smart-alarm wake toggle.
-
-That means enabling `RPP_RUST_WAKE_ENABLED=true` does **not** automatically add a dedicated WAKE button to every Smart Alarm card.
+Rust Wake uses a small cooldown for repeated triggers, so one alarm should not keep waking the phone every second.
 
 ## Android app
 
 Android app repo:
 
 `https://github.com/auuruum/Rust-Awake`
-
-It should stay separate from the main Rust++ repo.

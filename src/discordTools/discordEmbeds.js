@@ -261,6 +261,10 @@ module.exports = {
             description += `${time}`;
         }
 
+        if (entity.hasOwnProperty('wakeEnabled')) {
+            description += `\n**WAKE:** ${entity.wakeEnabled ? 'ON' : 'OFF'}`;
+        }
+
         return module.exports.getEmbed({
             title: `${entity.name}${grid}`,
             color: entity.active ? Constants.COLOR_ACTIVE : Constants.COLOR_DEFAULT,

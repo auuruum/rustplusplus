@@ -23,6 +23,7 @@ const CommandHandler = require('../handlers/inGameCommandHandler.js');
 const Constants = require('../util/constants.js');
 const DiscordMessages = require('../discordTools/discordMessages.js');
 const InGameChatHandler = require('../handlers/inGameChatHandler.js');
+const RustWakeAlarm = require('../util/rustWakeAlarm.js');
 const SmartSwitchGroupHandler = require('../handlers/smartSwitchGroupHandler.js');
 const SmartSwitchHandler = require('../handlers/smartSwitchHandler.js');
 const TeamChatHandler = require("../handlers/teamChatHandler.js");
@@ -202,6 +203,7 @@ async function messageBroadcastEntityChangedSmartAlarm(rustplus, client, message
 
     if (active) {
         server.alarms[entityId].lastTrigger = Math.floor(new Date() / 1000);
+        await RustWakeAlarm.triggerAlarmWake(rustplus.guildId, server.alarms[entityId]);
         client.setInstance(rustplus.guildId, instance);
         await DiscordMessages.sendSmartAlarmTriggerMessage(rustplus.guildId, serverId, entityId);
 
