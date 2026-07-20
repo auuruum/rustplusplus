@@ -767,6 +767,7 @@
     "timeSincePatrolHelicopterWasOnMap": "{time} sedan patrullhelikoptern fanns på kartan.",
     "timeSinceTravelingVendorWasOnMap": "{time} sedan Traveling Vendor var på kartan.",
     "timeSinceWipe": "{time} sedan kartan rensades.",
+    "timeProfileEditLabel": "Tidsprofil (auto/vanilla/learn)",
     "timeTill": "Tid till {event}",
     "timeTillDaylight": "{time} innan dag.",
     "timeTillNightfall": "{time} innan natt.",

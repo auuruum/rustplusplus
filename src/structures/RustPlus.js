@@ -42,6 +42,7 @@ const getRuntimeDataStorage = require('../util/getRuntimeDataStorage');
 const RustPlusLite = require('../structures/RustPlusLite');
 const TeamHandler = require('../handlers/teamHandler.js');
 const Timer = require('../util/timer.js');
+const TimeProfiles = require('../util/timeProfiles.js');
 const Scrape = require('../util/scrape.js');
 const Durability = require('../commands/durability.js');
 
@@ -3330,19 +3331,23 @@ class RustPlus extends RustPlusLib {
 
     getCommandTime(isInfoChannel = false) {
         const time = Timer.convertDecimalToHoursMinutes(this.time.time);
+        const profileStatus = this.time.timeProfileStatus;
+        const timeLeft = this.time.getTimeTillDayOrNight(isInfoChannel ? 's' : '');
+        const markedTimeLeft = timeLeft === null ? null :
+            TimeProfiles.markEstimatedRemaining(timeLeft, profileStatus);
         if (isInfoChannel) {
-            return [time, this.time.getTimeTillDayOrNight('s')];
+            return [time, markedTimeLeft];
         }
         else {
             const currentTime = Client.client.intlGet(this.guildId, 'inGameTime', { time: time });
-            const timeLeft = this.time.getTimeTillDayOrNight();
+            const statusSuffix = TimeProfiles.getCommandStatusSuffix(profileStatus);
 
-            if (timeLeft === null) return currentTime;
+            if (markedTimeLeft === null) return `${currentTime}${statusSuffix}`;
 
             const locString = this.time.isDay() ? 'timeTillNightfall' : 'timeTillDaylight';
-            const timeTilltransition = Client.client.intlGet(this.guildId, locString, { time: timeLeft });
+            const timeTilltransition = Client.client.intlGet(this.guildId, locString, { time: markedTimeLeft });
 
-            return `${currentTime} ${timeTilltransition}`;
+            return `${currentTime} ${timeTilltransition}${statusSuffix}`;
         }
     }
 

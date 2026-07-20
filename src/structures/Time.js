@@ -19,9 +19,10 @@
 */
 
 const TimeLib = require('../util/timer.js');
+const TimeProfiles = require('../util/timeProfiles.js');
 
 class Time {
-    constructor(time, rustplus, client) {
+    constructor(time, rustplus, client, observedAtMs = Date.now()) {
         this._dayLengthMinutes = time.dayLengthMinutes;
         this._timeScale = time.timeScale;
         this._sunrise = time.sunrise;
@@ -35,8 +36,18 @@ class Time {
         this._timeTillDay = new Object();
         this._timeTillNight = new Object();
         this._timeTillActive = false;
+        this._timeProfileMode = TimeProfiles.MODES.AUTO;
+        this._estimatedProfileActive = false;
+        this._estimateValidation = {
+            observedAtMs: observedAtMs,
+            remainingSeconds: null,
+            isDay: null,
+            elapsedSeconds: 0,
+            estimatedDecreaseSeconds: 0
+        };
 
         this.loadTimeTillConfig();
+        this.initializeEstimatedProfile(time, observedAtMs);
     }
 
     /* Getters and Setters */
@@ -62,6 +73,15 @@ class Time {
     set timeTillNight(timeTillNight) { this._timeTillNight = timeTillNight; }
     get timeTillActive() { return this._timeTillActive; }
     set timeTillActive(timeTillActive) { this._timeTillActive = timeTillActive; }
+    get timeProfileMode() { return this._timeProfileMode; }
+    set timeProfileMode(mode) { this._timeProfileMode = TimeProfiles.normalizeMode(mode); }
+    get estimatedProfileActive() { return this._estimatedProfileActive; }
+    set estimatedProfileActive(active) { this._estimatedProfileActive = active; }
+    get timeProfileStatus() {
+        if (this.timeTillActive) return 'learned';
+        if (this.estimatedProfileActive) return this.timeProfileMode;
+        return 'learning';
+    }
 
     /* Change checkers */
     isDayLengthMinutesChanged(time) { return ((this.dayLengthMinutes) !== (time.dayLengthMinutes)); }
@@ -78,12 +98,15 @@ class Time {
 
     loadTimeTillConfig() {
         let instance = this.client.getInstance(this.rustplus.guildId);
+        const server = instance.serverList[this.rustplus.serverId];
 
-        if (instance.serverList[this.rustplus.serverId].timeTillDay !== null) {
-            this.timeTillDay = instance.serverList[this.rustplus.serverId].timeTillDay;
+        this.timeProfileMode = server.timeProfile;
+
+        if (server.timeTillDay !== null) {
+            this.timeTillDay = server.timeTillDay;
         }
-        if (instance.serverList[this.rustplus.serverId].timeTillNight !== null) {
-            this.timeTillNight = instance.serverList[this.rustplus.serverId].timeTillNight;
+        if (server.timeTillNight !== null) {
+            this.timeTillNight = server.timeTillNight;
         }
 
         this.timeTillActive =
@@ -91,7 +114,80 @@ class Time {
             Object.keys(this.timeTillNight).length !== 0;
     }
 
-    updateTime(time) {
+    initializeEstimatedProfile(time, observedAtMs = Date.now()) {
+        if (this.timeTillActive || this.timeProfileMode === TimeProfiles.MODES.LEARN) return;
+
+        this.estimatedProfileActive = this.timeProfileMode === TimeProfiles.MODES.VANILLA ||
+            TimeProfiles.isVanillaCandidate(time);
+
+        if (this.estimatedProfileActive) {
+            this.resetEstimateValidation(time, observedAtMs);
+        }
+    }
+
+    setTimeProfileMode(mode, observedAtMs = Date.now()) {
+        this.timeProfileMode = mode;
+        this.estimatedProfileActive = false;
+        this.initializeEstimatedProfile(this, observedAtMs);
+    }
+
+    resetEstimateValidation(time, observedAtMs) {
+        this._estimateValidation = {
+            observedAtMs: observedAtMs,
+            remainingSeconds: TimeProfiles.getVanillaSecondsTillTransition(time),
+            isDay: time.time >= time.sunrise && time.time < time.sunset,
+            elapsedSeconds: 0,
+            estimatedDecreaseSeconds: 0
+        };
+    }
+
+    validateEstimatedProfile(time, observedAtMs) {
+        if (!this.estimatedProfileActive || this.timeProfileMode !== TimeProfiles.MODES.AUTO) return;
+
+        const clockDistance = this.time > time.time ? (24 - this.time) + time.time : time.time - this.time;
+        if (clockDistance > 1 || !TimeProfiles.isVanillaCandidate(time)) {
+            this.estimatedProfileActive = false;
+            return;
+        }
+
+        const previous = this._estimateValidation;
+        const remainingSeconds = TimeProfiles.getVanillaSecondsTillTransition(time);
+        const isDay = time.time >= time.sunrise && time.time < time.sunset;
+        const elapsedSeconds = Math.max(0, (observedAtMs - previous.observedAtMs) / 1000);
+
+        if (previous.remainingSeconds === null || previous.isDay !== isDay || elapsedSeconds <= 0) {
+            this.resetEstimateValidation(time, observedAtMs);
+            return;
+        }
+
+        const estimatedDecrease = previous.remainingSeconds - remainingSeconds;
+        previous.observedAtMs = observedAtMs;
+        previous.remainingSeconds = remainingSeconds;
+        previous.isDay = isDay;
+
+        if (estimatedDecrease < 0) {
+            previous.elapsedSeconds = 0;
+            previous.estimatedDecreaseSeconds = 0;
+            return;
+        }
+
+        previous.elapsedSeconds += elapsedSeconds;
+        previous.estimatedDecreaseSeconds += estimatedDecrease;
+
+        if (previous.elapsedSeconds < 30) return;
+
+        const rate = previous.estimatedDecreaseSeconds / previous.elapsedSeconds;
+        if (rate < 0.70 || rate > 1.30) {
+            this.estimatedProfileActive = false;
+            return;
+        }
+
+        previous.elapsedSeconds = 0;
+        previous.estimatedDecreaseSeconds = 0;
+    }
+
+    updateTime(time, observedAtMs = Date.now()) {
+        this.validateEstimatedProfile(time, observedAtMs);
         this.dayLengthMinutes = time.dayLengthMinutes;
         this.timeScale = time.timeScale;
         this.sunrise = time.sunrise;
@@ -119,7 +215,9 @@ class Time {
 
     getTimeTillDayOrNight(ignore = '') {
         if (!this.timeTillActive) {
-            return null;
+            if (!this.estimatedProfileActive) return null;
+            const estimatedSeconds = TimeProfiles.getVanillaSecondsTillTransition(this);
+            return estimatedSeconds === null ? null : TimeLib.secondsToFullScale(estimatedSeconds, ignore);
         }
 
         let object = null;

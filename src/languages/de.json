@@ -765,6 +765,7 @@
     "timeSincePatrolHelicopterWasOnMap": "{time} seit Patrouillenhubschrauber zuletzt auf der Karte war.",
     "timeSinceTravelingVendorWasOnMap": "{time} seit der Reisende Händler auf der Karte war.",
     "timeSinceWipe": "{time} seit Wipe.",
+    "timeProfileEditLabel": "Zeitprofil (auto/vanilla/learn)",
     "timeTill": "Dauer bis {event}",
     "timeTillDaylight": "{time} bis Tagesanbruch.",
     "timeTillNightfall": "{time} bis Nachteinbruch.",

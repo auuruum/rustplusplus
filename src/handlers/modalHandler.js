@@ -27,6 +27,7 @@ const Constants = require('../util/constants.js');
 const DiscordMessages = require('../discordTools/discordMessages.js');
 const Keywords = require('../util/keywords.js');
 const Scrape = require('../util/scrape.js');
+const TimeProfiles = require('../util/timeProfiles.js');
 const TrackerInputParser = require('../util/trackerInputParser.js');
 
 module.exports = async (client, interaction) => {
@@ -85,6 +86,13 @@ module.exports = async (client, interaction) => {
         const ids = JSON.parse(interaction.customId.replace('ServerEdit', ''));
         const server = instance.serverList[ids.serverId];
         const battlemetricsId = interaction.fields.getTextInputValue('ServerBattlemetricsId');
+        let requestedTimeProfile = TimeProfiles.normalizeMode(server.timeProfile);
+        try {
+            requestedTimeProfile = interaction.fields.getTextInputValue('ServerTimeProfile').trim().toLowerCase();
+        }
+        catch (error) {
+            /* A ServerEdit modal opened before an update does not contain the new field. */
+        }
 
         if (battlemetricsId !== server.battlemetricsId) {
             if (battlemetricsId === '') {
@@ -105,11 +113,20 @@ module.exports = async (client, interaction) => {
                 }
             }
         }
+
+        if (Object.values(TimeProfiles.MODES).includes(requestedTimeProfile) &&
+            requestedTimeProfile !== server.timeProfile) {
+            server.timeProfile = requestedTimeProfile;
+            const rustplus = client.rustplusInstances[guildId];
+            if (rustplus && rustplus.serverId === ids.serverId && rustplus.time) {
+                rustplus.time.setTimeProfileMode(requestedTimeProfile);
+            }
+        }
         client.setInstance(guildId, instance);
 
         client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'modalValueChange', {
             id: `${verifyId}`,
-            value: `${server.battlemetricsId}`
+            value: `${server.battlemetricsId}, ${server.timeProfile}`
         }));
 
         await DiscordMessages.sendServerMessage(interaction.guildId, ids.serverId);

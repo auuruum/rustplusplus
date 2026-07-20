@@ -833,6 +833,7 @@
     "timeSincePatrolHelicopterWasOnMap": "{time} since the Patrol Helicopter was on the map.",
     "timeSinceTravelingVendorWasOnMap": "{time} since the Traveling Vendor was on the map.",
     "timeSinceWipe": "{time} since wipe.",
+    "timeProfileEditLabel": "Time profile (auto/vanilla/learn)",
     "timeTill": "Time till {event}",
     "timeTillDaylight": "{time} before daylight.",
     "timeTillNightfall": "{time} before nightfall.",

@@ -765,6 +765,7 @@
     "timeSincePatrolHelicopterWasOnMap": "{time} Avant que le patrol soit sur la map.",
     "timeSinceTravelingVendorWasOnMap": "{time} depuis que le vendeur ambulant était sur la carte.",
     "timeSinceWipe": "{time} avant le wipe.",
+    "timeProfileEditLabel": "Profil horaire (auto/vanilla/learn)",
     "timeTill": "Temps pour {event}",
     "timeTillDaylight": "{time} avant le jour.",
     "timeTillNightfall": "{time} avant la tombée de la nuit.",

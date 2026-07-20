@@ -24,6 +24,7 @@ const Path = require('path');
 
 const InstanceUtils = require('../util/instanceUtils.js');
 const Constants = require('./constants.js');
+const TimeProfiles = require('./timeProfiles.js');
 
 module.exports = (client, guild) => {
     let instance = null;
@@ -214,6 +215,7 @@ module.exports = (client, guild) => {
 
     /* Check every serverList for missing keys */
     for (const [serverId, content] of Object.entries(instance.serverList)) {
+        content.timeProfile = TimeProfiles.normalizeMode(content.timeProfile);
         if (!content.hasOwnProperty('customCameraGroups')) content.customCameraGroups = {};
         if (!content.hasOwnProperty('cargoShipEgressTimeMs')) {
             content.cargoShipEgressTimeMs = Constants.DEFAULT_CARGO_SHIP_EGRESS_TIME_MS;

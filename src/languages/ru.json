@@ -770,6 +770,7 @@
     "timeSincePatrolHelicopterWasOnMap": "Патрульный вертолёт был {time} назад.",
     "timeSinceTravelingVendorWasOnMap": "{time} прошло с появления Странствующего Торговца на карте.",
     "timeSinceWipe": "С последнего вайпа прошло {time}.",
+    "timeProfileEditLabel": "Профиль времени (auto/vanilla/learn)",
     "timeTill": "Время до {event}",
     "timeTillDaylight": "Через {time} будет рассвет.",
     "timeTillNightfall": "Через {time} будет закат.",
