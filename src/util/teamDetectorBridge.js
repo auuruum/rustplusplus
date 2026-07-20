@@ -51,6 +51,17 @@ function detectorSupportsResilientFetching() {
     }
 }
 
+function getBattlemetricsPlayersPath(players) {
+    if (!Array.isArray(players) || players.length === 0) return null;
+
+    const outputDirectory = Path.join(__dirname, '..', '..', 'data', 'teamfinder');
+    Fs.mkdirSync(outputDirectory, { recursive: true });
+    const suffix = `${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+    const snapshotPath = Path.join(outputDirectory, `battlemetrics_players_${suffix}.json`);
+    Fs.writeFileSync(snapshotPath, JSON.stringify(players), { encoding: 'utf8', mode: 0o600 });
+    return snapshotPath;
+}
+
 function buildDetectorArgs(options) {
     const args = [
         'team_detector.py',
@@ -60,6 +71,10 @@ function buildDetectorArgs(options) {
         '--json',
         '--no-config'
     ];
+
+    if (options.battlemetricsPlayersPath && detectorSupportsResilientFetching()) {
+        args.push('--battlemetrics-players-file', options.battlemetricsPlayersPath);
+    }
 
     if (options.networkOutputPath) {
         args.push('--network-output', options.networkOutputPath);
@@ -136,6 +151,7 @@ module.exports = {
             if (detectorOptions.includeNetwork !== false && !detectorOptions.networkOutputPath) {
                 detectorOptions.networkOutputPath = getNetworkOutputPath();
             }
+            detectorOptions.battlemetricsPlayersPath = getBattlemetricsPlayersPath(detectorOptions.battlemetricsPlayers);
 
             const args = commandParts.slice(1).concat(buildDetectorArgs(detectorOptions));
 
@@ -148,6 +164,9 @@ module.exports = {
                     BATTLEMETRICS_TOKEN: Config.battlemetrics.token
                 })
             }, (error, stdout, stderr) => {
+                if (detectorOptions.battlemetricsPlayersPath) {
+                    Fs.rmSync(detectorOptions.battlemetricsPlayersPath, { force: true });
+                }
                 if (error) {
                     const output = summarizeProcessOutput(stdout, stderr);
                     reject(new Error(`${error.message}${output ? `\n${output}` : ''}`));

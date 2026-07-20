@@ -121,6 +121,7 @@ async function discoverHandler(client, interaction) {
         minScore: interaction.options.getInteger('minscore') ?? 4,
         recursiveDepth: interaction.options.getInteger('depth') ?? 5,
         requestDelay: interaction.options.getNumber('delay') ?? 0,
+        battlemetricsPlayers: getOnlineBattlemetricsPlayerNames(client, battlemetricsId),
         includeNetwork: false
     };
 
@@ -169,6 +170,15 @@ async function getBattlemetricsId(client, interaction) {
     }
 
     return server.battlemetricsId;
+}
+
+function getOnlineBattlemetricsPlayerNames(client, battlemetricsId) {
+    const battlemetrics = client.battlemetricsInstances[battlemetricsId];
+    if (!battlemetrics || !battlemetrics.lastUpdateSuccessful) return null;
+
+    return battlemetrics.onlinePlayers
+        .map(playerId => battlemetrics.players[playerId] && battlemetrics.players[playerId].name)
+        .filter(playerName => typeof playerName === 'string' && playerName !== '');
 }
 
 async function resolveSeedSteamId(client, interaction) {
