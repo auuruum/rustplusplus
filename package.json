@@ -8,7 +8,7 @@
         "setup:team-detector": "node scripts/setup-team-detector.js",
         "build:static-db": "node scripts/buildStaticFilesDb.js",
         "preinstall": "npx npm-force-resolutions",
-        "test": "tsc --noEmit -p ."
+        "test": "node --test test/*.test.js && tsc --noEmit -p ."
     },
     "repository": {
         "type": "git",
