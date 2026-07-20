@@ -7,10 +7,11 @@
     (at your option) any later version.
 */
 
-const MODES = Object.freeze({
+const STATUSES = Object.freeze({
     AUTO: 'auto',
     VANILLA: 'vanilla',
-    LEARN: 'learn'
+    LEARNING: 'learning',
+    LEARNED: 'learned'
 });
 
 /*
@@ -45,11 +46,6 @@ const NIGHT_CURVE = Object.freeze([
     [0.897, 0.821],
     [1.000, 1.000]
 ]);
-
-function normalizeMode(mode) {
-    const normalized = `${mode || ''}`.trim().toLowerCase();
-    return Object.values(MODES).includes(normalized) ? normalized : MODES.AUTO;
-}
 
 function isFiniteNumber(value) {
     return typeof value === 'number' && Number.isFinite(value);
@@ -127,19 +123,18 @@ function getVanillaSecondsTillTransition(time) {
 }
 
 function markEstimatedRemaining(timeRemaining, status) {
-    return status === MODES.AUTO || status === MODES.VANILLA ? `~${timeRemaining}` : timeRemaining;
+    return status === STATUSES.AUTO || status === STATUSES.VANILLA ? `~${timeRemaining}` : timeRemaining;
 }
 
 function getCommandStatusSuffix(status) {
-    if (status === MODES.AUTO || status === MODES.VANILLA || status === 'learning') {
+    if (status === STATUSES.AUTO || status === STATUSES.VANILLA || status === STATUSES.LEARNING) {
         return ` [${status}]`;
     }
     return '';
 }
 
 module.exports = {
-    MODES,
-    normalizeMode,
+    STATUSES,
     isVanillaCandidate,
     getVanillaDurations,
     getVanillaSecondsTillTransition,

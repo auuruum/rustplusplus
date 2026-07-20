@@ -36,7 +36,7 @@ class Time {
         this._timeTillDay = new Object();
         this._timeTillNight = new Object();
         this._timeTillActive = false;
-        this._timeProfileMode = TimeProfiles.MODES.AUTO;
+        this._timeProfileStatus = TimeProfiles.STATUSES.AUTO;
         this._estimatedProfileActive = false;
         this._estimateValidation = {
             observedAtMs: observedAtMs,
@@ -73,14 +73,11 @@ class Time {
     set timeTillNight(timeTillNight) { this._timeTillNight = timeTillNight; }
     get timeTillActive() { return this._timeTillActive; }
     set timeTillActive(timeTillActive) { this._timeTillActive = timeTillActive; }
-    get timeProfileMode() { return this._timeProfileMode; }
-    set timeProfileMode(mode) { this._timeProfileMode = TimeProfiles.normalizeMode(mode); }
     get estimatedProfileActive() { return this._estimatedProfileActive; }
     set estimatedProfileActive(active) { this._estimatedProfileActive = active; }
     get timeProfileStatus() {
-        if (this.timeTillActive) return 'learned';
-        if (this.estimatedProfileActive) return this.timeProfileMode;
-        return 'learning';
+        if (this.timeTillActive) return TimeProfiles.STATUSES.LEARNED;
+        return this._timeProfileStatus;
     }
 
     /* Change checkers */
@@ -100,8 +97,6 @@ class Time {
         let instance = this.client.getInstance(this.rustplus.guildId);
         const server = instance.serverList[this.rustplus.serverId];
 
-        this.timeProfileMode = server.timeProfile;
-
         if (server.timeTillDay !== null) {
             this.timeTillDay = server.timeTillDay;
         }
@@ -115,20 +110,15 @@ class Time {
     }
 
     initializeEstimatedProfile(time, observedAtMs = Date.now()) {
-        if (this.timeTillActive || this.timeProfileMode === TimeProfiles.MODES.LEARN) return;
+        if (this.timeTillActive) return;
 
-        this.estimatedProfileActive = this.timeProfileMode === TimeProfiles.MODES.VANILLA ||
-            TimeProfiles.isVanillaCandidate(time);
+        this.estimatedProfileActive = TimeProfiles.isVanillaCandidate(time);
+        this._timeProfileStatus = this.estimatedProfileActive ?
+            TimeProfiles.STATUSES.AUTO : TimeProfiles.STATUSES.LEARNING;
 
         if (this.estimatedProfileActive) {
             this.resetEstimateValidation(time, observedAtMs);
         }
-    }
-
-    setTimeProfileMode(mode, observedAtMs = Date.now()) {
-        this.timeProfileMode = mode;
-        this.estimatedProfileActive = false;
-        this.initializeEstimatedProfile(this, observedAtMs);
     }
 
     resetEstimateValidation(time, observedAtMs) {
@@ -142,11 +132,12 @@ class Time {
     }
 
     validateEstimatedProfile(time, observedAtMs) {
-        if (!this.estimatedProfileActive || this.timeProfileMode !== TimeProfiles.MODES.AUTO) return;
+        if (!this.estimatedProfileActive) return;
 
         const clockDistance = this.time > time.time ? (24 - this.time) + time.time : time.time - this.time;
         if (clockDistance > 1 || !TimeProfiles.isVanillaCandidate(time)) {
             this.estimatedProfileActive = false;
+            this._timeProfileStatus = TimeProfiles.STATUSES.LEARNING;
             return;
         }
 
@@ -179,9 +170,11 @@ class Time {
         const rate = previous.estimatedDecreaseSeconds / previous.elapsedSeconds;
         if (rate < 0.70 || rate > 1.30) {
             this.estimatedProfileActive = false;
+            this._timeProfileStatus = TimeProfiles.STATUSES.LEARNING;
             return;
         }
 
+        this._timeProfileStatus = TimeProfiles.STATUSES.VANILLA;
         previous.elapsedSeconds = 0;
         previous.estimatedDecreaseSeconds = 0;
     }

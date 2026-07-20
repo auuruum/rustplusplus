@@ -759,7 +759,6 @@
     "timeSincePatrolHelicopterWasOnMap": "{time} od obecności Patrol Helicopter na mapie.",
     "timeSinceTravelingVendorWasOnMap": "{time} od obecności Traveling Vendor na mapie.",
     "timeSinceWipe": "{time} od wipe.",
-    "timeProfileEditLabel": "Profil czasu (auto/vanilla/learn)",
     "timeTill": "Czas do {event}",
     "timeTillDaylight": "{time} do świtu.",
     "timeTillNightfall": "{time} do zmroku.",

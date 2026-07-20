@@ -6,7 +6,6 @@ const Time = require('../src/structures/Time.js');
 
 function createContext(server = {}) {
     const storedServer = {
-        timeProfile: 'auto',
         timeTillDay: null,
         timeTillNight: null,
         ...server
@@ -33,12 +32,17 @@ const vanillaTime = {
     time: 12
 };
 
-test('normalizes supported time profile modes and defaults invalid values to auto', () => {
-    assert.equal(TimeProfiles.normalizeMode('AUTO'), 'auto');
-    assert.equal(TimeProfiles.normalizeMode('vanilla'), 'vanilla');
-    assert.equal(TimeProfiles.normalizeMode('learn'), 'learn');
-    assert.equal(TimeProfiles.normalizeMode('something-else'), 'auto');
-});
+function findDayTimeForRemaining(targetSeconds) {
+    let low = vanillaTime.sunrise;
+    let high = vanillaTime.sunset;
+    for (let i = 0; i < 60; i++) {
+        const middle = (low + high) / 2;
+        const remaining = TimeProfiles.getVanillaSecondsTillTransition({ ...vanillaTime, time: middle });
+        if (remaining > targetSeconds) low = middle;
+        else high = middle;
+    }
+    return (low + high) / 2;
+}
 
 test('recognizes a plausible vanilla Rust time payload', () => {
     assert.equal(TimeProfiles.isVanillaCandidate(vanillaTime), true);
@@ -62,42 +66,30 @@ test('vanilla estimate reaches zero at sunrise and sunset', () => {
     assert.ok(beforeSunrise >= 0 && beforeSunrise < 5);
 });
 
-test('auto mode provides an estimate immediately while learn mode does not', () => {
-    const autoContext = createContext({ timeProfile: 'auto' });
-    const autoTime = new Time(vanillaTime, autoContext.rustplus, autoContext.client);
-    assert.equal(autoTime.timeProfileStatus, 'auto');
-    assert.match(autoTime.getTimeTillDayOrNight(), /^\d/);
+test('starts in auto and automatically confirms vanilla after matching samples', () => {
+    const context = createContext({ timeProfile: 'learn' });
+    const time = new Time(vanillaTime, context.rustplus, context.client, 0);
+    assert.equal(time.timeProfileStatus, 'auto');
+    assert.match(time.getTimeTillDayOrNight(), /^\d/);
 
-    const learnContext = createContext({ timeProfile: 'learn' });
-    const learnTime = new Time(vanillaTime, learnContext.rustplus, learnContext.client);
-    assert.equal(learnTime.timeProfileStatus, 'learning');
-    assert.equal(learnTime.getTimeTillDayOrNight(), null);
+    const initialRemaining = TimeProfiles.getVanillaSecondsTillTransition(vanillaTime);
+    for (let i = 1; i <= 3; i++) {
+        time.updateTime({ ...vanillaTime, time: findDayTimeForRemaining(initialRemaining - (i * 10)) }, i * 10000);
+    }
+
+    assert.equal(time.timeProfileStatus, 'vanilla');
+    assert.match(time.getTimeTillDayOrNight(), /^\d/);
 });
 
-test('runtime mode changes immediately update estimate availability', () => {
-    const context = createContext({ timeProfile: 'auto' });
-    const time = new Time(vanillaTime, context.rustplus, context.client, 0);
-
-    time.setTimeProfileMode('learn', 1000);
+test('starts learning immediately when the first payload is not vanilla-compatible', () => {
+    const context = createContext();
+    const time = new Time({ ...vanillaTime, timeScale: 2 }, context.rustplus, context.client);
     assert.equal(time.timeProfileStatus, 'learning');
     assert.equal(time.getTimeTillDayOrNight(), null);
-
-    time.setTimeProfileMode('vanilla', 2000);
-    assert.equal(time.timeProfileStatus, 'vanilla');
-    assert.match(time.getTimeTillDayOrNight(), /^\d/);
 });
 
-test('forced vanilla mode can estimate even when auto rejects the server fingerprint', () => {
-    const context = createContext({ timeProfile: 'vanilla' });
-    const time = new Time({ ...vanillaTime, timeScale: 2 }, context.rustplus, context.client);
-    assert.equal(TimeProfiles.isVanillaCandidate({ ...vanillaTime, timeScale: 2 }), false);
-    assert.equal(time.timeProfileStatus, 'vanilla');
-    assert.match(time.getTimeTillDayOrNight(), /^\d/);
-});
-
-test('saved learned tables remain exact and take priority over configured mode', () => {
+test('saved learned tables remain exact and take priority over automatic detection', () => {
     const context = createContext({
-        timeProfile: 'auto',
         timeTillDay: { '2': 100 },
         timeTillNight: { '12': 200 }
     });
@@ -117,7 +109,7 @@ test('keeps the existing command wording compatible with compact profile markers
 });
 
 test('auto estimate is rejected immediately when a server skips game time', () => {
-    const context = createContext({ timeProfile: 'auto' });
+    const context = createContext();
     const time = new Time({ ...vanillaTime, time: 19.9 }, context.rustplus, context.client, 0);
 
     time.updateTime({ ...vanillaTime, time: 7.7 }, 10000);
@@ -126,8 +118,27 @@ test('auto estimate is rejected immediately when a server skips game time', () =
     assert.equal(time.getTimeTillDayOrNight(), null);
 });
 
+test('confirmed vanilla falls back to learning if later clock speed diverges', () => {
+    const context = createContext();
+    const time = new Time(vanillaTime, context.rustplus, context.client, 0);
+    const initialRemaining = TimeProfiles.getVanillaSecondsTillTransition(vanillaTime);
+
+    for (let i = 1; i <= 3; i++) {
+        time.updateTime({ ...vanillaTime, time: findDayTimeForRemaining(initialRemaining - (i * 10)) }, i * 10000);
+    }
+    assert.equal(time.timeProfileStatus, 'vanilla');
+
+    const confirmedTime = time.time;
+    for (let i = 1; i <= 4; i++) {
+        time.updateTime({ ...vanillaTime, time: confirmedTime + (i * 0.001) }, (i + 3) * 10000);
+    }
+
+    assert.equal(time.timeProfileStatus, 'learning');
+    assert.equal(time.getTimeTillDayOrNight(), null);
+});
+
 test('auto estimate is rejected after sustained clock drift', () => {
-    const context = createContext({ timeProfile: 'auto' });
+    const context = createContext();
     const time = new Time({ ...vanillaTime, time: 20 }, context.rustplus, context.client, 0);
     assert.equal(time.timeProfileStatus, 'auto');
 

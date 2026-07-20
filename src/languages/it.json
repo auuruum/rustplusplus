@@ -765,7 +765,6 @@
     "timeSincePatrolHelicopterWasOnMap": "{time} dal momento in cui l'Elicottero di Pattuglia era in mappa.",
     "timeSinceTravelingVendorWasOnMap": "{time} da quando il Venditore Ambulante era sulla mappa.",
     "timeSinceWipe": "{time} dal momento del wipe.",
-    "timeProfileEditLabel": "Profilo orario (auto/vanilla/learn)",
     "timeTill": "Tempo fino a {event}",
     "timeTillDaylight": "{time} prima dell'alba.",
     "timeTillNightfall": "{time} prima della notte.",

@@ -31,7 +31,6 @@ const DiscordTools = require('../discordTools/discordTools.js');
 const InstanceUtils = require('../util/instanceUtils.js');
 const Map = require('../util/map.js');
 const Scrape = require('../util/scrape.js');
-const TimeProfiles = require('../util/timeProfiles.js');
 
 module.exports = async (client, guild) => {
     const credentials = InstanceUtils.readCredentialsFile(guild.id);
@@ -262,7 +261,6 @@ async function pairingServer(client, guild, title, message, body) {
         deepSeaWipeDurationMs: server ? server.deepSeaWipeDurationMs : Constants.DEFAULT_DEEP_SEA_WIPE_DURATION_MS,
         timeTillDay: server ? server.timeTillDay : null,
         timeTillNight: server ? server.timeTillNight : null,
-        timeProfile: server ? TimeProfiles.normalizeMode(server.timeProfile) : TimeProfiles.MODES.AUTO,
         cameras: server ? server.cameras : {},
         customCameraGroups: server ? server.customCameraGroups : {}
     };

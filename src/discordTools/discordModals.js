@@ -51,14 +51,6 @@ module.exports = {
                 style: Discord.TextInputStyle.Short,
                 required: false,
                 minLength: 0
-            })),
-            new Discord.ActionRowBuilder().addComponents(TextInput.getTextInput({
-                customId: 'ServerTimeProfile',
-                label: Client.client.intlGet(guildId, 'timeProfileEditLabel'),
-                value: server.timeProfile || 'auto',
-                style: Discord.TextInputStyle.Short,
-                minLength: 4,
-                maxLength: 7
             }))
         );
 

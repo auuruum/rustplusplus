@@ -767,7 +767,6 @@
     "timeSincePatrolHelicopterWasOnMap": "공격 헬기가 지도에 표시된 이후 {time} 지났습니다.",
     "timeSinceTravelingVendorWasOnMap": "Traveling Vendor가 맵에 있었던 지 {time} 지났습니다.",
     "timeSinceWipe": "초기화 후 {time} 지났습니다.",
-    "timeProfileEditLabel": "시간 프로필 (auto/vanilla/learn)",
     "timeTill": "{event}:남은시간",
     "timeTillDaylight": "해가 뜨기 전까지 {time} 남았습니다.",
     "timeTillNightfall": "해가 지기 전까지 {time} 남았습니다.",

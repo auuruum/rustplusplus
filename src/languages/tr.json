@@ -767,7 +767,6 @@
     "timeSincePatrolHelicopterWasOnMap": "{time} önce helikopter haritaydı.",
     "timeSinceTravelingVendorWasOnMap": "Traveling Vendor'ın haritada olmasının üzerinden {time} geçti.",
     "timeSinceWipe": "{time} önce wipe atıldı.",
-    "timeProfileEditLabel": "Zaman profili (auto/vanilla/learn)",
     "timeTill": "Süre kaldı {event}",
     "timeTillDaylight": "{time} sonra gündüz olacak.",
     "timeTillNightfall": "{time} sonra gece olacak.",

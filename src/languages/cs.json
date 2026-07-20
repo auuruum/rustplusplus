@@ -757,7 +757,6 @@
     "timeSincePatrolHelicopterWasOnMap": "{time} od chvíle, kdy Patrol Helicopter byla na mapě.",
     "timeSinceTravelingVendorWasOnMap": "{time} od chvíle, kdy byl Traveling Vendor na mapě.",
     "timeSinceWipe": "{time} od wipe.",
-    "timeProfileEditLabel": "Časový profil (auto/vanilla/learn)",
     "timeTill": "Čas do {event}",
     "timeTillDaylight": "{time} do svítání.",
     "timeTillNightfall": "{time} do setmění.",
