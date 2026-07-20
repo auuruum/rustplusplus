@@ -24,6 +24,14 @@ const Path = require('path');
 
 const Config = require('../../config');
 
+let queueTail = Promise.resolve();
+
+function enqueue(task) {
+    const run = queueTail.catch(() => {}).then(task);
+    queueTail = run.catch(() => {});
+    return run;
+}
+
 function splitCommand(command) {
     return command.trim().split(/\s+/).filter(part => part !== '');
 }
@@ -57,6 +65,8 @@ function buildDetectorArgs(options) {
     appendNumberArg(args, '--auto-max-profiles', options.maxProfiles);
     appendNumberArg(args, '--auto-min-score', options.minScore);
     appendNumberArg(args, '--request-delay', options.requestDelay);
+    args.push('--cache-path', Config.teamDetector.cachePath);
+    appendNumberArg(args, '--request-retries', Config.teamDetector.requestRetries);
 
     return args;
 }
@@ -96,7 +106,7 @@ function getNetworkOutputPath() {
 
 module.exports = {
     runAutoDiscovery: function (options) {
-        return new Promise((resolve, reject) => {
+        return enqueue(() => new Promise((resolve, reject) => {
             const detectorPath = Config.teamDetector.path;
             if (!Fs.existsSync(Path.join(detectorPath, 'team_detector.py'))) {
                 reject(new Error(`team_detector.py not found in ${detectorPath}`));
@@ -137,6 +147,6 @@ module.exports = {
                     reject(new Error(`Failed to parse team-detector JSON. ${e.message}${output ? `\n${output}` : ''}`));
                 }
             });
-        });
+        }));
     }
 };

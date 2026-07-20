@@ -213,6 +213,14 @@ function buildResultEmbed(client, guildId, result) {
         total: candidates.length,
         server: result.server_id
     });
+    if (result.partial) {
+        const skipped = Array.isArray(result.skipped_profiles) ? result.skipped_profiles.length : 0;
+        description += `\nPartial result: Steam temporarily limited or failed ${skipped} profile(s).`;
+    }
+    if (result.fetch_stats) {
+        description += `\nCache: ${result.fetch_stats.cache || 0} fresh, ` +
+            `${result.fetch_stats.stale || 0} stale; network: ${result.fetch_stats.network || 0}.`;
+    }
     if (shownCandidates.length > 0) {
         description += '\nConnection graph attached as image.';
     }

@@ -62,5 +62,7 @@ Variable | Default
 `RPP_TEAM_DETECTOR_PATH` | `vendor/team-detector`
 `RPP_TEAM_DETECTOR_COMMAND` | `uv run python`
 `RPP_TEAM_DETECTOR_TIMEOUT_MS` | `180000`
+`RPP_TEAM_DETECTOR_CACHE_PATH` | `data/teamfinder/steam_cache.sqlite`
+`RPP_TEAM_DETECTOR_REQUEST_RETRIES` | `3`
 
 Use `RPP_TEAM_DETECTOR_PATH` only if you intentionally keep `team-detector` outside this repository.
