@@ -143,7 +143,10 @@ module.exports = {
                 cwd: detectorPath,
                 timeout: Config.teamDetector.timeoutMs,
                 maxBuffer: 1024 * 1024 * 8,
-                windowsHide: true
+                windowsHide: true,
+                env: Object.assign({}, process.env, {
+                    BATTLEMETRICS_TOKEN: Config.battlemetrics.token
+                })
             }, (error, stdout, stderr) => {
                 if (error) {
                     const output = summarizeProcessOutput(stdout, stderr);
