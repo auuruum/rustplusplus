@@ -41,6 +41,16 @@ function appendNumberArg(args, name, value) {
     args.push(name, `${value}`);
 }
 
+function detectorSupportsResilientFetching() {
+    try {
+        const detectorFile = Path.join(Config.teamDetector.path, 'team_detector.py');
+        return Fs.readFileSync(detectorFile, 'utf8').includes("'--cache-path'");
+    }
+    catch (e) {
+        return false;
+    }
+}
+
 function buildDetectorArgs(options) {
     const args = [
         'team_detector.py',
@@ -65,8 +75,10 @@ function buildDetectorArgs(options) {
     appendNumberArg(args, '--auto-max-profiles', options.maxProfiles);
     appendNumberArg(args, '--auto-min-score', options.minScore);
     appendNumberArg(args, '--request-delay', options.requestDelay);
-    args.push('--cache-path', Config.teamDetector.cachePath);
-    appendNumberArg(args, '--request-retries', Config.teamDetector.requestRetries);
+    if (detectorSupportsResilientFetching()) {
+        args.push('--cache-path', Config.teamDetector.cachePath);
+        appendNumberArg(args, '--request-retries', Config.teamDetector.requestRetries);
+    }
 
     return args;
 }
