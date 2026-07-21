@@ -52,6 +52,22 @@ BattleMetrics player IDs are resolved to SteamID64 before the detector runs. If
 BattleMetrics only exposes name history for that player and no Steam identifier,
 use the player's SteamID64 or Steam profile URL instead.
 
+## Player Roster Sources
+
+Rust++ selects the current-player source for each run:
+
+1. a fresh BattleMetrics snapshot already held by Rust++, when available;
+2. Steam `GetServersAtAddress` query-port discovery followed by public `A2S_PLAYER`;
+3. a structured partial result when neither source provides a roster.
+
+The A2S fallback provides display names, scores, and session duration, but not
+SteamID64. Team Finder therefore marks exact unique display-name matches separately
+from ambiguous duplicate-name matches. It does not turn a nickname match into a
+permanent identity binding.
+
+Some Rust servers disable or censor `A2S_PLAYER`. Population-only `A2S_INFO` data is
+never presented as a player roster.
+
 ## Optional Overrides
 
 Variable | Default

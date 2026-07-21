@@ -500,11 +500,12 @@ module.exports = {
         }
     },
 
-    sendUpdateBattlemetricsOnlinePlayersInformationMessage: async function (rustplus, battlemetricsId) {
+    sendUpdateBattlemetricsOnlinePlayersInformationMessage: async function (rustplus, battlemetricsId, roster = null) {
         const instance = Client.client.getInstance(rustplus.guildId);
 
         const content = {
-            embeds: [DiscordEmbeds.getUpdateBattlemetricsOnlinePlayersInformationEmbed(rustplus, battlemetricsId)]
+            embeds: [DiscordEmbeds.getUpdateBattlemetricsOnlinePlayersInformationEmbed(
+                rustplus, battlemetricsId, roster)]
         }
 
         const message = await module.exports.sendMessage(rustplus.guildId, content,

@@ -19,15 +19,19 @@
 */
 
 const Constants = require('../util/constants.js');
+const A2sRoster = require('../util/a2sRoster.js');
+const TrackerA2sState = require('../util/trackerA2sState.js');
 const DiscordMessages = require('../discordTools/discordMessages.js');
 const DiscordTools = require('../discordTools/discordTools.js');
 const PlayerActivityDB = require('../util/database.js');
 const Scrape = require('../util/scrape.js');
+const Utils = require('../util/utils.js');
 
 module.exports = {
     handler: async function (client, firstTime = false) {
         const searchSteamProfiles = (client.battlemetricsIntervalCounter === 0) ? true : false;
         const calledSteamProfiles = new Object();
+        const a2sRosters = new Map();
 
         if (!firstTime) await client.updateBattlemetricsInstances();
 
@@ -48,7 +52,22 @@ module.exports = {
             condition &= rustplus && rustplus.isOperational;
 
             if (condition) {
-                await DiscordMessages.sendUpdateBattlemetricsOnlinePlayersInformationMessage(rustplus, bmId);
+                const bmInstance = client.battlemetricsInstances[bmId];
+                let informationRoster = null;
+                if (!bmInstance.lastUpdateSuccessful) {
+                    informationRoster = await A2sRoster.getServerRoster(instance.serverList[instance.activeServer]);
+                    a2sRosters.set(instance.activeServer, informationRoster);
+                }
+                if (bmInstance.lastUpdateSuccessful || informationRoster.available) {
+                    await DiscordMessages.sendUpdateBattlemetricsOnlinePlayersInformationMessage(
+                        rustplus, bmId, informationRoster);
+                }
+                else if (instance.informationMessageId.battlemetricsPlayers !== null) {
+                    await DiscordTools.deleteMessageById(guildId, instance.channelId.information,
+                        instance.informationMessageId.battlemetricsPlayers);
+                    instance.informationMessageId.battlemetricsPlayers = null;
+                    client.setInstance(guildId, instance);
+                }
             }
             else {
                 if (instance.informationMessageId.battlemetricsPlayers !== null) {
@@ -64,7 +83,14 @@ module.exports = {
                 const battlemetricsId = content.battlemetricsId;
                 const bmInstance = client.battlemetricsInstances[battlemetricsId];
 
-                if (!bmInstance || !bmInstance.lastUpdateSuccessful) continue;
+                if (!bmInstance || !bmInstance.lastUpdateSuccessful) {
+                    await handleA2sTracker(client, guildId, trackerId, content, firstTime, searchSteamProfiles,
+                        calledSteamProfiles, a2sRosters);
+                    continue;
+                }
+
+                content.rosterSource = 'battlemetrics';
+                content.rosterAvailable = true;
 
                 if (firstTime || searchSteamProfiles) {
                     for (const player of content.players) {
@@ -92,6 +118,8 @@ module.exports = {
                             player.name = name;
                         }
                     }
+
+                    syncA2sStateFromBattlemetrics(content, bmInstance);
 
                     client.setInstance(guildId, instance);
 
@@ -167,6 +195,8 @@ module.exports = {
                         }
                     }
                 }
+
+                syncA2sStateFromBattlemetrics(content, bmInstance);
 
                 client.setInstance(guildId, instance);
 
@@ -472,4 +502,102 @@ module.exports = {
         await DiscordMessages.sendBattlemetricsEventMessage(guildId, battlemetricsId, title, description, null,
             instance.trackers[trackerId].everyone);
     },
+}
+
+function syncA2sStateFromBattlemetrics(content, bmInstance) {
+    for (const player of content.players) {
+        const battlemetricsPlayer = player.playerId !== null ? bmInstance.players[player.playerId] : null;
+        if (!battlemetricsPlayer || typeof battlemetricsPlayer.status !== 'boolean') {
+            delete player.a2sStatus;
+            delete player.a2sAmbiguous;
+            continue;
+        }
+        player.a2sStatus = battlemetricsPlayer.status ? 'online' : 'offline';
+        player.a2sAmbiguous = false;
+    }
+}
+
+async function handleA2sTracker(client, guildId, trackerId, content, firstTime, searchSteamProfiles,
+    calledSteamProfiles, a2sRosters) {
+    const instance = client.getInstance(guildId);
+    const server = instance.serverList[content.serverId];
+    if (!server) return;
+
+    if (firstTime || searchSteamProfiles) {
+        for (const player of content.players) {
+            if (player.steamId === null) continue;
+            let name = calledSteamProfiles[player.steamId];
+            if (name === undefined) {
+                name = await Scrape.scrapeSteamProfileName(client, player.steamId);
+                calledSteamProfiles[player.steamId] = name;
+            }
+            if (name === null) continue;
+            name = (content.clanTag !== '' ? `${content.clanTag} ` : '') + name;
+            if (player.name !== name) {
+                await module.exports.trackerNewNameDetected(client, guildId, trackerId, content.battlemetricsId,
+                    player.name, name);
+                player.name = name;
+            }
+        }
+    }
+
+    let roster = a2sRosters.get(content.serverId);
+    if (!roster) roster = await A2sRoster.getServerRoster(server);
+    if (roster.available) {
+        const names = roster.players.map(name => Utils.removeInvisibleCharacters(name)).filter(name => name !== '');
+        roster = Object.assign({}, roster, {
+            players: names,
+            nameCounts: names.reduce((counts, name) => {
+                counts[name] = (counts[name] || 0) + 1;
+                return counts;
+            }, {})
+        });
+    }
+    a2sRosters.set(content.serverId, roster);
+
+    content.rosterSource = 'a2s';
+    content.rosterAvailable = roster.available;
+    content.rosterUpdatedAt = roster.observedAt || Date.now();
+    content.rosterUnavailableReason = roster.available ? null : roster.reason;
+
+    const tracked = content.players.map((player, index) => ({
+        key: `${player.steamId || player.playerId || index}`,
+        name: Utils.removeInvisibleCharacters(player.name)
+    }));
+    const previous = {};
+    for (let i = 0; i < content.players.length; i++) {
+        const player = content.players[i];
+        const key = tracked[i].key;
+        previous[key] = {
+            initialized: player.a2sStatus === 'online' || player.a2sStatus === 'offline',
+            online: player.a2sStatus === 'online'
+        };
+    }
+
+    const evaluation = TrackerA2sState.evaluate(previous, tracked, roster);
+    for (let i = 0; i < content.players.length; i++) {
+        const state = evaluation.state[tracked[i].key];
+        const ambiguous = evaluation.ambiguous.includes(tracked[i].key);
+        content.players[i].a2sAmbiguous = ambiguous;
+        if (!ambiguous && state && state.initialized) {
+            content.players[i].a2sStatus = state.online ? 'online' : 'offline';
+        }
+    }
+
+    client.setInstance(guildId, instance);
+
+    for (const event of evaluation.events) {
+        const player = content.players.find((candidate, index) =>
+            `${candidate.steamId || candidate.playerId || index}` === event.key);
+        if (!player) continue;
+        const translation = event.type === 'login' ? 'playerJustConnectedTracker' : 'playerJustDisconnectedTracker';
+        const str = client.intlGet(guildId, translation, { name: player.name, tracker: content.name });
+        await DiscordMessages.sendActivityNotificationMessage(guildId, content.serverId,
+            event.type === 'login' ? Constants.COLOR_ACTIVE : Constants.COLOR_INACTIVE,
+            str, null, content.title, content.everyone);
+        const rustplus = client.rustplusInstances[guildId];
+        if (rustplus && rustplus.serverId === content.serverId && content.inGame) rustplus.sendInGameMessage(str);
+    }
+
+    await DiscordMessages.sendTrackerMessage(guildId, trackerId);
 }

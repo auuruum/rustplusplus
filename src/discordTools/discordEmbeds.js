@@ -126,14 +126,16 @@ module.exports = {
         const bmInstance = Client.client.battlemetricsInstances[battlemetricsId];
 
         const successful = bmInstance && bmInstance.lastUpdateSuccessful ? true : false;
+        const a2sSuccessful = tracker.rosterSource === 'a2s' && tracker.rosterAvailable === true;
 
         const battlemetricsLink = `[${battlemetricsId}](${Constants.BATTLEMETRICS_SERVER_URL}${battlemetricsId})`;
-        const serverStatus = !successful ? Constants.NOT_FOUND_EMOJI :
-            (bmInstance.server_status ? Constants.ONLINE_EMOJI : Constants.OFFLINE_EMOJI);
+        const serverStatus = successful ? (bmInstance.server_status ? Constants.ONLINE_EMOJI : Constants.OFFLINE_EMOJI) :
+            (a2sSuccessful ? Constants.ONLINE_EMOJI : Constants.NOT_FOUND_EMOJI);
 
         let description = `__**Tracker ID:**__ \`${tracker.trackerId}\`\n`;
         description += `__**Battlemetrics ID:**__ ${battlemetricsLink}\n`;
         description += `__**${Client.client.intlGet(guildId, 'serverId')}:**__ ${tracker.serverId}\n`;
+        description += `__**Roster source:**__ ${successful ? 'BattleMetrics' : (a2sSuccessful ? 'A2S' : 'Unavailable')}\n`;
         description += `__**${Client.client.intlGet(guildId, 'serverStatus')}:**__ ${serverStatus}\n`;
         description += `__**${Client.client.intlGet(guildId, 'streamerMode')}:**__ `;
         description += (!bmInstance ? Constants.NOT_FOUND_EMOJI : (bmInstance.streamerMode ?
@@ -166,7 +168,13 @@ module.exports = {
                 Client.client.intlGet(guildId, 'empty') : ''}`;
             id += '\n';
 
-            if (!bmInstance.players.hasOwnProperty(player.playerId) || !successful) {
+            if (!successful && a2sSuccessful) {
+                if (player.a2sAmbiguous) status += `${Constants.NOT_FOUND_EMOJI}\n`;
+                else if (player.a2sStatus === 'online') status += `${Constants.ONLINE_EMOJI}\n`;
+                else if (player.a2sStatus === 'offline') status += `${Constants.OFFLINE_EMOJI}\n`;
+                else status += `${Constants.NOT_FOUND_EMOJI}\n`;
+            }
+            else if (!successful || !bmInstance || !bmInstance.players.hasOwnProperty(player.playerId)) {
                 status += `${Constants.NOT_FOUND_EMOJI}\n`;
             }
             else {
@@ -901,9 +909,40 @@ module.exports = {
         });
     },
 
-    getUpdateBattlemetricsOnlinePlayersInformationEmbed: function (rustplus, battlemetricsId) {
-        const bmInstance = Client.client.battlemetricsInstances[battlemetricsId];
+    getUpdateBattlemetricsOnlinePlayersInformationEmbed: function (rustplus, battlemetricsId, roster = null) {
         const guildId = rustplus.guildId;
+
+        if (roster && roster.available) {
+            const instance = Client.client.getInstance(guildId);
+            const server = instance.serverList[rustplus.serverId];
+            const fields = [''];
+            let fieldIndex = 0;
+            for (const rawName of roster.players) {
+                const name = `${rawName}`.replace('[', '(').replace(']', ')');
+                const playerStr = `${Constants.ONLINE_EMOJI} ${name}\n`;
+                if (fields[fieldIndex].length + playerStr.length >= Constants.EMBED_MAX_FIELD_VALUE_CHARACTERS) {
+                    fieldIndex += 1;
+                    fields.push('');
+                }
+                if (fields.join('').length + playerStr.length >= Constants.EMBED_MAX_TOTAL_CHARACTERS - 500) break;
+                fields[fieldIndex] += playerStr;
+            }
+
+            return module.exports.getEmbed({
+                title: Client.client.intlGet(guildId, 'battlemetricsOnlinePlayers'),
+                color: Constants.COLOR_DEFAULT,
+                description: `Roster source: A2S · ${roster.players.length} names`,
+                footer: { text: server ? server.title : roster.queryAddress },
+                fields: fields.map((field, index) => ({
+                    name: index === 0 ? Client.client.intlGet(guildId, 'players') : '\u200B',
+                    value: field === '' ? '\u200B' : field,
+                    inline: true
+                })),
+                timestamp: true
+            });
+        }
+
+        const bmInstance = Client.client.battlemetricsInstances[battlemetricsId];
 
         const playerIds = bmInstance.getOnlinePlayerIdsOrderedByTime();
 

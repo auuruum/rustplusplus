@@ -51,14 +51,35 @@ function detectorSupportsResilientFetching() {
     }
 }
 
-function getBattlemetricsPlayersPath(players) {
-    if (!Array.isArray(players) || players.length === 0) return null;
+function detectorSupportsPlayerRoster() {
+    try {
+        const detectorFile = Path.join(Config.teamDetector.path, 'team_detector.py');
+        return Fs.readFileSync(detectorFile, 'utf8').includes("'--player-roster-file'");
+    }
+    catch (e) {
+        return false;
+    }
+}
+
+function getPlayerRosterPath(roster) {
+    if (!roster || typeof roster !== 'object') return null;
+
+    const outputDirectory = Path.join(__dirname, '..', '..', 'data', 'teamfinder');
+    Fs.mkdirSync(outputDirectory, { recursive: true });
+    const suffix = `${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+    const snapshotPath = Path.join(outputDirectory, `player_roster_${suffix}.json`);
+    Fs.writeFileSync(snapshotPath, JSON.stringify(roster), { encoding: 'utf8', mode: 0o600 });
+    return snapshotPath;
+}
+
+function getLegacyPlayersPath(roster) {
+    if (!roster || !roster.available || !Array.isArray(roster.players) || roster.players.length === 0) return null;
 
     const outputDirectory = Path.join(__dirname, '..', '..', 'data', 'teamfinder');
     Fs.mkdirSync(outputDirectory, { recursive: true });
     const suffix = `${Date.now()}-${Math.floor(Math.random() * 100000)}`;
     const snapshotPath = Path.join(outputDirectory, `battlemetrics_players_${suffix}.json`);
-    Fs.writeFileSync(snapshotPath, JSON.stringify(players), { encoding: 'utf8', mode: 0o600 });
+    Fs.writeFileSync(snapshotPath, JSON.stringify(roster.players), { encoding: 'utf8', mode: 0o600 });
     return snapshotPath;
 }
 
@@ -72,8 +93,11 @@ function buildDetectorArgs(options) {
         '--no-config'
     ];
 
-    if (options.battlemetricsPlayersPath && detectorSupportsResilientFetching()) {
-        args.push('--battlemetrics-players-file', options.battlemetricsPlayersPath);
+    if (options.playerRosterPath && detectorSupportsPlayerRoster()) {
+        args.push('--player-roster-file', options.playerRosterPath);
+    }
+    else if (options.legacyPlayersPath && detectorSupportsResilientFetching()) {
+        args.push('--battlemetrics-players-file', options.legacyPlayersPath);
     }
 
     if (options.networkOutputPath) {
@@ -151,7 +175,12 @@ module.exports = {
             if (detectorOptions.includeNetwork !== false && !detectorOptions.networkOutputPath) {
                 detectorOptions.networkOutputPath = getNetworkOutputPath();
             }
-            detectorOptions.battlemetricsPlayersPath = getBattlemetricsPlayersPath(detectorOptions.battlemetricsPlayers);
+            if (detectorSupportsPlayerRoster()) {
+                detectorOptions.playerRosterPath = getPlayerRosterPath(detectorOptions.playerRoster);
+            }
+            else {
+                detectorOptions.legacyPlayersPath = getLegacyPlayersPath(detectorOptions.playerRoster);
+            }
 
             const args = commandParts.slice(1).concat(buildDetectorArgs(detectorOptions));
 
@@ -164,8 +193,11 @@ module.exports = {
                     BATTLEMETRICS_TOKEN: Config.battlemetrics.token
                 })
             }, (error, stdout, stderr) => {
-                if (detectorOptions.battlemetricsPlayersPath) {
-                    Fs.rmSync(detectorOptions.battlemetricsPlayersPath, { force: true });
+                if (detectorOptions.playerRosterPath) {
+                    Fs.rmSync(detectorOptions.playerRosterPath, { force: true });
+                }
+                if (detectorOptions.legacyPlayersPath) {
+                    Fs.rmSync(detectorOptions.legacyPlayersPath, { force: true });
                 }
                 if (error) {
                     const output = summarizeProcessOutput(stdout, stderr);
