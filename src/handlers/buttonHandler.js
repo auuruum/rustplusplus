@@ -183,6 +183,10 @@ module.exports = async (client, interaction) => {
         });
     }
     else if (interaction.customId === 'FcmAlarmNotification') {
+        if (!Config.rustWake.enabled) {
+            await interaction.deferUpdate();
+            return;
+        }
         instance.generalSettings.fcmAlarmNotificationEnabled = !instance.generalSettings.fcmAlarmNotificationEnabled;
         client.setInstance(guildId, instance);
 
@@ -202,6 +206,10 @@ module.exports = async (client, interaction) => {
         });
     }
     else if (interaction.customId === 'FcmAlarmNotificationEveryone') {
+        if (!Config.rustWake.enabled) {
+            await interaction.deferUpdate();
+            return;
+        }
         instance.generalSettings.fcmAlarmNotificationEveryone = !instance.generalSettings.fcmAlarmNotificationEveryone;
         client.setInstance(guildId, instance);
 
@@ -802,6 +810,30 @@ module.exports = async (client, interaction) => {
         client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'buttonValueChange', {
             id: `${verifyId}`,
             value: `${server.alarms[ids.entityId].everyone}`
+        }));
+
+        await DiscordMessages.sendSmartAlarmMessage(guildId, ids.serverId, ids.entityId, interaction);
+    }
+    else if (interaction.customId.startsWith('SmartAlarmWake')) {
+        if (!Config.rustWake.enabled) {
+            await interaction.deferUpdate();
+            return;
+        }
+
+        const ids = JSON.parse(interaction.customId.replace('SmartAlarmWake', ''));
+        const server = instance.serverList[ids.serverId];
+
+        if (!server || (server && !server.alarms.hasOwnProperty(ids.entityId))) {
+            await interaction.message.delete();
+            return;
+        }
+
+        server.alarms[ids.entityId].wakeEnabled = !server.alarms[ids.entityId].wakeEnabled;
+        client.setInstance(guildId, instance);
+
+        client.log(client.intlGet(null, 'infoCap'), client.intlGet(null, 'buttonValueChange', {
+            id: `${verifyId}`,
+            value: `${server.alarms[ids.entityId].wakeEnabled}`
         }));
 
         await DiscordMessages.sendSmartAlarmMessage(guildId, ids.serverId, ids.entityId, interaction);

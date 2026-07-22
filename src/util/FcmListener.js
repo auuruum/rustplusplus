@@ -30,6 +30,7 @@ const DiscordMessages = require('../discordTools/discordMessages.js');
 const DiscordTools = require('../discordTools/discordTools.js');
 const InstanceUtils = require('../util/instanceUtils.js');
 const Map = require('../util/map.js');
+const RustWakeAlarm = require('../util/rustWakeAlarm.js');
 const Scrape = require('../util/scrape.js');
 
 module.exports = async (client, guild) => {
@@ -340,9 +341,11 @@ async function pairingEntitySmartAlarm(client, guild, title, message, body) {
         active: entityExist ? alarms[body.entityId].active : false,
         reachable: entityExist ? alarms[body.entityId].reachable : true,
         everyone: entityExist ? alarms[body.entityId].everyone : false,
+        wakeEnabled: entityExist ? Boolean(alarms[body.entityId].wakeEnabled) : false,
         name: entityExist ? alarms[body.entityId].name : client.intlGet(guild.id, 'smartAlarm'),
         message: entityExist ? alarms[body.entityId].message : client.intlGet(guild.id, 'baseIsUnderAttack'),
         lastTrigger: entityExist ? alarms[body.entityId].lastTrigger : null,
+        lastWakeAt: entityExist ? (alarms[body.entityId].lastWakeAt || null) : null,
         command: entityExist ? alarms[body.entityId].command : body.entityId,
         id: entityExist ? alarms[body.entityId].id : body.entityId,
         image: entityExist ? alarms[body.entityId].image : 'smart_alarm.png',
@@ -471,6 +474,7 @@ async function alarmAlarm(client, guild, title, message, body) {
     if ((!rustplus || (rustplus && (rustplus.serverId !== serverId))) &&
         instance.generalSettings.fcmAlarmNotificationEnabled) {
         server.alarms[entityId].lastTrigger = Math.floor(new Date() / 1000);
+        await RustWakeAlarm.triggerAlarmWake(guild.id, server.alarms[entityId]);
         client.setInstance(guild.id, instance);
         await DiscordMessages.sendSmartAlarmTriggerMessage(guild.id, serverId, entityId);
         client.log(client.intlGet(null, 'infoCap'), `${title}: ${message}`);

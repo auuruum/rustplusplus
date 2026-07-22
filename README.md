@@ -42,7 +42,7 @@ A NodeJS Discord Bot that uses the [rustplus.js](https://github.com/liamcottle/r
 
 ## **Documentation**
 
-> Documentation can be found [here](https://github.com/auuruum/rustplusplus/blob/master/docs/documentation.md). The documentation explains the features as well as `how to setup the bot`, so make sure to take a look at it 😉
+> Documentation can be found [here](https://github.com/auuruum/rustplusplus/blob/master/docs/documentation.md). Optional Rust Wake note: [docs/rust-wake.md](docs/rust-wake.md).
 
 ## **Credentials**
 

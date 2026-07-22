@@ -30,6 +30,9 @@ module.exports = async (client, guild) => {
     const commandFiles = Fs.readdirSync(Path.join(__dirname, '..', 'commands')).filter(file => file.endsWith('.js'));
 
     for (const file of commandFiles) {
+        if (file === 'wake.js' && !Config.rustWake.enabled) {
+            continue;
+        }
         const command = require(`../commands/${file}`);
         commands.push(command.getData(client, guild.id).toJSON());
     }
