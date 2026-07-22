@@ -2,8 +2,11 @@ const Crypto = require('crypto');
 const Fs = require('fs');
 const Path = require('path');
 
-const STORE_DIR = Path.join(__dirname, '..', '..', 'rust-wake');
-const STORE_PATH = Path.join(STORE_DIR, 'devices.json');
+const DEFAULT_STORE_DIR = Path.join(__dirname, '..', '..', 'rust-wake');
+const STORE_PATH = process.env.RPP_RUST_WAKE_STORE_PATH
+    ? Path.resolve(process.env.RPP_RUST_WAKE_STORE_PATH)
+    : Path.join(DEFAULT_STORE_DIR, 'devices.json');
+const STORE_DIR = Path.dirname(STORE_PATH);
 const LINK_CODE_TTL_MS = 10 * 60 * 1000;
 
 function ensureStoreDir() {
@@ -104,6 +107,19 @@ function createLinkCode(guildId, userId) {
     return { code, ...store.linkCodes[code] };
 }
 
+function getActiveLinkCode(guildId, userId) {
+    const store = readStore();
+    pruneExpiredLinkCodes(store);
+
+    const match = Object.entries(store.linkCodes)
+        .find(([, entry]) => entry.guildId === guildId && entry.userId === userId);
+    writeStore(store);
+    if (!match) return null;
+
+    const [code, entry] = match;
+    return { code, ...entry };
+}
+
 function consumeLinkCode(code, token, deviceName = 'Android device') {
     const cleanCode = String(code || '').replace(/\D/g, '');
     const store = readStore();
@@ -136,5 +152,6 @@ module.exports = {
     getDevicesByGuild,
     removeDevice,
     createLinkCode,
+    getActiveLinkCode,
     consumeLinkCode
 };

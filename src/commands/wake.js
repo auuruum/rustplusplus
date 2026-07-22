@@ -18,11 +18,7 @@ module.exports = {
                 .setDescription('Create a short link code for the Rust Wake Android app'))
             .addSubcommand(subcommand => subcommand
                 .setName('check')
-                .setDescription('Finish linking after entering the code in the Android app')
-                .addStringOption(option => option
-                    .setName('code')
-                    .setDescription('The 6-digit code from /wake link')
-                    .setRequired(true)))
+                .setDescription('Finish linking after entering the code in the Android app'))
             .addSubcommand(subcommand => subcommand
                 .setName('token')
                 .setDescription('Manual fallback: link this Discord user to an FCM token')
@@ -108,7 +104,7 @@ async function linkHandler(client, interaction) {
                     `# ${formatCode(session.code)}`,
                     '',
                     'Then run:',
-                    '`/wake check code:' + session.code + '`',
+                    '`/wake check`',
                     '',
                     'Expires in **10 minutes**.'
                 ].join('\n')
@@ -133,9 +129,24 @@ async function checkHandler(client, interaction) {
         return;
     }
 
-    const code = interaction.options.getString('code').replace(/\D/g, '');
+    const session = RustWakeStore.getActiveLinkCode(interaction.guildId, interaction.user.id);
+    if (!session) {
+        await interaction.editReply({
+            embeds: [DiscordEmbeds.getEmbed({
+                title: 'No active Rust Wake link',
+                color: 0xF1C40F,
+                description: 'Run `/wake link`, enter the new code in the Android app, then run `/wake check`.'
+            })]
+        });
+        return;
+    }
+
+    const code = session.code;
     try {
         const doc = await firestore.getLinkSession(code);
+        if (doc.guildId !== interaction.guildId || doc.userId !== interaction.user.id) {
+            throw new Error('The active link session does not belong to this Discord user. Run /wake link again.');
+        }
         if (!doc.fcmToken) {
             await interaction.editReply({
                 embeds: [DiscordEmbeds.getEmbed({
@@ -217,7 +228,7 @@ async function testHandler(client, interaction) {
             embeds: [DiscordEmbeds.getEmbed({
                 title: 'No Rust Wake device linked',
                 color: 0xC0392B,
-                description: 'Run `/wake link`, enter the code in Rust Wake Android, then run `/wake check code:<code>`.'
+                description: 'Run `/wake link`, enter the code in Rust Wake Android, then run `/wake check`.'
             })]
         });
         return;
