@@ -16,14 +16,14 @@ Test('formats Connect with safe fallbacks and never substitutes query or Rust+ a
         serverIp: '137.83.91.168',
         appPort: 28082,
         queryPort: 28016
-    }), '195.60.166.150:28015');
+    }), 'connect 195.60.166.150:28015');
     Assert.equal(A2sRoster.getServerConnectDisplay({
         connect: null,
         gameIp: '195.60.166.150',
         gamePort: 28015,
         queryPort: 28016,
         appPort: 28082
-    }), '195.60.166.150:28015');
+    }), 'connect 195.60.166.150:28015');
     Assert.equal(A2sRoster.getServerConnectDisplay({
         connect: null,
         serverIp: '137.83.91.168',

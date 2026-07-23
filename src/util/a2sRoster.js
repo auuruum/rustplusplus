@@ -42,13 +42,13 @@ function getServerConnectDisplay(server) {
     if (!server || typeof server !== 'object') return null;
 
     const connect = parseConnectEndpoint(server.connect);
-    if (connect) return `${connect.host}:${connect.gamePort}`;
+    if (connect) return `connect ${connect.host}:${connect.gamePort}`;
 
     const gameHost = typeof server.gameIp === 'string' && server.gameIp.trim() !== '' ?
         server.gameIp.trim() : (typeof server.gameHost === 'string' ? server.gameHost.trim() : '');
     const gamePort = Number(server.gamePort);
     if (gameHost && Number.isInteger(gamePort) && gamePort > 0 && gamePort <= 65535) {
-        return `${gameHost}:${gamePort}`;
+        return `connect ${gameHost}:${gamePort}`;
     }
 
     return typeof server.serverIp === 'string' && server.serverIp.trim() !== '' ? server.serverIp.trim() : null;
