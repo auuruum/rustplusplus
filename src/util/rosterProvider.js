@@ -1,6 +1,6 @@
 /*
     Selects a compliant current-roster source and persists successful observations.
-    Priority: authorized BattleMetrics API -> public A2S -> short-lived local cache.
+    Priority: authorized BattleMetrics API -> direct/hosted public A2S -> short-lived local cache.
 */
 
 const A2sRoster = require('./a2sRoster.js');

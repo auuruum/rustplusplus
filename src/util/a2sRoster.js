@@ -5,17 +5,24 @@
 
 const Axios = require('axios');
 const Dgram = require('dgram');
+const Net = require('net');
 
 const Utils = require('./utils.js');
 
 const RUST_APP_ID = 252490;
 const DEFAULT_HTTP_TIMEOUT_MS = 5000;
 const DEFAULT_UDP_TIMEOUT_MS = 3000;
+const DEFAULT_RELAY_TIMEOUT_MS = 8000;
+const DEFAULT_A2S_RELAY_URL = 'https://gamedig-api.hexane.co/rust/ip={host}&port={port}';
 const QUERY_ENDPOINT_CACHE_MS = 6 * 60 * 60 * 1000;
 const ROSTER_CACHE_MS = 45 * 1000;
 const STEAM_DIRECTORY_HEADERS = {
     'Accept': 'application/json',
     'User-Agent': 'RustPlusPlus/1.26.1 (+https://github.com/alexemanuelol/rustplusplus)'
+};
+const A2S_RELAY_HEADERS = {
+    'Accept': 'application/json',
+    'User-Agent': STEAM_DIRECTORY_HEADERS['User-Agent']
 };
 
 const queryEndpointCache = new Map();
@@ -38,6 +45,91 @@ function parseAddress(address) {
     const port = Number(match[2]);
     if (!Number.isInteger(port) || port < 1 || port > 65535) return null;
     return { host: match[1], port: port };
+}
+
+function isPublicIpv4(host) {
+    if (!Net.isIPv4(host)) return false;
+    const [a, b, c] = host.split('.').map(Number);
+    if (a === 0 || a === 10 || a === 127 || a >= 224) return false;
+    if (a === 100 && b >= 64 && b <= 127) return false;
+    if (a === 169 && b === 254) return false;
+    if (a === 172 && b >= 16 && b <= 31) return false;
+    if (a === 192 && b === 168) return false;
+    if (a === 192 && b === 0 && (c === 0 || c === 2)) return false;
+    if (a === 198 && (b === 18 || b === 19)) return false;
+    if (a === 198 && b === 51 && c === 100) return false;
+    if (a === 203 && b === 0 && c === 113) return false;
+    return true;
+}
+
+function getRelayUrlTemplate(options = {}) {
+    const configured = options.relayUrlTemplate !== undefined ? options.relayUrlTemplate :
+        process.env.RPP_A2S_RELAY_URL;
+    if (configured === false) return null;
+    if (typeof configured === 'string' && ['0', 'false', 'off', 'disabled'].includes(configured.trim().toLowerCase())) {
+        return null;
+    }
+    return typeof configured === 'string' && configured.trim() !== '' ? configured.trim() : DEFAULT_A2S_RELAY_URL;
+}
+
+function buildRelayUrl(host, port, options = {}) {
+    if (!isPublicIpv4(host)) throw new Error('Hosted A2S requires a public IPv4 query address.');
+    if (!Number.isInteger(Number(port)) || Number(port) < 1 || Number(port) > 65535) {
+        throw new Error('Hosted A2S query port is invalid.');
+    }
+    const template = getRelayUrlTemplate(options);
+    if (!template) throw new Error('Hosted A2S fallback is disabled.');
+    if (!template.includes('{host}') || !template.includes('{port}')) {
+        throw new Error('RPP_A2S_RELAY_URL must contain {host} and {port} placeholders.');
+    }
+    return template
+        .replaceAll('{host}', encodeURIComponent(host))
+        .replaceAll('{port}', encodeURIComponent(`${Number(port)}`));
+}
+
+function parseRelayResponse(payload) {
+    if (!payload || typeof payload !== 'object') throw new Error('Hosted A2S returned an invalid response.');
+    if (payload.online !== true) {
+        throw new Error(typeof payload.error === 'string' ? payload.error : 'Hosted A2S reported the server unavailable.');
+    }
+    if (!Array.isArray(payload.players)) throw new Error('Hosted A2S response has no player roster.');
+    if (payload.players.length > 255) throw new Error('Hosted A2S response exceeds the A2S player-count limit.');
+
+    const entries = payload.players.map((player, index) => {
+        if (!player || typeof player !== 'object' || typeof player.name !== 'string') {
+            throw new Error('Hosted A2S response contains an invalid player entry.');
+        }
+        if (Buffer.byteLength(player.name, 'utf8') > 1024) {
+            throw new Error('Hosted A2S response contains an oversized player name.');
+        }
+        const raw = player.raw && typeof player.raw === 'object' ? player.raw : {};
+        return {
+            index,
+            name: player.name,
+            score: Number.isFinite(Number(raw.score)) ? Number(raw.score) : 0,
+            duration: Number.isFinite(Number(raw.time)) ? Number(raw.time) : 0
+        };
+    });
+    const rawPopulation = payload.raw && payload.raw.numplayers;
+    const reportedPopulation = Number(rawPopulation);
+    return {
+        entries,
+        reportedPopulation: rawPopulation !== null && rawPopulation !== undefined &&
+            Number.isInteger(reportedPopulation) && reportedPopulation >= 0 && reportedPopulation <= 255 ?
+            reportedPopulation : null
+    };
+}
+
+async function queryPlayersViaRelay(host, port, options = {}) {
+    const url = buildRelayUrl(host, port, options);
+    const requestJson = options.requestRelayJson || (async requestUrl => {
+        const response = await Axios.get(requestUrl, {
+            timeout: options.relayTimeoutMs || DEFAULT_RELAY_TIMEOUT_MS,
+            headers: A2S_RELAY_HEADERS
+        });
+        return response.data;
+    });
+    return parseRelayResponse(await requestJson(url));
 }
 
 function rememberQueryEndpoint(server, endpoint) {
@@ -295,22 +387,63 @@ async function getServerRoster(server, options = {}) {
         const discover = options.discoverQueryEndpoint || discoverQueryEndpoint;
         const query = options.queryPlayers || queryPlayers;
         const infoQuery = options.queryInfo || queryInfo;
+        const relayQuery = options.queryPlayersViaRelay || queryPlayersViaRelay;
         const hadRememberedEndpoint = Boolean(server && server.queryIp && Number(server.queryPort));
         let endpoint = await discover(server, options);
         let cacheKey = `${endpoint.host}:${endpoint.port}`;
         const cached = rosterCache.get(cacheKey);
         if (!options.noCache && cached && now - cached.observedAt < ROSTER_CACHE_MS) return cached;
         let entries;
+        let rosterSource = 'a2s';
+        let reportedPopulation = null;
+        let directError = null;
         try {
             entries = await query(endpoint.host, endpoint.port, options);
         }
         catch (error) {
-            if (!hadRememberedEndpoint || options.rediscoverOnQueryFailure === false ||
-                options.discoverQueryEndpoint) throw error;
-            forgetQueryEndpoint(server, endpoint);
-            endpoint = await discover(server, options);
-            cacheKey = `${endpoint.host}:${endpoint.port}`;
-            entries = await query(endpoint.host, endpoint.port, options);
+            directError = error;
+            if (hadRememberedEndpoint && options.rediscoverOnQueryFailure !== false &&
+                !options.discoverQueryEndpoint) {
+                const failedEndpoint = endpoint;
+                forgetQueryEndpoint(server, endpoint);
+                let rediscoveryError = null;
+                try {
+                    endpoint = await discover(server, options);
+                    cacheKey = `${endpoint.host}:${endpoint.port}`;
+                }
+                catch (errorDuringRediscovery) {
+                    rediscoveryError = errorDuringRediscovery;
+                }
+                if (rediscoveryError) {
+                    endpoint = failedEndpoint;
+                    cacheKey = `${endpoint.host}:${endpoint.port}`;
+                    rememberQueryEndpoint(server, endpoint);
+                    directError = new Error(
+                        `${error.message} Query endpoint rediscovery failed: ${rediscoveryError.message}`);
+                }
+                else if (endpoint.host !== failedEndpoint.host || endpoint.port !== failedEndpoint.port) {
+                    try {
+                        entries = await query(endpoint.host, endpoint.port, options);
+                        directError = null;
+                    }
+                    catch (rediscoveredQueryError) {
+                        directError = rediscoveredQueryError;
+                    }
+                }
+            }
+        }
+
+        if (directError) {
+            try {
+                const relayed = await relayQuery(endpoint.host, endpoint.port, options);
+                entries = relayed.entries;
+                reportedPopulation = relayed.reportedPopulation;
+                rosterSource = 'a2s_relay';
+                rememberQueryEndpoint(server, endpoint);
+            }
+            catch (relayError) {
+                throw new Error(`${directError.message} Hosted A2S fallback failed: ${relayError.message}`);
+            }
         }
         const names = entries
             .map(player => typeof player.name === 'string' ? Utils.removeInvisibleCharacters(player.name).trim() : '')
@@ -319,18 +452,19 @@ async function getServerRoster(server, options = {}) {
         if (names.length === 0) {
             let info;
             try {
-                info = await infoQuery(endpoint.host, endpoint.port, options);
+                info = reportedPopulation === null ? await infoQuery(endpoint.host, endpoint.port, options) :
+                    { players: reportedPopulation };
             }
             catch (error) {
                 return {
-                    source: 'a2s', capability: 'unavailable', available: false, complete: false,
+                    source: rosterSource, capability: 'unavailable', available: false, complete: false,
                     observedAt: now, queryAddress: `${endpoint.host}:${endpoint.port}`, players: [], nameCounts: {},
                     reason: `Empty A2S_PLAYER roster could not be verified: ${error.message}`
                 };
             }
             if (info.players > 0) {
                 return {
-                    source: 'a2s', capability: 'unavailable', available: false, complete: false,
+                    source: rosterSource, capability: 'unavailable', available: false, complete: false,
                     observedAt: now, queryAddress: `${endpoint.host}:${endpoint.port}`, players: [], nameCounts: {},
                     population: info.players,
                     reason: `A2S_PLAYER returned no names while A2S_INFO reports ${info.players} players.`
@@ -339,9 +473,10 @@ async function getServerRoster(server, options = {}) {
         }
 
         const snapshot = {
-            source: 'a2s', capability: 'names_only', available: true, complete: true,
+            source: rosterSource, capability: 'names_only', available: true, complete: true,
             observedAt: now, queryAddress: `${endpoint.host}:${endpoint.port}`, players: names,
-            nameCounts: buildNameCounts(names), entries: entries, population: names.length
+            nameCounts: buildNameCounts(names), entries: entries, population: names.length,
+            reportedPopulation: reportedPopulation
         };
         rosterCache.set(cacheKey, snapshot);
         return snapshot;
@@ -355,8 +490,13 @@ async function getServerRoster(server, options = {}) {
 }
 
 module.exports = {
+    DEFAULT_A2S_RELAY_URL,
     parseConnectEndpoint,
     parseAddress,
+    isPublicIpv4,
+    getRelayUrlTemplate,
+    buildRelayUrl,
+    parseRelayResponse,
     rememberQueryEndpoint,
     forgetQueryEndpoint,
     selectQueryEndpoint,
@@ -368,5 +508,6 @@ module.exports = {
     parseInfoResponse,
     queryPlayers,
     queryInfo,
+    queryPlayersViaRelay,
     getServerRoster
 };

@@ -30,9 +30,11 @@ const Timer = require('../util/timer');
 function formatRosterSource(source, upstreamSource = null) {
     if (source === 'battlemetrics_api') return 'BattleMetrics API';
     if (source === 'a2s') return 'A2S';
+    if (source === 'a2s_relay') return 'Hosted A2S';
     if (source === 'local_cache') {
         const upstream = upstreamSource === 'battlemetrics_api' ? 'BattleMetrics API' :
-            (upstreamSource === 'a2s' ? 'A2S' : upstreamSource);
+            (upstreamSource === 'a2s' ? 'A2S' :
+                (upstreamSource === 'a2s_relay' ? 'Hosted A2S' : upstreamSource));
         return upstream ? `Local cache (${upstream})` : 'Local cache';
     }
     return 'Unavailable';

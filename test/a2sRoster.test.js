@@ -199,3 +199,128 @@ Test('accepts a verified empty server roster', async () => {
     Assert.equal(roster.complete, true);
     Assert.deepEqual(roster.players, []);
 });
+
+Test('builds a configurable hosted A2S URL only for public IPv4 endpoints', () => {
+    Assert.equal(
+        A2sRoster.buildRelayUrl('178.208.177.72', 28025),
+        'https://gamedig-api.hexane.co/rust/ip=178.208.177.72&port=28025'
+    );
+    Assert.equal(
+        A2sRoster.buildRelayUrl('178.208.177.72', 28025, {
+            relayUrlTemplate: 'https://relay.example/query?host={host}&port={port}'
+        }),
+        'https://relay.example/query?host=178.208.177.72&port=28025'
+    );
+    Assert.throws(() => A2sRoster.buildRelayUrl('127.0.0.1', 28025), /public IPv4/);
+    Assert.throws(() => A2sRoster.buildRelayUrl('10.0.0.1', 28025), /public IPv4/);
+    Assert.throws(() => A2sRoster.buildRelayUrl('198.51.100.1', 28025), /public IPv4/);
+    Assert.doesNotThrow(() => A2sRoster.buildRelayUrl('198.51.99.1', 28025));
+    Assert.throws(() => A2sRoster.buildRelayUrl('178.208.177.72', 28025, {
+        relayUrlTemplate: 'off'
+    }), /disabled/);
+});
+
+Test('parses a hosted GameDig roster without inventing Steam identity', () => {
+    const parsed = A2sRoster.parseRelayResponse({
+        online: true,
+        raw: { numplayers: 2 },
+        players: [
+            { name: 'Alice', raw: { score: 4, time: 12.5 } },
+            { name: 'Bob', raw: { score: 1, time: 3 } }
+        ]
+    });
+
+    Assert.deepEqual(parsed, {
+        entries: [
+            { index: 0, name: 'Alice', score: 4, duration: 12.5 },
+            { index: 1, name: 'Bob', score: 1, duration: 3 }
+        ],
+        reportedPopulation: 2
+    });
+    Assert.throws(() => A2sRoster.parseRelayResponse({ online: false, error: 'query timeout' }),
+        /query timeout/);
+    Assert.throws(() => A2sRoster.parseRelayResponse({ online: true, players: [{ name: 42 }] }),
+        /invalid player entry/);
+});
+
+Test('uses hosted A2S after a direct fragmented-response timeout', async () => {
+    let relayCalls = 0;
+    const server = { queryIp: '178.208.177.72', queryPort: 28025 };
+    const roster = await A2sRoster.getServerRoster(server, {
+        discoverQueryEndpoint: async () => ({ host: '178.208.177.72', port: 28025 }),
+        queryPlayers: async () => { throw new Error('A2S_PLAYER timed out'); },
+        queryPlayersViaRelay: async (host, port) => {
+            relayCalls += 1;
+            Assert.equal(host, '178.208.177.72');
+            Assert.equal(port, 28025);
+            return {
+                entries: [{ index: 0, name: 'Alice', score: 0, duration: 1 }],
+                reportedPopulation: 1
+            };
+        },
+        now: () => 5000,
+        noCache: true
+    });
+
+    Assert.equal(relayCalls, 1);
+    Assert.equal(roster.source, 'a2s_relay');
+    Assert.equal(roster.available, true);
+    Assert.equal(roster.reportedPopulation, 1);
+    Assert.deepEqual(roster.players, ['Alice']);
+});
+
+Test('keeps direct A2S as the preferred source when it succeeds', async () => {
+    let relayCalls = 0;
+    const roster = await A2sRoster.getServerRoster({}, {
+        discoverQueryEndpoint: async () => ({ host: '178.208.177.72', port: 28025 }),
+        queryPlayers: async () => [{ name: 'Direct', score: 0, duration: 1 }],
+        queryPlayersViaRelay: async () => {
+            relayCalls += 1;
+            throw new Error('relay should not run');
+        },
+        noCache: true
+    });
+
+    Assert.equal(roster.source, 'a2s');
+    Assert.deepEqual(roster.players, ['Direct']);
+    Assert.equal(relayCalls, 0);
+});
+
+Test('uses the rediscovered endpoint for hosted A2S when direct UDP also fails there', async () => {
+    const server = { serverIp: '178.208.177.72', queryIp: '178.208.177.72', queryPort: 28024 };
+    const relayEndpoints = [];
+    const roster = await A2sRoster.getServerRoster(server, {
+        requestJson: async () => ({ response: { servers: [
+            { appid: 252490, gameport: 28024, addr: '178.208.177.72:28025' }
+        ] } }),
+        queryPlayers: async () => { throw new Error('fragmented response timed out'); },
+        queryPlayersViaRelay: async (host, port) => {
+            relayEndpoints.push(`${host}:${port}`);
+            return {
+                entries: [{ index: 0, name: 'Relayed', score: 0, duration: 1 }],
+                reportedPopulation: 1
+            };
+        },
+        noCache: true
+    });
+
+    Assert.equal(roster.source, 'a2s_relay');
+    Assert.deepEqual(relayEndpoints, ['178.208.177.72:28025']);
+    Assert.equal(server.queryPort, 28025);
+});
+
+Test('does not turn a direct and hosted A2S failure into an empty roster', async () => {
+    const roster = await A2sRoster.getServerRoster({}, {
+        discoverQueryEndpoint: async () => ({ host: '178.208.177.72', port: 28025 }),
+        queryPlayers: async () => { throw new Error('direct timeout'); },
+        queryPlayersViaRelay: async () => { throw new Error('relay timeout'); },
+        now: () => 9000,
+        noCache: true
+    });
+
+    Assert.equal(roster.available, false);
+    Assert.equal(roster.complete, false);
+    Assert.deepEqual(roster.players, []);
+    Assert.match(roster.reason, /direct timeout/);
+    Assert.match(roster.reason, /relay timeout/);
+});

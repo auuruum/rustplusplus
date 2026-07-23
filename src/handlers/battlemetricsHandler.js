@@ -611,7 +611,7 @@ async function handleFallbackTracker(client, guildId, trackerId, content, firstT
         if (!player) continue;
         const translation = event.type === 'login' ? 'playerJustConnectedTracker' : 'playerJustDisconnectedTracker';
         const translated = client.intlGet(guildId, translation, { name: player.name, tracker: content.name });
-        const str = roster.source === 'a2s' ?
+        const str = roster.source === 'a2s' || roster.source === 'a2s_relay' ?
             `${translated}\nPublic A2S display-name match; Steam identity is not confirmed.` : translated;
         await DiscordMessages.sendActivityNotificationMessage(guildId, content.serverId,
             event.type === 'login' ? Constants.COLOR_ACTIVE : Constants.COLOR_INACTIVE,

@@ -58,8 +58,9 @@ Rust++ selects the current-player source for each run:
 
 1. a fresh authorized BattleMetrics API snapshot already held by Rust++, when available;
 2. Steam `GetServersAtAddress` query-port discovery followed by public `A2S_PLAYER`;
-3. a local snapshot no older than three minutes as display-only recent evidence after a transient source failure;
-4. a structured partial result when none of these sources provides a roster.
+3. a hosted A2S transport retry for oversized Rust UDP responses;
+4. a local snapshot no older than three minutes as display-only recent evidence after a transient source failure;
+5. a structured partial result when none of these sources provides a roster.
 
 The A2S fallback provides display names, scores, and session duration, but not
 SteamID64. Team Finder therefore marks exact unique display-name matches separately

@@ -83,7 +83,7 @@ or
 
 Make sure you use the correct values for DISCORD_CLIENT_ID as well as DISCORD_TOKEN in the docker command/docker-compose.yml
 
-Optional: set `RPP_BATTLEMETRICS_TOKEN` to use your own authenticated BattleMetrics API token. Without a working token, roster-dependent features fall back to public A2S and a short-lived local roster cache. BattleMetrics player IDs, profile history, and other provider-specific data remain API-only. See [Local Roster Intelligence](docs/local-roster-intelligence.md).
+Optional: set `RPP_BATTLEMETRICS_TOKEN` to use your own authenticated BattleMetrics API token. Without a working token, roster-dependent features fall back to direct public A2S, a hosted A2S transport fallback for oversized Rust responses, and a short-lived local roster cache. The hosted fallback sends only the public query IP and port to the documented Hexane GameDig API. Set `RPP_A2S_RELAY_URL=off` to disable it or provide a compatible URL template containing `{host}` and `{port}` to self-host it. BattleMetrics player IDs, profile history, and other provider-specific data remain API-only. See [Local Roster Intelligence](docs/local-roster-intelligence.md).
 
 ## **Thanks to**
 

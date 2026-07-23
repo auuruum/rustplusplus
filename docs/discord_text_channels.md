@@ -131,7 +131,7 @@ There are a few buttons for each server. The `CONNECT` button lets you start a c
 
 > The Trackers Channel is used to keep track of players or groups on a specific server (Online/Offline/playtime/offlinetime). To create a tracker, just click on the `CREATE TRACKER` button located in the `servers` channel. The new tracker will appear in the trackers channel.
 
-Trackers prefer an authorized BattleMetrics API snapshot when the operator supplies a working token. If it is unavailable, Rust++ uses public A2S names and then a local snapshot no older than three minutes. A2S does not expose Steam IDs, so duplicate names stay ambiguous and are never converted into permanent identity links.
+Trackers prefer an authorized BattleMetrics API snapshot when the operator supplies a working token. If it is unavailable, Rust++ uses direct public A2S, retries oversized Rust responses through a hosted A2S transport, and then uses a local snapshot no older than three minutes. A2S does not expose Steam IDs, so duplicate names stay ambiguous and are never converted into permanent identity links.
 
 The Tracker embed displays a few things. The Title of the embed is the name of the Tracker. The Tracker embed also displays the Battlemetrics Id of the tracker, the Server ID, Server status, streamer mode on/off and potential Clan Tag setting. Under that, all players in the tracker are displayed. The `Names`, `Steam ID / Battlemetrics ID` and `Status` of every player.
 <br>

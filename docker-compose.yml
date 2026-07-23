@@ -6,6 +6,7 @@ services:
       - RPP_DISCORD_TOKEN=TOKEN
       - RPP_DISCORD_CLIENT_ID=CLIENT_ID
       - RPP_BATTLEMETRICS_TOKEN=
+      - RPP_A2S_RELAY_URL=
       - RPP_TEAM_DETECTOR_REF=feature/resilient-teamfinder-fetching
     volumes:
       - ./logs:/app/logs

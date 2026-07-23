@@ -6,11 +6,14 @@ Rust++ keeps a small local roster database so short BattleMetrics or A2S outages
 
 1. An authorized BattleMetrics API response using the operator's own `RPP_BATTLEMETRICS_TOKEN`.
 2. The public Steam A2S query protocol (`A2S_PLAYER`) when the server exposes player names.
-3. A local snapshot no older than three minutes.
+3. A hosted A2S transport retry when Rust sends an oversized IP-fragmented response that cannot reach the bot directly.
+4. A local snapshot no older than three minutes.
 
 Rust++ discovers the A2S query port from Steam server metadata. If the game-port `connect`
 value is unavailable after pairing, IP-only discovery is accepted only when Steam reports
 exactly one Rust server at that address. The bot does not guess between multiple servers.
+
+The hosted retry uses the documented Hexane GameDig API by default and sends only the public A2S query IP and port. It does not receive Discord credentials, Steam IDs, tracker targets, or Rust+ pairing data. Set `RPP_A2S_RELAY_URL=off` to disable it. To self-host a compatible GameDig endpoint, set `RPP_A2S_RELAY_URL` to a URL template containing `{host}` and `{port}`. Direct A2S remains the first attempt.
 
 BattleMetrics website scraping is intentionally not implemented. BattleMetrics-specific identity, profile history, and player-ID lookups still require an authorized API token.
 
@@ -37,7 +40,7 @@ It contains:
 Names-only join/leave observations are retained for seven days by default and pruned automatically.
 
 The first successful roster is a baseline and does not create fake join events for everyone already online.
-Only complete live BattleMetrics/A2S snapshots produce tracker transitions. A cached snapshot is display-only,
+Only complete live BattleMetrics/direct-A2S/hosted-A2S snapshots produce tracker transitions. A cached snapshot is display-only,
 and changing providers establishes a new baseline instead of generating synthetic mass joins/leaves.
 
 ## Identity limits
