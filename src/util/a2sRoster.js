@@ -38,6 +38,22 @@ function parseConnectEndpoint(connect) {
     return { host: match[1], gamePort: gamePort };
 }
 
+function getServerConnectDisplay(server) {
+    if (!server || typeof server !== 'object') return null;
+
+    const connect = parseConnectEndpoint(server.connect);
+    if (connect) return `${connect.host}:${connect.gamePort}`;
+
+    const gameHost = typeof server.gameIp === 'string' && server.gameIp.trim() !== '' ?
+        server.gameIp.trim() : (typeof server.gameHost === 'string' ? server.gameHost.trim() : '');
+    const gamePort = Number(server.gamePort);
+    if (gameHost && Number.isInteger(gamePort) && gamePort > 0 && gamePort <= 65535) {
+        return `${gameHost}:${gamePort}`;
+    }
+
+    return typeof server.serverIp === 'string' && server.serverIp.trim() !== '' ? server.serverIp.trim() : null;
+}
+
 function parseAddress(address) {
     if (typeof address !== 'string') return null;
     const match = address.match(/^(.+):(\d{1,5})$/);
@@ -169,6 +185,13 @@ function selectUniqueRustQueryEndpoint(payload) {
     return parseAddress(rustServers[0].addr);
 }
 
+function selectUniqueRustServer(payload) {
+    const servers = payload && payload.response && Array.isArray(payload.response.servers) ?
+        payload.response.servers : [];
+    const rustServers = servers.filter(server => Number(server.appid) === RUST_APP_ID);
+    return rustServers.length === 1 ? rustServers[0] : null;
+}
+
 async function discoverQueryEndpoint(server, options = {}) {
     const explicitPort = Number(server.queryPort || server.portQuery || server.a2sQueryPort);
     const explicitHost = server.queryIp || server.queryHost || server.a2sQueryIp;
@@ -198,10 +221,19 @@ async function discoverQueryEndpoint(server, options = {}) {
     const url = 'https://api.steampowered.com/ISteamApps/GetServersAtAddress/v0001/?' +
         `addr=${encodeURIComponent(serverHost)}&format=json`;
     const payload = await requestJson(url);
-    const endpoint = connect ? selectQueryEndpoint(payload, connect.gamePort) : selectUniqueRustQueryEndpoint(payload);
+    const uniqueRustServer = connect ? null : selectUniqueRustServer(payload);
+    const endpoint = connect ? selectQueryEndpoint(payload, connect.gamePort) :
+        (uniqueRustServer ? parseAddress(uniqueRustServer.addr) : null);
     if (!endpoint) {
         const qualifier = connect ? 'matching the configured game port' : 'that was unambiguous';
         throw new Error(`Steam did not return a Rust query endpoint ${qualifier} for ${cacheKey}.`);
+    }
+
+    const discoveredGamePort = uniqueRustServer ? Number(uniqueRustServer.gameport) : null;
+    if (!connect && Number.isInteger(discoveredGamePort) && discoveredGamePort > 0 && discoveredGamePort <= 65535) {
+        server.gameIp = serverHost;
+        server.gamePort = discoveredGamePort;
+        server.connect = `connect ${serverHost}:${discoveredGamePort}`;
     }
 
     queryEndpointCache.set(cacheKey, { endpoint: endpoint, observedAt: now });
@@ -492,6 +524,7 @@ async function getServerRoster(server, options = {}) {
 module.exports = {
     DEFAULT_A2S_RELAY_URL,
     parseConnectEndpoint,
+    getServerConnectDisplay,
     parseAddress,
     isPublicIpv4,
     getRelayUrlTemplate,
@@ -501,6 +534,7 @@ module.exports = {
     forgetQueryEndpoint,
     selectQueryEndpoint,
     selectUniqueRustQueryEndpoint,
+    selectUniqueRustServer,
     discoverQueryEndpoint,
     normalizeResponsePayload,
     assembleSplitPackets,

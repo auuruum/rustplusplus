@@ -21,6 +21,7 @@
 const Discord = require('discord.js');
 
 const Client = require('../../index.ts');
+const A2sRoster = require('../util/a2sRoster.js');
 const Constants = require('../util/constants.js');
 const DiscordTools = require('./discordTools.js');
 const InstanceUtils = require('../util/instanceUtils.js');
@@ -82,6 +83,7 @@ module.exports = {
         const instance = Client.client.getInstance(guildId);
         const credentials = InstanceUtils.readCredentialsFile(guildId);
         const server = instance.serverList[serverId];
+        const connect = A2sRoster.getServerConnectDisplay(server) || Client.client.intlGet(guildId, 'unavailable');
         let hoster = Client.client.intlGet(guildId, 'unknown');
         if (credentials.hasOwnProperty(server.steamId)) {
             hoster = await DiscordTools.getUserById(guildId, credentials[server.steamId].discord_user_id);
@@ -110,8 +112,7 @@ module.exports = {
             thumbnail: `${server.img}`,
             fields: [{
                 name: Client.client.intlGet(guildId, 'connect'),
-                value: `\`${server.connect === null ?
-                    Client.client.intlGet(guildId, 'unavailable') : server.connect}\``,
+                value: `\`${connect}\``,
                 inline: true
             },
             {

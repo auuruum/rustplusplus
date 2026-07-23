@@ -24,6 +24,7 @@ const Config = require('../../config');
 const DiscordEmbeds = require('../discordTools/discordEmbeds');
 
 const Battlemetrics = require('../structures/Battlemetrics');
+const A2sRoster = require('../util/a2sRoster.js');
 const { hasBattlemetricsToken } = require('../util/battlemetricsAuth.js');
 const Constants = require('../util/constants.js');
 const DiscordMessages = require('../discordTools/discordMessages.js');
@@ -87,6 +88,28 @@ module.exports = async (client, interaction) => {
         const ids = JSON.parse(interaction.customId.replace('ServerEdit', ''));
         const server = instance.serverList[ids.serverId];
         const battlemetricsId = interaction.fields.getTextInputValue('ServerBattlemetricsId');
+        const connectInput = interaction.fields.getTextInputValue('ServerConnect').trim();
+
+        if (!server) {
+            interaction.deferUpdate();
+            return;
+        }
+
+        const connectEndpoint = connectInput === '' ? null : A2sRoster.parseConnectEndpoint(connectInput);
+        if (connectInput !== '' && (!connectEndpoint || !A2sRoster.isPublicIpv4(connectEndpoint.host))) {
+            const str = 'Invalid game connect endpoint. Use a public IPv4:port, for example 178.208.177.72:28024.';
+            await client.interactionReply(interaction, DiscordEmbeds.getActionInfoEmbed(1, str));
+            return;
+        }
+
+        const nextConnect = connectEndpoint ? `connect ${connectEndpoint.host}:${connectEndpoint.gamePort}` : null;
+        if (server.connect !== nextConnect) {
+            server.connect = nextConnect;
+            server.gameIp = connectEndpoint ? connectEndpoint.host : null;
+            server.gamePort = connectEndpoint ? connectEndpoint.gamePort : null;
+            delete server.queryIp;
+            delete server.queryPort;
+        }
 
         if (battlemetricsId !== server.battlemetricsId) {
             if (battlemetricsId === '') {
@@ -97,6 +120,10 @@ module.exports = async (client, interaction) => {
                 const bmInstance = client.battlemetricsInstances[battlemetricsId];
                 server.battlemetricsId = battlemetricsId;
                 server.connect = `connect ${bmInstance.server_ip}:${bmInstance.server_port}`;
+                server.gameIp = bmInstance.server_ip;
+                server.gamePort = bmInstance.server_port;
+                delete server.queryIp;
+                delete server.queryPort;
             }
             else if (!hasBattlemetricsToken(Config.battlemetrics.token)) {
                 // Keep a manually supplied server ID for Team Finder and future authenticated API use.
@@ -110,6 +137,10 @@ module.exports = async (client, interaction) => {
                     client.battlemetricsInstances[battlemetricsId] = bmInstance;
                     server.battlemetricsId = battlemetricsId;
                     server.connect = `connect ${bmInstance.server_ip}:${bmInstance.server_port}`;
+                    server.gameIp = bmInstance.server_ip;
+                    server.gamePort = bmInstance.server_port;
+                    delete server.queryIp;
+                    delete server.queryPort;
                 }
             }
         }

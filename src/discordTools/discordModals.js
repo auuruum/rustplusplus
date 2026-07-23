@@ -21,6 +21,7 @@
 const Discord = require('discord.js');
 
 const Client = require('../../index.ts');
+const A2sRoster = require('../util/a2sRoster.js');
 const TextInput = require('./discordTextInputs.js');
 
 module.exports = {
@@ -48,6 +49,15 @@ module.exports = {
                 customId: 'ServerBattlemetricsId',
                 label: Client.client.intlGet(guildId, 'battlemetricsId'),
                 value: server.battlemetricsId === null ? '' : server.battlemetricsId,
+                style: Discord.TextInputStyle.Short,
+                required: false,
+                minLength: 0
+            })),
+            new Discord.ActionRowBuilder().addComponents(TextInput.getTextInput({
+                customId: 'ServerConnect',
+                label: 'Game connect IP:port',
+                placeholder: 'Example: 178.208.177.72:28024',
+                value: A2sRoster.getServerConnectDisplay({ connect: server.connect }) || '',
                 style: Discord.TextInputStyle.Short,
                 required: false,
                 minLength: 0

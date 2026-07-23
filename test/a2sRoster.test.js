@@ -10,6 +10,29 @@ Test('parses Rust connect endpoint', () => {
     });
 });
 
+Test('formats Connect with safe fallbacks and never substitutes query or Rust+ app ports', () => {
+    Assert.equal(A2sRoster.getServerConnectDisplay({
+        connect: 'connect 195.60.166.150:28015',
+        serverIp: '137.83.91.168',
+        appPort: 28082,
+        queryPort: 28016
+    }), '195.60.166.150:28015');
+    Assert.equal(A2sRoster.getServerConnectDisplay({
+        connect: null,
+        gameIp: '195.60.166.150',
+        gamePort: 28015,
+        queryPort: 28016,
+        appPort: 28082
+    }), '195.60.166.150:28015');
+    Assert.equal(A2sRoster.getServerConnectDisplay({
+        connect: null,
+        serverIp: '137.83.91.168',
+        queryPort: 28016,
+        appPort: 28082
+    }), '137.83.91.168');
+    Assert.equal(A2sRoster.getServerConnectDisplay({ queryPort: 28016, appPort: 28082 }), null);
+});
+
 Test('selects query endpoint by Rust app id and exact game port', () => {
     const payload = {
         response: {
@@ -131,6 +154,9 @@ Test('discovers a sole Rust query endpoint from pairing IP when connect is unava
     Assert.equal(roster.queryAddress, '195.60.166.150:28018');
     Assert.equal(server.queryIp, '195.60.166.150');
     Assert.equal(server.queryPort, 28018);
+    Assert.equal(server.connect, 'connect 195.60.166.150:28015');
+    Assert.equal(server.gameIp, '195.60.166.150');
+    Assert.equal(server.gamePort, 28015);
 });
 
 Test('reuses a remembered query endpoint without confusing the Rust+ app port for a game port', async () => {
