@@ -110,6 +110,28 @@ Test('does not treat a capped BattleMetrics player list as a complete roster', a
     Assert.equal(store.recorded.length, 0);
 });
 
+Test('passes active Rust+ population to A2S without a BattleMetrics server ID', async () => {
+    const store = fakeStore(null);
+    const roster = await RosterProvider.getRosterSnapshot({
+        guildId: 'guild-1', serverId: 'server-1', server: {}, battlemetrics: null,
+        expectedPopulation: 1145, now: 1000
+    }, {
+        store,
+        fetchA2s: async (_server, options) => {
+            Assert.equal(options.expectedPopulation, 1145);
+            return {
+                source: 'a2s', available: true, complete: false, observedAt: 1000,
+                players: Array.from({ length: 87 }, (_, index) => `Player ${index}`),
+                population: 1145, reason: 'A2S returned 87 of 1145 expected player names.'
+            };
+        }
+    });
+
+    Assert.equal(roster.complete, false);
+    Assert.equal(roster.players.length, 87);
+    Assert.equal(store.recorded.length, 0);
+});
+
 Test('falls back to a fresh local snapshot after a transient source failure', async () => {
     const cached = {
         source: 'local_cache', upstreamSource: 'a2s', available: true, complete: true,

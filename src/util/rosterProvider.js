@@ -25,8 +25,11 @@ async function getRosterSnapshot(context, dependencies = {}) {
 
     let a2sRoster;
     try {
+        const contextPopulation = Number(context.expectedPopulation);
+        const expectedPopulation = Number.isFinite(contextPopulation) && contextPopulation >= 0 ?
+            contextPopulation : (battlemetricsRoster ? battlemetricsRoster.population : undefined);
         a2sRoster = await fetchA2s(context.server || {}, {
-            expectedPopulation: battlemetricsRoster ? battlemetricsRoster.population : undefined
+            expectedPopulation
         });
     }
     catch (error) {

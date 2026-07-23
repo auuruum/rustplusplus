@@ -629,11 +629,15 @@ async function collectRelevantRosterSnapshots(client, guildId, instance, snapsho
         const previousQueryPort = server.queryPort;
         const battlemetrics = server.battlemetricsId !== null ?
             client.battlemetricsInstances[server.battlemetricsId] : null;
+        const rustplus = client.rustplusInstances && client.rustplusInstances[guildId];
+        const expectedPopulation = rustplus && `${rustplus.serverId}` === `${serverId}` && rustplus.info ?
+            rustplus.info.players : undefined;
         const snapshot = await RosterProvider.getRosterSnapshot({
             guildId,
             serverId,
             server,
             battlemetrics,
+            expectedPopulation,
             onStoreError: (error, operation) => client.log(
                 client.intlGet(null, 'warningCap'),
                 `Local roster persistence ${operation} failed: ${error.message}`,

@@ -957,7 +957,11 @@ module.exports = {
                 title: Client.client.intlGet(guildId, 'battlemetricsOnlinePlayers'),
                 color: Constants.COLOR_DEFAULT,
                 description: `Roster source: ${formatRosterSource(roster.source, roster.upstreamSource)} · ` +
-                    `${roster.players.length} names`,
+                    `${roster.players.length} names` +
+                    (roster.complete ? '' :
+                        ` · partial${Number.isFinite(Number(roster.population)) &&
+                        Number(roster.population) > roster.players.length ?
+                            ` (${roster.players.length} of ${Number(roster.population)})` : ''}`),
                 footer: { text: server ? server.title : roster.queryAddress },
                 fields: fields.map((field, index) => ({
                     name: index === 0 ? Client.client.intlGet(guildId, 'players') : '\u200B',

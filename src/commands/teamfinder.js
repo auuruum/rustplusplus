@@ -188,11 +188,15 @@ async function getPlayerRosterSnapshot(client, interaction, target) {
     }
 
     const [serverId, server] = serverEntry;
+    const rustplus = client.rustplusInstances && client.rustplusInstances[interaction.guildId];
+    const expectedPopulation = rustplus && `${rustplus.serverId}` === `${serverId}` && rustplus.info ?
+        rustplus.info.players : undefined;
     return RosterProvider.getRosterSnapshot({
         guildId: interaction.guildId,
         serverId,
         server,
-        battlemetrics: server.battlemetricsId ? client.battlemetricsInstances[server.battlemetricsId] : null
+        battlemetrics: server.battlemetricsId ? client.battlemetricsInstances[server.battlemetricsId] : null,
+        expectedPopulation
     });
 }
 
