@@ -33,6 +33,53 @@ Test('formats Connect with safe fallbacks and never substitutes query or Rust+ a
     Assert.equal(A2sRoster.getServerConnectDisplay({ queryPort: 28016, appPort: 28082 }), null);
 });
 
+Test('infers the official Rusty Moose game hostname without using the Rust+ app endpoint', () => {
+    Assert.deepEqual(A2sRoster.inferKnownProviderConnect({
+        title: 'Rusty Moose |EU Main|',
+        url: 'https://moose.gg',
+        serverIp: '137.83.91.168',
+        appPort: 28082
+    }), {
+        host: 'main.eu.moose.gg',
+        gamePort: 28010
+    });
+    Assert.equal(A2sRoster.inferKnownProviderConnect({
+        title: 'Unrelated |EU Main|', url: 'https://example.com'
+    }), null);
+});
+
+Test('discovers and persists Rusty Moose game and query endpoints from official hostname metadata', async () => {
+    const server = {
+        title: 'Rusty Moose |EU Main|',
+        url: 'https://moose.gg',
+        serverIp: '137.83.91.168',
+        appPort: 28082,
+        connect: null,
+        queryIp: null,
+        queryPort: null
+    };
+    const endpoint = await A2sRoster.discoverQueryEndpoint(server, {
+        resolveHost: async host => {
+            Assert.equal(host, 'main.eu.moose.gg');
+            return [{ address: '205.178.168.211', family: 4 }];
+        },
+        requestJson: async url => {
+            Assert.match(url, /addr=205\.178\.168\.211/);
+            return { response: { servers: [
+                { addr: '205.178.168.211:28015', gameport: 28010, appid: 252490 }
+            ] } };
+        }
+    });
+
+    Assert.deepEqual(endpoint, { host: '205.178.168.211', port: 28015 });
+    Assert.equal(server.connect, 'connect main.eu.moose.gg:28010');
+    Assert.equal(server.gameHost, 'main.eu.moose.gg');
+    Assert.equal(server.gameIp, '205.178.168.211');
+    Assert.equal(server.gamePort, 28010);
+    Assert.equal(server.queryIp, '205.178.168.211');
+    Assert.equal(server.queryPort, 28015);
+});
+
 Test('selects query endpoint by Rust app id and exact game port', () => {
     const payload = {
         response: {

@@ -20,7 +20,7 @@
 
 const Constants = require('../util/constants.js');
 const RosterProvider = require('../util/rosterProvider.js');
-const TrackerA2sState = require('../util/trackerA2sState.js');
+const TrackerPresenceResolver = require('../util/trackerPresenceResolver.js');
 const DiscordMessages = require('../discordTools/discordMessages.js');
 const DiscordTools = require('../discordTools/discordTools.js');
 const PlayerActivityDB = require('../util/database.js');
@@ -82,6 +82,12 @@ module.exports = {
             }
 
             for (const [trackerId, content] of Object.entries(instance.trackers)) {
+                const server = instance.serverList[content.serverId];
+                if ((content.battlemetricsId === null || content.battlemetricsId === undefined) &&
+                    server && server.battlemetricsId !== null && server.battlemetricsId !== undefined) {
+                    content.battlemetricsId = server.battlemetricsId;
+                    client.setInstance(guildId, instance);
+                }
                 const battlemetricsId = content.battlemetricsId;
                 const bmInstance = client.battlemetricsInstances[battlemetricsId];
 
@@ -93,6 +99,7 @@ module.exports = {
                 }
 
                 content.rosterSource = 'battlemetrics_api';
+                content.rosterUpstreamSource = null;
                 content.rosterAvailable = true;
                 content.rosterUpdatedAt = bmInstance.updatedAt ? Date.parse(bmInstance.updatedAt) : Date.now();
                 content.rosterUnavailableReason = null;
@@ -522,10 +529,12 @@ function syncA2sStateFromBattlemetrics(content, bmInstance) {
         if (!battlemetricsPlayer || typeof battlemetricsPlayer.status !== 'boolean') {
             delete player.a2sStatus;
             delete player.a2sAmbiguous;
+            delete player.presenceSource;
             continue;
         }
         player.a2sStatus = battlemetricsPlayer.status ? 'online' : 'offline';
         player.a2sAmbiguous = false;
+        player.presenceSource = 'battlemetrics_api';
     }
 }
 
@@ -573,50 +582,22 @@ async function handleFallbackTracker(client, guildId, trackerId, content, firstT
         });
     }
 
-    content.rosterSource = roster.source || 'unavailable';
-    content.rosterUpstreamSource = roster.upstreamSource || null;
-    content.rosterAvailable = roster.available;
-    content.rosterUpdatedAt = roster.observedAt || Date.now();
-    content.rosterUnavailableReason = roster.available ? null : roster.reason;
-
-    const tracked = content.players.map((player, index) => ({
-        key: `${player.steamId || player.playerId || index}`,
-        name: Utils.removeInvisibleCharacters(player.name)
-    }));
-    const previous = {};
-    for (let i = 0; i < content.players.length; i++) {
-        const player = content.players[i];
-        const key = tracked[i].key;
-        previous[key] = {
-            initialized: player.a2sStatus === 'online' || player.a2sStatus === 'offline',
-            online: player.a2sStatus === 'online'
-        };
-    }
-
-    const evaluation = TrackerA2sState.evaluate(previous, tracked, roster);
-    for (let i = 0; i < content.players.length; i++) {
-        const state = evaluation.state[tracked[i].key];
-        const ambiguous = evaluation.ambiguous.includes(tracked[i].key);
-        content.players[i].a2sAmbiguous = ambiguous;
-        if (!ambiguous && state && state.initialized) {
-            content.players[i].a2sStatus = state.online ? 'online' : 'offline';
-        }
-    }
+    const rustplus = client.rustplusInstances[guildId];
+    const presence = TrackerPresenceResolver.apply(content, roster, rustplus);
 
     client.setInstance(guildId, instance);
 
-    for (const event of evaluation.events) {
+    for (const event of presence.events) {
         const player = content.players.find((candidate, index) =>
             `${candidate.steamId || candidate.playerId || index}` === event.key);
         if (!player) continue;
         const translation = event.type === 'login' ? 'playerJustConnectedTracker' : 'playerJustDisconnectedTracker';
         const translated = client.intlGet(guildId, translation, { name: player.name, tracker: content.name });
-        const str = roster.source === 'a2s' || roster.source === 'a2s_relay' ?
+        const str = event.source === 'a2s' || event.source === 'a2s_relay' ?
             `${translated}\nPublic A2S display-name match; Steam identity is not confirmed.` : translated;
         await DiscordMessages.sendActivityNotificationMessage(guildId, content.serverId,
             event.type === 'login' ? Constants.COLOR_ACTIVE : Constants.COLOR_INACTIVE,
             str, null, content.title, content.everyone);
-        const rustplus = client.rustplusInstances[guildId];
         if (rustplus && rustplus.serverId === content.serverId && content.inGame) rustplus.sendInGameMessage(str);
     }
 

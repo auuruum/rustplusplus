@@ -5,6 +5,7 @@
 
 const Axios = require('axios');
 const Dgram = require('dgram');
+const Dns = require('dns');
 const Net = require('net');
 
 const Utils = require('./utils.js');
@@ -52,6 +53,41 @@ function getServerConnectDisplay(server) {
     }
 
     return typeof server.serverIp === 'string' && server.serverIp.trim() !== '' ? server.serverIp.trim() : null;
+}
+
+function inferKnownProviderConnect(server) {
+    if (!server || typeof server.title !== 'string' || typeof server.url !== 'string') return null;
+    let website;
+    try {
+        website = new URL(server.url);
+    }
+    catch (_) {
+        return null;
+    }
+    if (!['moose.gg', 'www.moose.gg'].includes(website.hostname.toLowerCase())) return null;
+
+    const match = server.title.trim().match(/^Rusty Moose\s+\|?(EU|US)\s+(Main|Medium|Monthly|Mondays|Mini|Biweekly|Small|Low|Hapis)\|?$/i);
+    if (!match) return null;
+    return {
+        host: `${match[2].toLowerCase()}.${match[1].toLowerCase()}.moose.gg`,
+        gamePort: 28010
+    };
+}
+
+async function resolvePublicIpv4(host, options = {}) {
+    if (isPublicIpv4(host)) return host;
+    if (typeof host !== 'string' || !/^[a-z0-9.-]+$/i.test(host) || host.length > 253) {
+        throw new Error('Server game host is not a valid public IPv4 address or DNS hostname.');
+    }
+    const resolveHost = options.resolveHost || (async hostname =>
+        Dns.promises.lookup(hostname, { family: 4, all: true }));
+    const resolved = await resolveHost(host);
+    const addresses = (Array.isArray(resolved) ? resolved : [resolved])
+        .map(entry => typeof entry === 'string' ? entry : entry && entry.address)
+        .filter(Boolean);
+    const publicAddress = addresses.find(isPublicIpv4);
+    if (!publicAddress) throw new Error(`Server game host ${host} did not resolve to a public IPv4 address.`);
+    return publicAddress;
 }
 
 function parseAddress(address) {
@@ -199,10 +235,15 @@ async function discoverQueryEndpoint(server, options = {}) {
         return rememberQueryEndpoint(server, { host: `${explicitHost}`, port: explicitPort });
     }
 
-    const connect = parseConnectEndpoint(server && server.connect);
+    let connect = parseConnectEndpoint(server && server.connect);
+    if (!connect) {
+        connect = inferKnownProviderConnect(server);
+        if (connect) server.connect = `connect ${connect.host}:${connect.gamePort}`;
+    }
     const serverHost = connect ? connect.host : (server && typeof server.serverIp === 'string' ?
         server.serverIp.trim() : '');
     if (!serverHost) throw new Error('Server connect endpoint and server IP are missing or invalid.');
+    const directoryHost = await resolvePublicIpv4(serverHost, options);
 
     const cacheKey = connect ? `${connect.host}:${connect.gamePort}` : `${serverHost}:auto`;
     const now = options.now ? options.now() : Date.now();
@@ -219,7 +260,7 @@ async function discoverQueryEndpoint(server, options = {}) {
         return response.data;
     });
     const url = 'https://api.steampowered.com/ISteamApps/GetServersAtAddress/v0001/?' +
-        `addr=${encodeURIComponent(serverHost)}&format=json`;
+        `addr=${encodeURIComponent(directoryHost)}&format=json`;
     const payload = await requestJson(url);
     const uniqueRustServer = connect ? null : selectUniqueRustServer(payload);
     const endpoint = connect ? selectQueryEndpoint(payload, connect.gamePort) :
@@ -230,6 +271,11 @@ async function discoverQueryEndpoint(server, options = {}) {
     }
 
     const discoveredGamePort = uniqueRustServer ? Number(uniqueRustServer.gameport) : null;
+    if (connect) {
+        server.gameHost = connect.host;
+        server.gameIp = directoryHost;
+        server.gamePort = connect.gamePort;
+    }
     if (!connect && Number.isInteger(discoveredGamePort) && discoveredGamePort > 0 && discoveredGamePort <= 65535) {
         server.gameIp = serverHost;
         server.gamePort = discoveredGamePort;
@@ -525,6 +571,8 @@ module.exports = {
     DEFAULT_A2S_RELAY_URL,
     parseConnectEndpoint,
     getServerConnectDisplay,
+    inferKnownProviderConnect,
+    resolvePublicIpv4,
     parseAddress,
     isPublicIpv4,
     getRelayUrlTemplate,
