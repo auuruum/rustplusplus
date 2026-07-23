@@ -30,6 +30,25 @@ const STEAM_COMMUNITY_REQUEST_OPTIONS = {
     }
 };
 
+const STEAM_PROFILE_PRESENCE_CACHE = new Map();
+const STEAM_PROFILE_PRESENCE_CACHE_TTL_MS = 60 * 1000;
+
+function parseSteamProfilePresenceHtml(data) {
+    if (typeof data !== 'string') return null;
+    const nameMatch = data.match(/class="actual_persona_name">([\s\S]*?)<\/span>/i);
+    const gameMatch = data.match(/class="profile_in_game_name">([\s\S]*?)<\/div>/i);
+    const joinBlock = data.match(/class="profile_in_game_joingame">([\s\S]*?)<\/div>/i);
+    const connectMatch = joinBlock && joinBlock[1].match(/steam:\/\/connect\/([a-z0-9.-]+):(\d{1,5})/i);
+    const port = connectMatch ? Number(connectMatch[2]) : null;
+    const connect = connectMatch && Number.isInteger(port) && port > 0 && port <= 65535 ?
+        `connect ${connectMatch[1]}:${port}` : null;
+    return {
+        name: nameMatch ? Utils.decodeHtml(nameMatch[1].trim()) : null,
+        game: gameMatch ? Utils.decodeHtml(gameMatch[1].trim()) : null,
+        connect
+    };
+}
+
 module.exports = {
     scrape: async function (url, options = {}) {
         try {
@@ -79,6 +98,46 @@ module.exports = {
         return null;
     },
 
+    scrapeSteamProfilePresence: async function (client, steamId, options = {}) {
+        const cacheKey = `${steamId}`;
+        const now = options.now ? options.now() : Date.now();
+        const cached = STEAM_PROFILE_PRESENCE_CACHE.get(cacheKey);
+        if (!options.noCache && cached && cached.expiresAt > now) return cached.value;
+
+        const response = await module.exports.scrape(`${Constants.STEAM_PROFILES_URL}${steamId}`, {
+            ...STEAM_COMMUNITY_REQUEST_OPTIONS,
+            timeout: options.timeoutMs || 10000
+        });
+        let value;
+        if (response.status !== 200 || typeof response.data !== 'string') {
+            value = {
+                available: false,
+                steamId: cacheKey,
+                observedAt: now,
+                reason: 'Steam Community profile was unavailable.'
+            };
+        }
+        else {
+            const parsed = parseSteamProfilePresenceHtml(response.data);
+            value = {
+                available: parsed !== null,
+                steamId: cacheKey,
+                observedAt: now,
+                name: parsed ? parsed.name : null,
+                game: parsed ? parsed.game : null,
+                connect: parsed ? parsed.connect : null,
+                reason: parsed === null ? 'Steam Community profile response was invalid.' : null
+            };
+        }
+        if (!options.noCache && value.available) {
+            STEAM_PROFILE_PRESENCE_CACHE.set(cacheKey, {
+                expiresAt: now + (options.cacheTtlMs || STEAM_PROFILE_PRESENCE_CACHE_TTL_MS),
+                value
+            });
+        }
+        return value;
+    },
+
     scrapeSteamIdFromVanity: async function (client, vanity) {
         if (typeof vanity !== 'string' || vanity.trim() === '') return null;
 
@@ -101,4 +160,6 @@ module.exports = {
 
         return null;
     },
+
+    parseSteamProfilePresenceHtml,
 }

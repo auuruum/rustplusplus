@@ -5,9 +5,10 @@ Rust++ keeps a small local roster database so short BattleMetrics or A2S outages
 ## Source order
 
 1. An authorized BattleMetrics API response using the operator's own `RPP_BATTLEMETRICS_TOKEN`.
-2. The public Steam A2S query protocol (`A2S_PLAYER`) when the server exposes player names.
-3. A hosted A2S transport retry when Rust sends an oversized IP-fragmented response that cannot reach the bot directly.
-4. A local snapshot no older than three minutes.
+2. For SteamID-based trackers, the tracked player's public Steam Community `steam://connect/IP:gamePort` endpoint.
+3. The public Steam A2S query protocol (`A2S_PLAYER`) when the server exposes player names.
+4. A hosted A2S transport retry when Rust sends an oversized IP-fragmented response that cannot reach the bot directly.
+5. A local snapshot no older than three minutes.
 
 Rust++ discovers the A2S query port from Steam server metadata. If the game-port `connect`
 value is unavailable after pairing, IP-only discovery is accepted only when Steam reports
@@ -55,9 +56,11 @@ Rust++ therefore:
 - preserves the previous tracker state when the roster is unavailable, incomplete, or cached;
 - records name-count changes, not invented player identities.
 
-A Rust server may censor or disable `A2S_PLAYER`. In that case live roster tracking is unavailable unless the
-operator supplies an authorized BattleMetrics API token. A fresh local snapshot can show recently observed names,
-but cannot claim that they are still online or generate login/logout notifications.
+A Rust server may censor or disable `A2S_PLAYER`. SteamID-based trackers can still identify arbitrary players whose
+public Steam profile exposes a Join Game endpoint: an exact target endpoint is online, and a different published
+endpoint is offline for that tracker. If the endpoint is hidden or absent, the status remains unknown instead of
+inventing an offline transition. A fresh local snapshot can show recently observed names but cannot claim that they
+are still online or generate login/logout notifications.
 
 ## Features using the source layer
 

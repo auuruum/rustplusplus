@@ -1,8 +1,14 @@
 const TrackerA2sState = require('./trackerA2sState.js');
-const TrackerTeamPresence = require('./trackerTeamPresence.js');
+const TrackerSteamPresence = require('./trackerSteamPresence.js');
 const Utils = require('./utils.js');
 
-function apply(content, roster, rustplus) {
+const LEGACY_TEAM_SOURCE = 'rustplus_team';
+
+function apply(content, roster, profilesBySteamId, server) {
+    roster = roster || {
+        source: 'unavailable', available: false, complete: false, players: [], nameCounts: {},
+        reason: 'Roster source is unavailable.'
+    };
     const tracked = content.players.map((player, index) => ({
         key: `${player.steamId || player.playerId || index}`,
         name: Utils.removeInvisibleCharacters(player.name),
@@ -18,31 +24,30 @@ function apply(content, roster, rustplus) {
         };
     }
 
-    const teamEvaluation = TrackerTeamPresence.evaluate(previous, tracked, rustplus, content.serverId);
-    const teamCovered = new Set(teamEvaluation.covered);
-    const rosterTracked = tracked.filter(player => !teamCovered.has(player.key));
+    const steamEvaluation = TrackerSteamPresence.evaluate(previous, tracked, profilesBySteamId, server);
+    const steamCovered = new Set(steamEvaluation.covered);
+    const rosterTracked = tracked.filter(player => !steamCovered.has(player.key));
     const rosterPrevious = Object.fromEntries(rosterTracked.map(player => {
         const state = previous[player.key];
-        return [player.key, state && state.source === TrackerTeamPresence.SOURCE ?
-            Object.assign({}, state, { initialized: false }) : state];
+        const sourceChanged = state && [TrackerSteamPresence.SOURCE, LEGACY_TEAM_SOURCE].includes(state.source);
+        return [player.key, sourceChanged ? Object.assign({}, state, { initialized: false }) : state];
     }));
     const rosterEvaluation = TrackerA2sState.evaluate(rosterPrevious, rosterTracked, roster);
-    const rosterUsable = roster && roster.available && roster.complete !== false && roster.cached !== true &&
+    const rosterUsable = roster.available && roster.complete !== false && roster.cached !== true &&
         roster.liveTransitionEligible !== false;
 
     for (let i = 0; i < content.players.length; i++) {
         const player = content.players[i];
         const key = tracked[i].key;
-        if (teamCovered.has(key)) {
-            const state = teamEvaluation.state[key];
+        if (steamCovered.has(key)) {
+            const state = steamEvaluation.state[key];
             player.a2sStatus = state.online ? 'online' : 'offline';
             player.a2sAmbiguous = false;
-            player.presenceSource = TrackerTeamPresence.SOURCE;
+            player.presenceSource = TrackerSteamPresence.SOURCE;
             continue;
         }
 
-        const wasTeamSource = player.presenceSource === TrackerTeamPresence.SOURCE;
-        if (wasTeamSource) {
+        if ([TrackerSteamPresence.SOURCE, LEGACY_TEAM_SOURCE].includes(player.presenceSource)) {
             delete player.a2sStatus;
             delete player.presenceSource;
         }
@@ -56,20 +61,20 @@ function apply(content, roster, rustplus) {
         }
     }
 
-    const hasTeamCoverage = teamCovered.size > 0;
-    content.rosterSource = hasTeamCoverage ? 'rustplus_team' : (roster.source || 'unavailable');
-    content.rosterUpstreamSource = hasTeamCoverage && roster.available ? roster.source :
+    const hasSteamCoverage = steamCovered.size > 0;
+    content.rosterSource = hasSteamCoverage ? TrackerSteamPresence.SOURCE : (roster.source || 'unavailable');
+    content.rosterUpstreamSource = hasSteamCoverage && roster.available ? roster.source :
         (roster.upstreamSource || null);
-    content.rosterAvailable = hasTeamCoverage || roster.available;
-    content.rosterUpdatedAt = hasTeamCoverage ? Date.now() : (roster.observedAt || Date.now());
+    content.rosterAvailable = hasSteamCoverage || roster.available;
+    content.rosterUpdatedAt = hasSteamCoverage ? Date.now() : (roster.observedAt || Date.now());
     content.rosterUnavailableReason = !content.rosterAvailable ? roster.reason :
-        (hasTeamCoverage && teamCovered.size < tracked.length && !roster.available ?
-            `${roster.reason} Rust+ Team covers ${teamCovered.size}/${tracked.length} tracked players.` : null);
+        (hasSteamCoverage && steamCovered.size < tracked.length && !roster.available ?
+            `${roster.reason} Steam profiles expose a game endpoint for ${steamCovered.size}/${tracked.length} tracked players.` : null);
 
     return {
-        covered: teamEvaluation.covered,
+        covered: steamEvaluation.covered,
         events: rosterEvaluation.events.map(event => Object.assign({ source: roster.source }, event))
-            .concat(teamEvaluation.events)
+            .concat(steamEvaluation.events)
     };
 }
 

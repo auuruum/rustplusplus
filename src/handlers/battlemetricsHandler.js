@@ -36,6 +36,7 @@ module.exports = {
         try {
         const searchSteamProfiles = (client.battlemetricsIntervalCounter === 0) ? true : false;
         const calledSteamProfiles = new Object();
+        const calledSteamProfilePresence = new Object();
         const rosterSnapshots = new Map();
 
         if (!firstTime) await client.updateBattlemetricsInstances();
@@ -94,7 +95,7 @@ module.exports = {
                 if (!bmInstance || !bmInstance.lastUpdateSuccessful) {
                     const roster = rosterSnapshots.get(rosterKey(guildId, content.serverId));
                     await handleFallbackTracker(client, guildId, trackerId, content, firstTime,
-                        searchSteamProfiles, calledSteamProfiles, roster);
+                        searchSteamProfiles, calledSteamProfiles, calledSteamProfilePresence, roster);
                     continue;
                 }
 
@@ -539,7 +540,7 @@ function syncA2sStateFromBattlemetrics(content, bmInstance) {
 }
 
 async function handleFallbackTracker(client, guildId, trackerId, content, firstTime, searchSteamProfiles,
-    calledSteamProfiles, roster) {
+    calledSteamProfiles, calledSteamProfilePresence, roster) {
     const instance = client.getInstance(guildId);
     const server = instance.serverList[content.serverId];
     if (!server) return;
@@ -550,14 +551,26 @@ async function handleFallbackTracker(client, guildId, trackerId, content, firstT
         };
     }
 
+    const profilesBySteamId = new Object();
+    const steamIds = [...new Set(content.players
+        .map(player => player.steamId)
+        .filter(steamId => steamId !== null && steamId !== undefined))];
+    await Promise.all(steamIds.map(async steamId => {
+        if (!Object.prototype.hasOwnProperty.call(calledSteamProfilePresence, steamId)) {
+            calledSteamProfilePresence[steamId] = await Scrape.scrapeSteamProfilePresence(client, steamId);
+        }
+        profilesBySteamId[steamId] = calledSteamProfilePresence[steamId];
+    }));
+
     if (firstTime || searchSteamProfiles) {
         for (const player of content.players) {
             if (player.steamId === null) continue;
-            let name = calledSteamProfiles[player.steamId];
+            let name = profilesBySteamId[player.steamId] && profilesBySteamId[player.steamId].name;
+            if (name === null || name === undefined) name = calledSteamProfiles[player.steamId];
             if (name === undefined) {
                 name = await Scrape.scrapeSteamProfileName(client, player.steamId);
-                calledSteamProfiles[player.steamId] = name;
             }
+            calledSteamProfiles[player.steamId] = name;
             if (name === null) continue;
             name = (content.clanTag !== '' ? `${content.clanTag} ` : '') + name;
             if (player.name !== name) {
@@ -582,8 +595,8 @@ async function handleFallbackTracker(client, guildId, trackerId, content, firstT
         });
     }
 
+    const presence = TrackerPresenceResolver.apply(content, roster, profilesBySteamId, server);
     const rustplus = client.rustplusInstances[guildId];
-    const presence = TrackerPresenceResolver.apply(content, roster, rustplus);
 
     client.setInstance(guildId, instance);
 
