@@ -29,6 +29,7 @@ const RosterProvider = require('../util/rosterProvider.js');
 const Scrape = require('../util/scrape.js');
 const TeamDetectorBridge = require('../util/teamDetectorBridge.js');
 const TeamfinderRosterSemantics = require('../util/teamfinderRosterSemantics.js');
+const TeamfinderServerTarget = require('../util/teamfinderServerTarget.js');
 const TrackerInputParser = require('../util/trackerInputParser.js');
 
 const isLiveRoster = TeamfinderRosterSemantics.isLiveRoster;
@@ -111,17 +112,17 @@ module.exports = {
 
 async function discoverHandler(client, interaction) {
     const guildId = interaction.guildId;
-    const battlemetricsId = await getBattlemetricsId(client, interaction);
-    if (!battlemetricsId) return;
+    const target = await getTeamfinderServerTarget(client, interaction);
+    if (!target) return;
 
     const seedSteamId = await resolveSeedSteamId(client, interaction);
     if (!seedSteamId) return;
 
     const playerRoster = prepareRosterForTeamFinder(
-        await getPlayerRosterSnapshot(client, interaction, battlemetricsId));
+        await getPlayerRosterSnapshot(client, interaction, target));
 
     const options = {
-        battlemetricsId: battlemetricsId,
+        battlemetricsId: target.battlemetricsId,
         steamIds: [seedSteamId],
         comments: interaction.options.getBoolean('comments') ?? false,
         commentPages: interaction.options.getInteger('commentpages') ?? 1,
@@ -155,39 +156,26 @@ async function discoverHandler(client, interaction) {
     }
 }
 
-async function getBattlemetricsId(client, interaction) {
+async function getTeamfinderServerTarget(client, interaction) {
     const providedBattlemetricsId = interaction.options.getString('battlemetricsid');
-    if (providedBattlemetricsId) return providedBattlemetricsId;
-
     const guildId = interaction.guildId;
     const rustplus = client.rustplusInstances[guildId];
-    if (!rustplus || (rustplus && !rustplus.isOperational)) {
-        const str = client.intlGet(guildId, 'notConnectedToRustServer');
-        await client.interactionEditReply(interaction, DiscordEmbeds.getActionInfoEmbed(1, str));
-        client.log(client.intlGet(null, 'warningCap'), str);
-        return null;
-    }
-
     const instance = client.getInstance(guildId);
-    const server = instance.serverList[rustplus.serverId];
-    if (!server || (server && !server.battlemetricsId)) {
-        const str = client.intlGet(guildId, 'invalidBattlemetricsId');
+    const target = TeamfinderServerTarget.resolve(instance, rustplus, providedBattlemetricsId);
+    if (!target.available) {
+        const str = client.intlGet(guildId, target.reason === 'not_connected' ?
+            'notConnectedToRustServer' : 'invalidBattlemetricsId');
         await client.interactionEditReply(interaction, DiscordEmbeds.getActionInfoEmbed(1, str));
         client.log(client.intlGet(null, 'warningCap'), str);
         return null;
     }
 
-    return server.battlemetricsId;
+    return target;
 }
 
-async function getPlayerRosterSnapshot(client, interaction, battlemetricsId) {
+async function getPlayerRosterSnapshot(client, interaction, target) {
     const instance = client.getInstance(interaction.guildId);
-    const activeServerEntry = instance.activeServer !== null && instance.serverList[instance.activeServer] ?
-        [instance.activeServer, instance.serverList[instance.activeServer]] : null;
-    const serverEntries = Object.entries(instance.serverList || {});
-    const serverEntry = activeServerEntry &&
-        `${activeServerEntry[1].battlemetricsId}` === `${battlemetricsId}` ? activeServerEntry :
-        serverEntries.find(([, candidate]) => `${candidate.battlemetricsId}` === `${battlemetricsId}`);
+    const serverEntry = target.server && target.serverId ? [target.serverId, target.server] : null;
     if (!serverEntry) {
         return {
             source: 'unavailable',
@@ -205,7 +193,7 @@ async function getPlayerRosterSnapshot(client, interaction, battlemetricsId) {
         guildId: interaction.guildId,
         serverId,
         server,
-        battlemetrics: client.battlemetricsInstances[battlemetricsId]
+        battlemetrics: server.battlemetricsId ? client.battlemetricsInstances[server.battlemetricsId] : null
     });
 }
 

@@ -172,10 +172,15 @@ module.exports = {
 
             const executable = commandParts[0];
             const detectorOptions = Object.assign({}, options);
+            const supportsPlayerRoster = detectorSupportsPlayerRoster();
+            if (`${detectorOptions.battlemetricsId}`.startsWith('rustplus:') && !supportsPlayerRoster) {
+                reject(new Error('team-detector is outdated: run npm run setup:team-detector to enable local roster handoff.'));
+                return;
+            }
             if (detectorOptions.includeNetwork !== false && !detectorOptions.networkOutputPath) {
                 detectorOptions.networkOutputPath = getNetworkOutputPath();
             }
-            if (detectorSupportsPlayerRoster()) {
+            if (supportsPlayerRoster) {
                 detectorOptions.playerRosterPath = getPlayerRosterPath(detectorOptions.playerRoster);
             }
             else {

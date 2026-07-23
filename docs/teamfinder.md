@@ -52,6 +52,11 @@ BattleMetrics player IDs are resolved to SteamID64 before the detector runs. If
 BattleMetrics only exposes name history for that player and no Steam identifier,
 use the player's SteamID64 or Steam profile URL instead.
 
+The optional `battlemetricsid` server option is not required when Rust+ is connected.
+Team Finder uses the active Rust server and its local/A2S roster sources. An internal
+`rustplus:<serverId>` label satisfies the detector CLI without claiming that it is a
+BattleMetrics server ID or making a BattleMetrics request.
+
 ## Player Roster Sources
 
 Rust++ selects the current-player source for each run:
