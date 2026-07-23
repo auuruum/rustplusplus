@@ -351,6 +351,7 @@ module.exports = {
                 customId: 'TrackerAddPlayerId',
                 label: `${Client.client.intlGet(guildId, 'steamId')} / ` +
                     `${Client.client.intlGet(guildId, 'battlemetricsId')}`,
+                placeholder: 'Paste Steam profile URL, SteamID64, or BM ID',
                 value: '',
                 style: Discord.TextInputStyle.Short
             }))
@@ -374,6 +375,7 @@ module.exports = {
                 customId: 'TrackerRemovePlayerId',
                 label: `${Client.client.intlGet(guildId, 'steamId')} / ` +
                     `${Client.client.intlGet(guildId, 'battlemetricsId')}`,
+                placeholder: 'Paste Steam profile URL, SteamID64, or BM ID',
                 value: '',
                 style: Discord.TextInputStyle.Short
             }))

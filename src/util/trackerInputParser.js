@@ -29,6 +29,18 @@ function normalizeInput(input) {
         normalized = normalized.slice(1, -1).trim();
     }
 
+    const markdownLink = normalized.match(/^\[[^\]]*\]\((https?:\/\/[^)]+)\)$/i);
+    if (markdownLink) normalized = markdownLink[1].trim();
+
+    const steamOpenUrlPrefix = 'steam://openurl/';
+    if (normalized.toLowerCase().startsWith(steamOpenUrlPrefix)) {
+        normalized = normalized.slice(steamOpenUrlPrefix.length).trim();
+    }
+
+    if (/^(?:www\.)?(?:steamcommunity\.com|battlemetrics\.com)\//i.test(normalized)) {
+        normalized = `https://${normalized}`;
+    }
+
     return normalized;
 }
 
