@@ -277,6 +277,11 @@ function buildResultEmbed(client, guildId, result) {
             `(${result.crawl.comment_pages || 0} page(s), ${result.crawl.comment_profiles || 0} profiles); ` +
             `depth ${result.crawl.recursive_depth}, min score ${result.crawl.min_score}, ` +
             `limit ${result.crawl.max_profiles}.`;
+        if (result.crawl.truncated) {
+            const reason = result.crawl.stop_reason === 'runtime_budget' ? 'runtime budget' : 'profile budget';
+            description += `\nCrawl stopped at the ${reason} after ${result.crawl.elapsed_seconds || 0}s; ` +
+                `${result.crawl.frontier_remaining || 0} queued profiles remained.`;
+        }
     }
     if (shownCandidates.length > 0) {
         description += '\nConnection graph attached as image.';

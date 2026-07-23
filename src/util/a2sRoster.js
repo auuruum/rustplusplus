@@ -526,12 +526,27 @@ async function getServerRoster(server, options = {}) {
         const names = entries
             .map(player => typeof player.name === 'string' ? Utils.removeInvisibleCharacters(player.name).trim() : '')
             .filter(name => name !== '');
+        const configuredPopulation = Number(options.expectedPopulation);
+        const trustedPopulation = Number.isFinite(configuredPopulation) && configuredPopulation >= 0 ?
+            configuredPopulation :
+            (reportedPopulation !== null && Number.isFinite(Number(reportedPopulation)) &&
+                Number(reportedPopulation) >= 0 ? Number(reportedPopulation) : null);
+
+        if (names.length > 0 && trustedPopulation !== null && names.length !== trustedPopulation) {
+            return {
+                source: rosterSource, capability: 'names_only', available: true, complete: false,
+                observedAt: now, queryAddress: `${endpoint.host}:${endpoint.port}`, players: names,
+                nameCounts: buildNameCounts(names), entries: entries, population: trustedPopulation,
+                reportedPopulation,
+                reason: `A2S returned ${names.length} of ${trustedPopulation} expected player names.`
+            };
+        }
 
         if (names.length === 0) {
             let info;
             try {
-                info = reportedPopulation === null ? await infoQuery(endpoint.host, endpoint.port, options) :
-                    { players: reportedPopulation };
+                info = trustedPopulation === null ? await infoQuery(endpoint.host, endpoint.port, options) :
+                    { players: trustedPopulation };
             }
             catch (error) {
                 return {

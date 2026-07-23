@@ -273,6 +273,24 @@ Test('accepts a verified empty server roster', async () => {
     Assert.deepEqual(roster.players, []);
 });
 
+Test('marks a capped non-empty A2S roster incomplete against a trusted population', async () => {
+    const entries = Array.from({ length: 87 }, (_, index) => ({
+        index, name: `Player ${index}`, score: 0, duration: 1
+    }));
+    const roster = await A2sRoster.getServerRoster({ connect: 'connect 192.0.2.12:28015' }, {
+        discoverQueryEndpoint: async () => ({ host: '192.0.2.12', port: 28018 }),
+        queryPlayers: async () => entries,
+        expectedPopulation: 1145,
+        noCache: true
+    });
+
+    Assert.equal(roster.available, true);
+    Assert.equal(roster.complete, false);
+    Assert.equal(roster.players.length, 87);
+    Assert.equal(roster.population, 1145);
+    Assert.match(roster.reason, /87 of 1145/);
+});
+
 Test('builds a configurable hosted A2S URL only for public IPv4 endpoints', () => {
     Assert.equal(
         A2sRoster.buildRelayUrl('178.208.177.72', 28025),

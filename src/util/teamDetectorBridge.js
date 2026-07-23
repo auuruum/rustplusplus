@@ -61,6 +61,16 @@ function detectorSupportsPlayerRoster() {
     }
 }
 
+function detectorSupportsRuntimeBudget() {
+    try {
+        const detectorFile = Path.join(Config.teamDetector.path, 'team_detector.py');
+        return Fs.readFileSync(detectorFile, 'utf8').includes("'--auto-max-runtime-seconds'");
+    }
+    catch (e) {
+        return false;
+    }
+}
+
 function getPlayerRosterPath(roster) {
     if (!roster || typeof roster !== 'object') return null;
 
@@ -113,6 +123,9 @@ function buildDetectorArgs(options) {
     appendNumberArg(args, '--comment-pages', options.commentPages);
     appendNumberArg(args, '--auto-max-profiles', options.maxProfiles);
     appendNumberArg(args, '--auto-min-score', options.minScore);
+    if (detectorSupportsRuntimeBudget()) {
+        appendNumberArg(args, '--auto-max-runtime-seconds', options.maxRuntimeSeconds);
+    }
     appendNumberArg(args, '--request-delay', options.requestDelay);
     if (detectorSupportsResilientFetching()) {
         args.push('--cache-path', Config.teamDetector.cachePath);
@@ -127,6 +140,22 @@ function summarizeProcessOutput(stdout, stderr) {
     if (stdout && stdout.trim() !== '') parts.push(`stdout: ${stdout.trim().slice(0, 800)}`);
     if (stderr && stderr.trim() !== '') parts.push(`stderr: ${stderr.trim().slice(0, 800)}`);
     return parts.join('\n');
+}
+
+function summarizeProcessFailure(error, stdout, stderr, timeoutMs) {
+    const output = summarizeProcessOutput(stdout, stderr);
+    let reason;
+    if (error && error.killed) {
+        const timeoutSeconds = Math.round(timeoutMs / 1000);
+        reason = `team-detector timed out after ${timeoutSeconds}s and was terminated` +
+            `${error.signal ? ` (${error.signal})` : ''}.`;
+    }
+    else {
+        const code = error && error.code !== null && error.code !== undefined ? error.code : 'unknown';
+        reason = `team-detector exited with exit code ${code}` +
+            `${error && error.signal ? ` (${error.signal})` : ''}.`;
+    }
+    return `${reason}${output ? `\n${output}` : ''}`;
 }
 
 function parseDetectorJson(stdout) {
@@ -205,8 +234,8 @@ module.exports = {
                     Fs.rmSync(detectorOptions.legacyPlayersPath, { force: true });
                 }
                 if (error) {
-                    const output = summarizeProcessOutput(stdout, stderr);
-                    reject(new Error(`${error.message}${output ? `\n${output}` : ''}`));
+                    reject(new Error(summarizeProcessFailure(
+                        error, stdout, stderr, Config.teamDetector.timeoutMs)));
                     return;
                 }
 
@@ -219,5 +248,8 @@ module.exports = {
                 }
             });
         }));
+    },
+    _test: {
+        summarizeProcessFailure
     }
 };

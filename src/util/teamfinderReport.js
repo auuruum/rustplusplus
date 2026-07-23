@@ -13,6 +13,9 @@ function buildText(result) {
         `Candidates: ${candidates.length}`,
         `Comments: ${crawl.comments_enabled ? 'on' : 'off'}; pages: ${clean(crawl.comment_pages)}; comment profiles: ${clean(crawl.comment_profiles)}`,
         `Depth: ${clean(crawl.recursive_depth)}; min score: ${clean(crawl.min_score)}; max profiles: ${clean(crawl.max_profiles)}`,
+        `Runtime: ${clean(crawl.elapsed_seconds)}s / ${clean(crawl.max_runtime_seconds)}s; ` +
+            `truncated: ${crawl.truncated ? 'yes' : 'no'}; stop reason: ${clean(crawl.stop_reason)}; ` +
+            `frontier remaining: ${clean(crawl.frontier_remaining)}`,
         `Cache fresh: ${fetch.cache || 0}; stale: ${fetch.stale || 0}; network: ${fetch.network || 0}; failed: ${fetch.failed || 0}`,
         '',
         'Score | Online evidence | SteamID | Name | Sources | Connections'

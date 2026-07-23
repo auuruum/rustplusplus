@@ -95,7 +95,7 @@ module.exports = {
         ref: getString('RPP_TEAM_DETECTOR_REF', 'feature/resilient-teamfinder-fetching'),
         path: getString('RPP_TEAM_DETECTOR_PATH', path.resolve(__dirname, '..', 'vendor', 'team-detector')),
         command: getString('RPP_TEAM_DETECTOR_COMMAND', 'uv run python'),
-        timeoutMs: getNumber('RPP_TEAM_DETECTOR_TIMEOUT_MS', 180000),
+        timeoutMs: getNumber('RPP_TEAM_DETECTOR_TIMEOUT_MS', 240000),
         cachePath: getString('RPP_TEAM_DETECTOR_CACHE_PATH',
             path.resolve(__dirname, '..', 'data', 'teamfinder', 'steam_cache.sqlite')),
         requestRetries: getNumber('RPP_TEAM_DETECTOR_REQUEST_RETRIES', 3),

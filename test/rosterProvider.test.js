@@ -90,8 +90,9 @@ Test('does not treat a capped BattleMetrics player list as a complete roster', a
         now: 1000
     }, {
         store,
-        fetchA2s: async () => {
+        fetchA2s: async (_server, options) => {
             a2sCalls += 1;
+            Assert.equal(options.expectedPopulation, 1145);
             return {
                 source: 'a2s', available: false, complete: false, observedAt: 1000,
                 players: [], reason: 'A2S player names are censored'

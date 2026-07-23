@@ -60,6 +60,7 @@ Plain `/teamfinder discover seed:<profile>` uses a bounded smart crawl by defaul
 - at most 75 profiles and five graph levels are inspected;
 - requests use a 200 ms host delay, persistent SQLite cache, stale fallback, retry/backoff,
   and a shared serial execution queue;
+- a 150-second crawl budget returns the best partial result before the 240-second child-process timeout;
 - comments are expanded only for the seed and high-confidence profiles instead of every
   profile in the budget.
 
@@ -108,7 +109,7 @@ Variable | Default
 `RPP_TEAM_DETECTOR_REF` | `feature/resilient-teamfinder-fetching`
 `RPP_TEAM_DETECTOR_PATH` | `vendor/team-detector`
 `RPP_TEAM_DETECTOR_COMMAND` | `uv run python`
-`RPP_TEAM_DETECTOR_TIMEOUT_MS` | `180000`
+`RPP_TEAM_DETECTOR_TIMEOUT_MS` | `240000`
 `RPP_TEAM_DETECTOR_CACHE_PATH` | `data/teamfinder/steam_cache.sqlite`
 `RPP_TEAM_DETECTOR_REQUEST_RETRIES` | `3`
 

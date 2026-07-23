@@ -21,7 +21,8 @@ Test('smart discovery checks comments and direct friends by default without an u
         maxProfiles: 75,
         minScore: 2,
         recursiveDepth: 5,
-        requestDelay: 0.2
+        requestDelay: 0.2,
+        maxRuntimeSeconds: 150
     });
 });
 
@@ -36,7 +37,8 @@ Test('explicit slash command crawl overrides remain supported', () => {
         maxProfiles: 20,
         minScore: 7,
         recursiveDepth: 3,
-        requestDelay: 1
+        requestDelay: 1,
+        maxRuntimeSeconds: 150
     });
 });
 

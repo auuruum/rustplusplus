@@ -4,7 +4,8 @@ const DEFAULTS = Object.freeze({
     maxProfiles: 75,
     minScore: 2,
     recursiveDepth: 5,
-    requestDelay: 0.2
+    requestDelay: 0.2,
+    maxRuntimeSeconds: 150
 });
 
 function fromInteraction(interaction) {
@@ -14,7 +15,8 @@ function fromInteraction(interaction) {
         maxProfiles: interaction.options.getInteger('maxprofiles') ?? DEFAULTS.maxProfiles,
         minScore: interaction.options.getInteger('minscore') ?? DEFAULTS.minScore,
         recursiveDepth: interaction.options.getInteger('depth') ?? DEFAULTS.recursiveDepth,
-        requestDelay: interaction.options.getNumber('delay') ?? DEFAULTS.requestDelay
+        requestDelay: interaction.options.getNumber('delay') ?? DEFAULTS.requestDelay,
+        maxRuntimeSeconds: DEFAULTS.maxRuntimeSeconds
     };
 }
 

@@ -25,7 +25,9 @@ async function getRosterSnapshot(context, dependencies = {}) {
 
     let a2sRoster;
     try {
-        a2sRoster = await fetchA2s(context.server || {});
+        a2sRoster = await fetchA2s(context.server || {}, {
+            expectedPopulation: battlemetricsRoster ? battlemetricsRoster.population : undefined
+        });
     }
     catch (error) {
         a2sRoster = unavailableSnapshot(now, `A2S query failed: ${error.message}`);
