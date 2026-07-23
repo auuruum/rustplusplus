@@ -118,7 +118,8 @@ Test('builds source-aware snapshot and preserves duplicate names', async () => {
 });
 
 Test('discovers a sole Rust query endpoint from pairing IP when connect is unavailable', async () => {
-    const roster = await A2sRoster.getServerRoster({ serverIp: '195.60.166.150', connect: null }, {
+    const server = { serverIp: '195.60.166.150', appPort: '28093', connect: null };
+    const roster = await A2sRoster.getServerRoster(server, {
         requestJson: async () => ({ response: { servers: [
             { appid: 252490, gameport: 28015, addr: '195.60.166.150:28018' }
         ] } }),
@@ -128,6 +129,49 @@ Test('discovers a sole Rust query endpoint from pairing IP when connect is unava
 
     Assert.equal(roster.available, true);
     Assert.equal(roster.queryAddress, '195.60.166.150:28018');
+    Assert.equal(server.queryIp, '195.60.166.150');
+    Assert.equal(server.queryPort, 28018);
+});
+
+Test('reuses a remembered query endpoint without confusing the Rust+ app port for a game port', async () => {
+    const server = {
+        serverIp: '195.60.166.150', appPort: '28093', connect: null,
+        queryIp: '195.60.166.150', queryPort: 28018
+    };
+    let directoryRequests = 0;
+    const endpoint = await A2sRoster.discoverQueryEndpoint(server, {
+        requestJson: async () => {
+            directoryRequests += 1;
+            return { response: { servers: [] } };
+        }
+    });
+
+    Assert.deepEqual(endpoint, { host: '195.60.166.150', port: 28018 });
+    Assert.equal(directoryRequests, 0);
+});
+
+Test('rediscovers a remembered query endpoint after the saved UDP port stops responding', async () => {
+    const server = {
+        serverIp: '195.60.166.150', appPort: '28093', connect: null,
+        queryIp: '195.60.166.150', queryPort: 28018
+    };
+    const queriedPorts = [];
+    const roster = await A2sRoster.getServerRoster(server, {
+        requestJson: async () => ({ response: { servers: [
+            { appid: 252490, gameport: 28015, addr: '195.60.166.150:28019' }
+        ] } }),
+        queryPlayers: async (host, port) => {
+            queriedPorts.push(port);
+            if (port === 28018) throw new Error('timed out');
+            return [{ name: 'Alpha', score: 1, duration: 1 }];
+        },
+        noCache: true
+    });
+
+    Assert.equal(roster.available, true);
+    Assert.deepEqual(queriedPorts, [28018, 28019]);
+    Assert.equal(server.queryIp, '195.60.166.150');
+    Assert.equal(server.queryPort, 28019);
 });
 
 Test('rejects an empty names roster when A2S_INFO reports connected players', async () => {

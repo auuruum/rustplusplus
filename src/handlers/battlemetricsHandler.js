@@ -631,6 +631,8 @@ async function collectRelevantRosterSnapshots(client, guildId, instance, snapsho
     const collected = await Promise.all(Array.from(serverIds).map(async serverId => {
         const server = instance.serverList[serverId];
         if (!server) return null;
+        const previousQueryIp = server.queryIp;
+        const previousQueryPort = server.queryPort;
         const battlemetrics = server.battlemetricsId !== null ?
             client.battlemetricsInstances[server.battlemetricsId] : null;
         const snapshot = await RosterProvider.getRosterSnapshot({
@@ -643,12 +645,17 @@ async function collectRelevantRosterSnapshots(client, guildId, instance, snapsho
                 `Local roster persistence ${operation} failed: ${error.message}`,
                 'warning')
         });
-        return [rosterKey(guildId, serverId), snapshot];
+        const endpointChanged = previousQueryIp !== server.queryIp || previousQueryPort !== server.queryPort;
+        return [rosterKey(guildId, serverId), snapshot, endpointChanged];
     }));
 
+    let endpointChanged = false;
     for (const collectedSnapshot of collected) {
-        if (collectedSnapshot) snapshots.set(collectedSnapshot[0], collectedSnapshot[1]);
+        if (!collectedSnapshot) continue;
+        snapshots.set(collectedSnapshot[0], collectedSnapshot[1]);
+        if (collectedSnapshot[2]) endpointChanged = true;
     }
+    if (endpointChanged) client.setInstance(guildId, instance);
 }
 
 function rosterKey(guildId, serverId) {

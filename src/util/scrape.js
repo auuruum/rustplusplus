@@ -23,10 +23,17 @@ const Axios = require('axios');
 const Constants = require('../util/constants.js');
 const Utils = require('../util/utils.js');
 
+const STEAM_COMMUNITY_REQUEST_OPTIONS = {
+    headers: {
+        'Accept': 'application/xml,text/xml;q=0.9,text/html;q=0.8,*/*;q=0.7',
+        'User-Agent': 'RustPlusPlus/1.26.1 (+https://github.com/alexemanuelol/rustplusplus)'
+    }
+};
+
 module.exports = {
-    scrape: async function (url) {
+    scrape: async function (url, options = {}) {
         try {
-            return await Axios.get(url);
+            return await Axios.get(url, options);
         }
         catch (e) {
             return {};
@@ -34,7 +41,8 @@ module.exports = {
     },
 
     scrapeSteamProfilePicture: async function (client, steamId) {
-        const response = await module.exports.scrape(`${Constants.STEAM_PROFILES_URL}${steamId}`);
+        const response = await module.exports.scrape(
+            `${Constants.STEAM_PROFILES_URL}${steamId}`, STEAM_COMMUNITY_REQUEST_OPTIONS);
 
         if (response.status !== 200) {
             client.log(client.intlGet(null, 'errorCap'), client.intlGet(null, 'failedToScrapeProfilePicture', {
@@ -52,7 +60,8 @@ module.exports = {
     },
 
     scrapeSteamProfileName: async function (client, steamId) {
-        const response = await module.exports.scrape(`${Constants.STEAM_PROFILES_URL}${steamId}`);
+        const response = await module.exports.scrape(
+            `${Constants.STEAM_PROFILES_URL}${steamId}`, STEAM_COMMUNITY_REQUEST_OPTIONS);
 
         if (response.status !== 200) {
             client.log(client.intlGet(null, 'errorCap'), client.intlGet(null, 'failedToScrapeProfileName', {
@@ -74,7 +83,7 @@ module.exports = {
         if (typeof vanity !== 'string' || vanity.trim() === '') return null;
 
         const url = `https://steamcommunity.com/id/${encodeURIComponent(vanity.trim())}/?xml=1`;
-        const response = await module.exports.scrape(url);
+        const response = await module.exports.scrape(url, STEAM_COMMUNITY_REQUEST_OPTIONS);
 
         if (response.status !== 200 || typeof response.data !== 'string') {
             return null;

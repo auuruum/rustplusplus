@@ -13,6 +13,10 @@ const DEFAULT_HTTP_TIMEOUT_MS = 5000;
 const DEFAULT_UDP_TIMEOUT_MS = 3000;
 const QUERY_ENDPOINT_CACHE_MS = 6 * 60 * 60 * 1000;
 const ROSTER_CACHE_MS = 45 * 1000;
+const STEAM_DIRECTORY_HEADERS = {
+    'Accept': 'application/json',
+    'User-Agent': 'RustPlusPlus/1.26.1 (+https://github.com/alexemanuelol/rustplusplus)'
+};
 
 const queryEndpointCache = new Map();
 const rosterCache = new Map();
@@ -36,6 +40,27 @@ function parseAddress(address) {
     return { host: match[1], port: port };
 }
 
+function rememberQueryEndpoint(server, endpoint) {
+    if (!server || typeof server !== 'object' || !endpoint) return endpoint;
+    server.queryIp = endpoint.host;
+    server.queryPort = endpoint.port;
+    return endpoint;
+}
+
+function forgetQueryEndpoint(server, endpoint) {
+    if (server && typeof server === 'object' && endpoint &&
+        `${server.queryIp}` === `${endpoint.host}` && Number(server.queryPort) === Number(endpoint.port)) {
+        server.queryIp = null;
+        server.queryPort = null;
+    }
+    for (const [cacheKey, cached] of queryEndpointCache.entries()) {
+        if (cached.endpoint.host === endpoint.host && cached.endpoint.port === endpoint.port) {
+            queryEndpointCache.delete(cacheKey);
+        }
+    }
+    rosterCache.delete(`${endpoint.host}:${endpoint.port}`);
+}
+
 function selectQueryEndpoint(payload, gamePort) {
     const servers = payload && payload.response && Array.isArray(payload.response.servers) ?
         payload.response.servers : [];
@@ -56,7 +81,7 @@ async function discoverQueryEndpoint(server, options = {}) {
     const explicitPort = Number(server.queryPort || server.portQuery || server.a2sQueryPort);
     const explicitHost = server.queryIp || server.queryHost || server.a2sQueryIp;
     if (explicitHost && Number.isInteger(explicitPort) && explicitPort > 0 && explicitPort <= 65535) {
-        return { host: `${explicitHost}`, port: explicitPort };
+        return rememberQueryEndpoint(server, { host: `${explicitHost}`, port: explicitPort });
     }
 
     const connect = parseConnectEndpoint(server && server.connect);
@@ -67,10 +92,15 @@ async function discoverQueryEndpoint(server, options = {}) {
     const cacheKey = connect ? `${connect.host}:${connect.gamePort}` : `${serverHost}:auto`;
     const now = options.now ? options.now() : Date.now();
     const cached = queryEndpointCache.get(cacheKey);
-    if (cached && now - cached.observedAt < QUERY_ENDPOINT_CACHE_MS) return cached.endpoint;
+    if (cached && now - cached.observedAt < QUERY_ENDPOINT_CACHE_MS) {
+        return rememberQueryEndpoint(server, cached.endpoint);
+    }
 
     const requestJson = options.requestJson || (async url => {
-        const response = await Axios.get(url, { timeout: DEFAULT_HTTP_TIMEOUT_MS });
+        const response = await Axios.get(url, {
+            timeout: DEFAULT_HTTP_TIMEOUT_MS,
+            headers: STEAM_DIRECTORY_HEADERS
+        });
         return response.data;
     });
     const url = 'https://api.steampowered.com/ISteamApps/GetServersAtAddress/v0001/?' +
@@ -83,7 +113,7 @@ async function discoverQueryEndpoint(server, options = {}) {
     }
 
     queryEndpointCache.set(cacheKey, { endpoint: endpoint, observedAt: now });
-    return endpoint;
+    return rememberQueryEndpoint(server, endpoint);
 }
 
 function normalizeResponsePayload(packet) {
@@ -265,11 +295,23 @@ async function getServerRoster(server, options = {}) {
         const discover = options.discoverQueryEndpoint || discoverQueryEndpoint;
         const query = options.queryPlayers || queryPlayers;
         const infoQuery = options.queryInfo || queryInfo;
-        const endpoint = await discover(server, options);
-        const cacheKey = `${endpoint.host}:${endpoint.port}`;
+        const hadRememberedEndpoint = Boolean(server && server.queryIp && Number(server.queryPort));
+        let endpoint = await discover(server, options);
+        let cacheKey = `${endpoint.host}:${endpoint.port}`;
         const cached = rosterCache.get(cacheKey);
         if (!options.noCache && cached && now - cached.observedAt < ROSTER_CACHE_MS) return cached;
-        const entries = await query(endpoint.host, endpoint.port, options);
+        let entries;
+        try {
+            entries = await query(endpoint.host, endpoint.port, options);
+        }
+        catch (error) {
+            if (!hadRememberedEndpoint || options.rediscoverOnQueryFailure === false ||
+                options.discoverQueryEndpoint) throw error;
+            forgetQueryEndpoint(server, endpoint);
+            endpoint = await discover(server, options);
+            cacheKey = `${endpoint.host}:${endpoint.port}`;
+            entries = await query(endpoint.host, endpoint.port, options);
+        }
         const names = entries
             .map(player => typeof player.name === 'string' ? Utils.removeInvisibleCharacters(player.name).trim() : '')
             .filter(name => name !== '');
@@ -314,6 +356,9 @@ async function getServerRoster(server, options = {}) {
 
 module.exports = {
     parseConnectEndpoint,
+    parseAddress,
+    rememberQueryEndpoint,
+    forgetQueryEndpoint,
     selectQueryEndpoint,
     selectUniqueRustQueryEndpoint,
     discoverQueryEndpoint,
