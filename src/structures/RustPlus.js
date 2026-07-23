@@ -3872,6 +3872,11 @@ class RustPlus extends RustPlusLib {
     
         const isSteamId64 = id.length === Constants.STEAMID64_LENGTH;
         const bmInstance = Client.client.battlemetricsInstances[tracker.battlemetricsId];
+
+        if (!isSteamId64 && (!bmInstance || !bmInstance.lastUpdateSuccessful)) {
+            return 'BattleMetrics player IDs require an available authorized BattleMetrics source. ' +
+                'Use a SteamID64 for A2S fallback tracking.';
+        }
     
         const playerExists = (isSteamId64 && tracker.players.some(e => e.steamId === id)) ||
                              (!isSteamId64 && tracker.players.some(e => e.playerId === id && e.steamId === null));
@@ -3894,7 +3899,7 @@ class RustPlus extends RustPlusLib {
                 name = 'Unknown';
             }
     
-            if (bmInstance) {
+            if (bmInstance && bmInstance.lastUpdateSuccessful) {
                 playerId = Object.keys(bmInstance.players).find(
                     key => bmInstance.players[key]?.name === name
                 );

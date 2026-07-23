@@ -3,7 +3,8 @@ const Axios = require('axios');
 const Config = require('../../config');
 const {
     buildBattlemetricsRequestConfig,
-    getBattlemetricsRequestFailureDetails
+    getBattlemetricsRequestFailureDetails,
+    hasBattlemetricsToken
 } = require('./battlemetricsAuth.js');
 
 function findSteamId(data) {
@@ -26,6 +27,9 @@ module.exports = {
     findSteamId,
 
     resolveSteamIdFromPlayerId: async function (playerId) {
+        if (!hasBattlemetricsToken(Config.battlemetrics.token)) {
+            throw new Error('BattleMetrics player-ID lookup requires RPP_BATTLEMETRICS_TOKEN.');
+        }
         try {
             const url = `https://api.battlemetrics.com/players/${playerId}?include=identifier`;
             const response = await Axios.get(url, buildBattlemetricsRequestConfig(Config.battlemetrics.token));

@@ -23,12 +23,16 @@ const Discord = require('discord.js');
 const Jimp = require('jimp');
 
 const Constants = require('../util/constants.js');
-const A2sRoster = require('../util/a2sRoster.js');
 const BattlemetricsPlayer = require('../util/battlemetricsPlayer.js');
 const DiscordEmbeds = require('../discordTools/discordEmbeds.js');
+const RosterProvider = require('../util/rosterProvider.js');
 const Scrape = require('../util/scrape.js');
 const TeamDetectorBridge = require('../util/teamDetectorBridge.js');
+const TeamfinderRosterSemantics = require('../util/teamfinderRosterSemantics.js');
 const TrackerInputParser = require('../util/trackerInputParser.js');
+
+const isLiveRoster = TeamfinderRosterSemantics.isLiveRoster;
+const prepareRosterForTeamFinder = TeamfinderRosterSemantics.prepareRosterForDiscovery;
 
 module.exports = {
     name: 'teamfinder',
@@ -113,7 +117,8 @@ async function discoverHandler(client, interaction) {
     const seedSteamId = await resolveSeedSteamId(client, interaction);
     if (!seedSteamId) return;
 
-    const playerRoster = await getPlayerRosterSnapshot(client, interaction, battlemetricsId);
+    const playerRoster = prepareRosterForTeamFinder(
+        await getPlayerRosterSnapshot(client, interaction, battlemetricsId));
 
     const options = {
         battlemetricsId: battlemetricsId,
@@ -175,40 +180,17 @@ async function getBattlemetricsId(client, interaction) {
     return server.battlemetricsId;
 }
 
-function getOnlineBattlemetricsPlayerNames(client, battlemetricsId) {
-    const battlemetrics = client.battlemetricsInstances[battlemetricsId];
-    if (!battlemetrics || !battlemetrics.lastUpdateSuccessful) return null;
-    const updatedAt = battlemetrics.updatedAt ? Date.parse(battlemetrics.updatedAt) : NaN;
-    if (Number.isFinite(updatedAt) && Date.now() - updatedAt > 5 * 60 * 1000) return null;
-
-    return (battlemetrics.onlinePlayers || [])
-        .map(playerId => battlemetrics.players[playerId] && battlemetrics.players[playerId].name)
-        .filter(playerName => typeof playerName === 'string' && playerName !== '');
-}
-
 async function getPlayerRosterSnapshot(client, interaction, battlemetricsId) {
-    const battlemetricsPlayers = getOnlineBattlemetricsPlayerNames(client, battlemetricsId);
-    if (battlemetricsPlayers) {
-        const battlemetrics = client.battlemetricsInstances[battlemetricsId];
-        const updatedAt = battlemetrics && battlemetrics.updatedAt ? Date.parse(battlemetrics.updatedAt) : NaN;
-        return {
-            source: 'rustplusplus_battlemetrics_snapshot',
-            capability: 'names_only',
-            available: true,
-            complete: true,
-            observedAt: Number.isFinite(updatedAt) ? updatedAt : Date.now(),
-            players: battlemetricsPlayers
-        };
-    }
-
     const instance = client.getInstance(interaction.guildId);
-    const activeServer = instance.activeServer ? instance.serverList[instance.activeServer] : null;
-    const servers = Object.values(instance.serverList || {});
-    const server = activeServer && `${activeServer.battlemetricsId}` === `${battlemetricsId}` ? activeServer :
-        servers.find(candidate => `${candidate.battlemetricsId}` === `${battlemetricsId}`);
-    if (!server) {
+    const activeServerEntry = instance.activeServer !== null && instance.serverList[instance.activeServer] ?
+        [instance.activeServer, instance.serverList[instance.activeServer]] : null;
+    const serverEntries = Object.entries(instance.serverList || {});
+    const serverEntry = activeServerEntry &&
+        `${activeServerEntry[1].battlemetricsId}` === `${battlemetricsId}` ? activeServerEntry :
+        serverEntries.find(([, candidate]) => `${candidate.battlemetricsId}` === `${battlemetricsId}`);
+    if (!serverEntry) {
         return {
-            source: 'a2s',
+            source: 'unavailable',
             capability: 'unavailable',
             available: false,
             complete: false,
@@ -218,7 +200,13 @@ async function getPlayerRosterSnapshot(client, interaction, battlemetricsId) {
         };
     }
 
-    return A2sRoster.getServerRoster(server);
+    const [serverId, server] = serverEntry;
+    return RosterProvider.getRosterSnapshot({
+        guildId: interaction.guildId,
+        serverId,
+        server,
+        battlemetrics: client.battlemetricsInstances[battlemetricsId]
+    });
 }
 
 async function resolveSeedSteamId(client, interaction) {
@@ -234,7 +222,16 @@ async function resolveSeedSteamId(client, interaction) {
     }
 
     if (parsed.valid && parsed.type === 'battlemetricsId') {
-        const steamId = await BattlemetricsPlayer.resolveSteamIdFromPlayerId(parsed.value);
+        let steamId = null;
+        try {
+            steamId = await BattlemetricsPlayer.resolveSteamIdFromPlayerId(parsed.value);
+        }
+        catch (error) {
+            const str = client.intlGet(guildId, 'teamfinderRunFailed', { error: error.message });
+            await client.interactionEditReply(interaction, DiscordEmbeds.getActionInfoEmbed(1, truncate(str, 3900)));
+            client.log(client.intlGet(null, 'warningCap'), str);
+            return null;
+        }
         if (steamId) return steamId;
 
         const str = client.intlGet(guildId, 'teamfinderBattlemetricsSeedNoSteamId', {
@@ -298,26 +295,30 @@ function buildResultEmbed(client, guildId, result) {
     });
 
     if (shownCandidates.length > 0) {
-        embed.addFields(shownCandidates.map(candidate => buildCandidateField(candidate)));
+        embed.addFields(shownCandidates.map(candidate => buildCandidateField(candidate, result.roster)));
     }
 
     return embed;
 }
 
-function buildCandidateField(candidate) {
+function buildCandidateField(candidate, roster) {
     const name = escapeMarkdown(candidate.name || 'Unknown');
     const ambiguous = candidate.online_confidence === 'exact_ambiguous';
+    const liveRoster = isLiveRoster(roster);
+    const recentlyObserved = candidate.online && !liveRoster;
+    const confirmedOnline = candidate.online && liveRoster;
     const status = ambiguous ? Constants.NOT_FOUND_EMOJI :
-        (candidate.online ? Constants.ONLINE_EMOJI : Constants.OFFLINE_EMOJI);
+        (confirmedOnline ? Constants.ONLINE_EMOJI : Constants.OFFLINE_EMOJI);
     const statusText = ambiguous ? 'Ambiguous duplicate-name match' :
-        (candidate.online ? 'Online now (unique exact name match)' : 'Not confirmed online');
+        (confirmedOnline ? 'Online now (unique exact name match)' :
+            (recentlyObserved ? 'Recently observed in cached roster; not confirmed online now' : 'Not confirmed online'));
     const fieldName = truncate(`${status} ${name} | score ${candidate.score}`, 256);
 
     const steamValue = candidate.steam_id && candidate.profile_url ?
         `[${candidate.steam_id}](${candidate.profile_url})` :
         (candidate.steam_id || 'Unknown');
     const sources = formatSources(candidate.sources);
-    const evidence = formatEvidence(candidate);
+    const evidence = formatEvidence(candidate, roster);
 
     return {
         name: fieldName,
@@ -335,7 +336,7 @@ function formatSources(sources) {
     }).join(', ');
 }
 
-function formatEvidence(candidate) {
+function formatEvidence(candidate, roster) {
     if (candidate.online_confidence === 'exact_ambiguous') {
         return 'The same display name appears more than once in the current roster; identity is not confirmed.';
     }
@@ -343,7 +344,12 @@ function formatEvidence(candidate) {
         candidate.connection_profile_names.slice(0, 4).map(escapeMarkdown) : [];
 
     if (connectionNames.length === 0) {
-        if (candidate.online) return 'Current Steam display name uniquely matched the selected player roster.';
+        if (candidate.online && isLiveRoster(roster)) {
+            return 'Current Steam display name uniquely matched the selected live player roster.';
+        }
+        if (candidate.online) {
+            return 'Current Steam display name matched a cached roster; this is recent evidence, not live proof.';
+        }
         return 'Matched discovery score threshold.';
     }
 
@@ -397,18 +403,20 @@ async function buildConnectionGraphImage(result) {
     shownCandidates.forEach((candidate, index) => {
         const y = startY + index * rowHeight;
         const title = sanitizeImageText(candidate.name || 'Unknown');
+        const confirmedOnline = candidate.online && isLiveRoster(result.roster) &&
+            candidate.online_confidence !== 'exact_ambiguous';
         const onlineLabel = candidate.online_confidence === 'exact_ambiguous' ? 'ambiguous name' :
-            (candidate.online ? 'online' : 'not confirmed');
+            (confirmedOnline ? 'online' : (candidate.online ? 'recently observed' : 'not confirmed'));
         const subtitle = `score ${candidate.score} | ${onlineLabel} | ${formatSources(candidate.sources)}`;
-        drawNode(image, font, rightX, y, nodeW, nodeH, title, candidate.online ? '#254733' : '#3a3030',
-            candidate.online ? '#6fcf7d' : '#d08770', subtitle);
+        drawNode(image, font, rightX, y, nodeW, nodeH, title, confirmedOnline ? '#254733' : '#3a3030',
+            confirmedOnline ? '#6fcf7d' : '#d08770', subtitle);
 
         const connections = Array.isArray(candidate.connection_profile_names) && candidate.connection_profile_names.length > 0 ?
             candidate.connection_profile_names : [connectionNames[0]];
         for (const connection of connections.slice(0, 3)) {
             const from = leftPositions[connection] || leftPositions[connectionNames[0]];
             if (!from) continue;
-            drawConnection(image, from.x, from.y, rightX, y + nodeH / 2, candidate.online);
+            drawConnection(image, from.x, from.y, rightX, y + nodeH / 2, confirmedOnline);
         }
     });
 

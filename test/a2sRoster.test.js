@@ -27,6 +27,21 @@ Test('selects query endpoint by Rust app id and exact game port', () => {
     });
 });
 
+Test('selects a query endpoint by IP only when exactly one Rust server is present', () => {
+    const oneRustServer = { response: { servers: [
+        { appid: 252490, gameport: 28015, addr: '195.60.166.150:28018' },
+        { appid: 730, gameport: 27015, addr: '195.60.166.150:27016' }
+    ] } };
+    const twoRustServers = { response: { servers: [
+        { appid: 252490, gameport: 28015, addr: '195.60.166.150:28018' },
+        { appid: 252490, gameport: 29015, addr: '195.60.166.150:29018' }
+    ] } };
+
+    Assert.deepEqual(A2sRoster.selectUniqueRustQueryEndpoint(oneRustServer),
+        { host: '195.60.166.150', port: 28018 });
+    Assert.equal(A2sRoster.selectUniqueRustQueryEndpoint(twoRustServers), null);
+});
+
 Test('parses A2S_PLAYER response including duplicate and empty names', () => {
     const parts = [Buffer.from([0xff, 0xff, 0xff, 0xff, 0x44, 0x03])];
     for (const [index, name, score, duration] of [
@@ -99,6 +114,19 @@ Test('builds source-aware snapshot and preserves duplicate names', async () => {
     Assert.equal(roster.observedAt, 123456);
     Assert.deepEqual(roster.players, ['Alice', 'Alice', 'Bob']);
     Assert.deepEqual(roster.nameCounts, { Alice: 2, Bob: 1 });
+    Assert.equal(roster.queryAddress, '195.60.166.150:28018');
+});
+
+Test('discovers a sole Rust query endpoint from pairing IP when connect is unavailable', async () => {
+    const roster = await A2sRoster.getServerRoster({ serverIp: '195.60.166.150', connect: null }, {
+        requestJson: async () => ({ response: { servers: [
+            { appid: 252490, gameport: 28015, addr: '195.60.166.150:28018' }
+        ] } }),
+        queryPlayers: async () => [{ name: 'Alpha', score: 1, duration: 1 }],
+        noCache: true
+    });
+
+    Assert.equal(roster.available, true);
     Assert.equal(roster.queryAddress, '195.60.166.150:28018');
 });
 

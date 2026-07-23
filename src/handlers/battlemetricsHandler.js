@@ -19,7 +19,7 @@
 */
 
 const Constants = require('../util/constants.js');
-const A2sRoster = require('../util/a2sRoster.js');
+const RosterProvider = require('../util/rosterProvider.js');
 const TrackerA2sState = require('../util/trackerA2sState.js');
 const DiscordMessages = require('../discordTools/discordMessages.js');
 const DiscordTools = require('../discordTools/discordTools.js');
@@ -27,11 +27,16 @@ const PlayerActivityDB = require('../util/database.js');
 const Scrape = require('../util/scrape.js');
 const Utils = require('../util/utils.js');
 
+let handlerRunning = false;
+
 module.exports = {
     handler: async function (client, firstTime = false) {
+        if (handlerRunning) return;
+        handlerRunning = true;
+        try {
         const searchSteamProfiles = (client.battlemetricsIntervalCounter === 0) ? true : false;
         const calledSteamProfiles = new Object();
-        const a2sRosters = new Map();
+        const rosterSnapshots = new Map();
 
         if (!firstTime) await client.updateBattlemetricsInstances();
 
@@ -42,25 +47,22 @@ module.exports = {
 
             if (!firstTime) await module.exports.handleBattlemetricsChanges(client, guildId);
 
+            await collectRelevantRosterSnapshots(client, guildId, instance, rosterSnapshots);
+
             /* Update information channel battlemetrics players */
-            const bmId = instance.activeServer !== null ?
-                instance.serverList[instance.activeServer].battlemetricsId : null;
+            const activeServer = instance.activeServer !== null ? instance.serverList[instance.activeServer] : null;
+            const bmId = activeServer ? activeServer.battlemetricsId : null;
             let condition = instance.generalSettings.displayInformationBattlemetricsAllOnlinePlayers;
-            condition &= instance.activeServer !== null;
-            condition &= bmId !== null;
-            condition &= client.battlemetricsInstances.hasOwnProperty(bmId);
+            condition &= activeServer !== null;
             condition &= rustplus && rustplus.isOperational;
 
             if (condition) {
                 const bmInstance = client.battlemetricsInstances[bmId];
-                let informationRoster = null;
-                if (!bmInstance.lastUpdateSuccessful) {
-                    informationRoster = await A2sRoster.getServerRoster(instance.serverList[instance.activeServer]);
-                    a2sRosters.set(instance.activeServer, informationRoster);
-                }
-                if (bmInstance.lastUpdateSuccessful || informationRoster.available) {
+                const informationRoster = rosterSnapshots.get(rosterKey(guildId, instance.activeServer));
+                if ((bmInstance && bmInstance.lastUpdateSuccessful) ||
+                    (informationRoster && informationRoster.available)) {
                     await DiscordMessages.sendUpdateBattlemetricsOnlinePlayersInformationMessage(
-                        rustplus, bmId, informationRoster);
+                        rustplus, bmId, bmInstance && bmInstance.lastUpdateSuccessful ? null : informationRoster);
                 }
                 else if (instance.informationMessageId.battlemetricsPlayers !== null) {
                     await DiscordTools.deleteMessageById(guildId, instance.channelId.information,
@@ -84,13 +86,16 @@ module.exports = {
                 const bmInstance = client.battlemetricsInstances[battlemetricsId];
 
                 if (!bmInstance || !bmInstance.lastUpdateSuccessful) {
-                    await handleA2sTracker(client, guildId, trackerId, content, firstTime, searchSteamProfiles,
-                        calledSteamProfiles, a2sRosters);
+                    const roster = rosterSnapshots.get(rosterKey(guildId, content.serverId));
+                    await handleFallbackTracker(client, guildId, trackerId, content, firstTime,
+                        searchSteamProfiles, calledSteamProfiles, roster);
                     continue;
                 }
 
-                content.rosterSource = 'battlemetrics';
+                content.rosterSource = 'battlemetrics_api';
                 content.rosterAvailable = true;
+                content.rosterUpdatedAt = bmInstance.updatedAt ? Date.parse(bmInstance.updatedAt) : Date.now();
+                content.rosterUnavailableReason = null;
 
                 if (firstTime || searchSteamProfiles) {
                     for (const player of content.players) {
@@ -214,6 +219,13 @@ module.exports = {
         else {
             client.battlemetricsIntervalCounter += 1;
         }
+        }
+        catch (error) {
+            client.log(client.intlGet(null, 'errorCap'), `Roster update cycle failed: ${error.message}`, 'error');
+        }
+        finally {
+            handlerRunning = false;
+        }
     },
 
     handleBattlemetricsChanges: async function (client, guildId) {
@@ -321,7 +333,7 @@ module.exports = {
 
                 let description = '';
                 if (isEmbedFull) {
-                    description = client.intlGet(interaction.guildId, 'andMorePlayers', {
+                    description = client.intlGet(guildId, 'andMorePlayers', {
                         number: bmInstance.nameChangedPlayers.length - playerCounter
                     });
                 }
@@ -385,7 +397,7 @@ module.exports = {
 
                 let description = '';
                 if (isEmbedFull) {
-                    description = client.intlGet(interaction.guildId, 'andMorePlayers', {
+                    description = client.intlGet(guildId, 'andMorePlayers', {
                         number: playerIds.length - playerCounter
                     });
                 }
@@ -468,8 +480,8 @@ module.exports = {
 
                 let description = '';
                 if (isEmbedFull) {
-                    description = client.intlGet(interaction.guildId, 'andMorePlayers', {
-                        number: playerIds.length - playerCounter
+                    description = client.intlGet(guildId, 'andMorePlayers', {
+                        number: bmInstance.logoutPlayers.length - playerCounter
                     });
                 }
 
@@ -517,11 +529,17 @@ function syncA2sStateFromBattlemetrics(content, bmInstance) {
     }
 }
 
-async function handleA2sTracker(client, guildId, trackerId, content, firstTime, searchSteamProfiles,
-    calledSteamProfiles, a2sRosters) {
+async function handleFallbackTracker(client, guildId, trackerId, content, firstTime, searchSteamProfiles,
+    calledSteamProfiles, roster) {
     const instance = client.getInstance(guildId);
     const server = instance.serverList[content.serverId];
     if (!server) return;
+    if (!roster) {
+        roster = {
+            source: 'unavailable', available: false, complete: false,
+            observedAt: Date.now(), players: [], nameCounts: {}, reason: 'No roster snapshot was collected.'
+        };
+    }
 
     if (firstTime || searchSteamProfiles) {
         for (const player of content.players) {
@@ -534,15 +552,16 @@ async function handleA2sTracker(client, guildId, trackerId, content, firstTime, 
             if (name === null) continue;
             name = (content.clanTag !== '' ? `${content.clanTag} ` : '') + name;
             if (player.name !== name) {
-                await module.exports.trackerNewNameDetected(client, guildId, trackerId, content.battlemetricsId,
-                    player.name, name);
+                const battlemetrics = client.battlemetricsInstances[content.battlemetricsId];
+                if (battlemetrics && battlemetrics.server_ip && battlemetrics.server_port) {
+                    await module.exports.trackerNewNameDetected(client, guildId, trackerId, content.battlemetricsId,
+                        player.name, name);
+                }
                 player.name = name;
             }
         }
     }
 
-    let roster = a2sRosters.get(content.serverId);
-    if (!roster) roster = await A2sRoster.getServerRoster(server);
     if (roster.available) {
         const names = roster.players.map(name => Utils.removeInvisibleCharacters(name)).filter(name => name !== '');
         roster = Object.assign({}, roster, {
@@ -553,9 +572,9 @@ async function handleA2sTracker(client, guildId, trackerId, content, firstTime, 
             }, {})
         });
     }
-    a2sRosters.set(content.serverId, roster);
 
-    content.rosterSource = 'a2s';
+    content.rosterSource = roster.source || 'unavailable';
+    content.rosterUpstreamSource = roster.upstreamSource || null;
     content.rosterAvailable = roster.available;
     content.rosterUpdatedAt = roster.observedAt || Date.now();
     content.rosterUnavailableReason = roster.available ? null : roster.reason;
@@ -591,7 +610,9 @@ async function handleA2sTracker(client, guildId, trackerId, content, firstTime, 
             `${candidate.steamId || candidate.playerId || index}` === event.key);
         if (!player) continue;
         const translation = event.type === 'login' ? 'playerJustConnectedTracker' : 'playerJustDisconnectedTracker';
-        const str = client.intlGet(guildId, translation, { name: player.name, tracker: content.name });
+        const translated = client.intlGet(guildId, translation, { name: player.name, tracker: content.name });
+        const str = roster.source === 'a2s' ?
+            `${translated}\nPublic A2S display-name match; Steam identity is not confirmed.` : translated;
         await DiscordMessages.sendActivityNotificationMessage(guildId, content.serverId,
             event.type === 'login' ? Constants.COLOR_ACTIVE : Constants.COLOR_INACTIVE,
             str, null, content.title, content.everyone);
@@ -600,4 +621,36 @@ async function handleA2sTracker(client, guildId, trackerId, content, firstTime, 
     }
 
     await DiscordMessages.sendTrackerMessage(guildId, trackerId);
+}
+
+async function collectRelevantRosterSnapshots(client, guildId, instance, snapshots) {
+    const serverIds = new Set();
+    if (instance.activeServer !== null) serverIds.add(instance.activeServer);
+    for (const tracker of Object.values(instance.trackers)) serverIds.add(tracker.serverId);
+
+    const collected = await Promise.all(Array.from(serverIds).map(async serverId => {
+        const server = instance.serverList[serverId];
+        if (!server) return null;
+        const battlemetrics = server.battlemetricsId !== null ?
+            client.battlemetricsInstances[server.battlemetricsId] : null;
+        const snapshot = await RosterProvider.getRosterSnapshot({
+            guildId,
+            serverId,
+            server,
+            battlemetrics,
+            onStoreError: (error, operation) => client.log(
+                client.intlGet(null, 'warningCap'),
+                `Local roster persistence ${operation} failed: ${error.message}`,
+                'warning')
+        });
+        return [rosterKey(guildId, serverId), snapshot];
+    }));
+
+    for (const collectedSnapshot of collected) {
+        if (collectedSnapshot) snapshots.set(collectedSnapshot[0], collectedSnapshot[1]);
+    }
+}
+
+function rosterKey(guildId, serverId) {
+    return `${guildId}:${serverId}`;
 }

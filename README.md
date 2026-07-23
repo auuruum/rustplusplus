@@ -83,7 +83,7 @@ or
 
 Make sure you use the correct values for DISCORD_CLIENT_ID as well as DISCORD_TOKEN in the docker command/docker-compose.yml
 
-Optional: set `RPP_BATTLEMETRICS_TOKEN` to use an authenticated BattleMetrics API token. If it is empty or unset, BattleMetrics requests stay anonymous as before.
+Optional: set `RPP_BATTLEMETRICS_TOKEN` to use your own authenticated BattleMetrics API token. Without a working token, roster-dependent features fall back to public A2S and a short-lived local roster cache. BattleMetrics player IDs, profile history, and other provider-specific data remain API-only. See [Local Roster Intelligence](docs/local-roster-intelligence.md).
 
 ## **Thanks to**
 

@@ -39,6 +39,7 @@ function assertTools() {
 
 function ensureTeamDetectorSync(options = {}) {
     const repo = options.repo || Config.teamDetector.repo;
+    const ref = options.ref === undefined ? Config.teamDetector.ref : options.ref;
     const target = options.path || Config.teamDetector.path;
     const update = options.update === true;
 
@@ -46,13 +47,20 @@ function ensureTeamDetectorSync(options = {}) {
 
     if (!Fs.existsSync(target)) {
         Fs.mkdirSync(Path.dirname(target), { recursive: true });
-        run('git', ['clone', repo, target], process.cwd());
+        const cloneArgs = ['clone'];
+        if (ref) cloneArgs.push('--branch', ref);
+        cloneArgs.push(repo, target);
+        run('git', cloneArgs, process.cwd());
     }
     else if (!Fs.existsSync(Path.join(target, 'team_detector.py'))) {
         throw new Error(`${target} exists but team_detector.py was not found.`);
     }
-    else if (update) {
-        run('git', ['pull', '--ff-only'], target);
+    else {
+        if (update) run('git', ['fetch', 'origin'], target);
+        if (ref) run('git', ['checkout', ref], target);
+        if (update) {
+            run('git', ref ? ['pull', '--ff-only', 'origin', ref] : ['pull', '--ff-only'], target);
+        }
     }
 
     if (!Fs.existsSync(Path.join(target, '.venv'))) {

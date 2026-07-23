@@ -251,9 +251,9 @@ async function pairingServer(client, guild, title, message, body) {
         markers: server ? server.markers : {},
         switchGroups: server ? server.switchGroups : {},
         messageId: (messageObj !== undefined) ? messageObj.id : null,
-        battlemetricsId: battlemetricsId,
-        connect: (!bmInstance.lastUpdateSuccessful) ? null :
-            `connect ${bmInstance.server_ip}:${bmInstance.server_port}`,
+        battlemetricsId: battlemetricsId || (server ? server.battlemetricsId : null),
+        connect: bmInstance.lastUpdateSuccessful ? `connect ${bmInstance.server_ip}:${bmInstance.server_port}` :
+            (server ? server.connect : null),
         cargoShipEgressTimeMs: server ? server.cargoShipEgressTimeMs : Constants.DEFAULT_CARGO_SHIP_EGRESS_TIME_MS,
         oilRigLockedCrateUnlockTimeMs: server ? server.oilRigLockedCrateUnlockTimeMs :
             Constants.DEFAULT_OIL_RIG_LOCKED_CRATE_UNLOCK_TIME_MS,

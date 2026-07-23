@@ -26,7 +26,8 @@ const getStaticFilesStorage = require('../util/getStaticFilesStorage');
 const Utils = require('../util/utils.js');
 const {
     buildBattlemetricsRequestConfig,
-    getBattlemetricsRequestFailureDetails
+    getBattlemetricsRequestFailureDetails,
+    hasBattlemetricsToken
 } = require('../util/battlemetricsAuth.js');
 
 const randomUsernamesData = getStaticFilesStorage().getDatasetObject('RandomUsernames');
@@ -388,6 +389,7 @@ class Battlemetrics {
      */
     async request(api_call) {
         if (this.id === null) return null;
+        if (!hasBattlemetricsToken(Config.battlemetrics.token)) return null;
 
         const response = await this.#request(api_call);
 
@@ -414,12 +416,17 @@ class Battlemetrics {
             return;
         }
 
+        if (!hasBattlemetricsToken(Config.battlemetrics.token)) {
+            this.lastUpdateSuccessful = false;
+            return;
+        }
+
         if (this.id === null && this.name !== null) {
             this.id = await this.getServerIdFromName(this.name);
             if (!this.id) return;
         }
 
-        this.updateStreamerMode();
+        await this.updateStreamerMode();
 
         this.lastUpdateSuccessful = true;
         await this.evaluation(null, true);
@@ -489,6 +496,10 @@ class Battlemetrics {
      */
     async evaluation(data = null, firstTime = false) {
         if (this.id === null) return null;
+        if (!hasBattlemetricsToken(Config.battlemetrics.token)) {
+            this.lastUpdateSuccessful = false;
+            return false;
+        }
 
         if (data === null) {
             data = await this.request(this.GET_SERVER_DATA_API_CALL(this.id));

@@ -20,9 +20,11 @@
 
 const Discord = require('discord.js');
 
+const Config = require('../../config');
 const DiscordEmbeds = require('../discordTools/discordEmbeds');
 
 const Battlemetrics = require('../structures/Battlemetrics');
+const { hasBattlemetricsToken } = require('../util/battlemetricsAuth.js');
 const Constants = require('../util/constants.js');
 const DiscordMessages = require('../discordTools/discordMessages.js');
 const Keywords = require('../util/keywords.js');
@@ -90,10 +92,16 @@ module.exports = async (client, interaction) => {
             if (battlemetricsId === '') {
                 server.battlemetricsId = null;
             }
-            else if (client.battlemetricsInstances.hasOwnProperty(battlemetricsId)) {
+            else if (client.battlemetricsInstances.hasOwnProperty(battlemetricsId) &&
+                client.battlemetricsInstances[battlemetricsId].lastUpdateSuccessful) {
                 const bmInstance = client.battlemetricsInstances[battlemetricsId];
                 server.battlemetricsId = battlemetricsId;
                 server.connect = `connect ${bmInstance.server_ip}:${bmInstance.server_port}`;
+            }
+            else if (!hasBattlemetricsToken(Config.battlemetrics.token)) {
+                // Keep a manually supplied server ID for Team Finder and future authenticated API use.
+                // The A2S endpoint is discovered independently and no provider data is fabricated here.
+                server.battlemetricsId = battlemetricsId;
             }
             else {
                 const bmInstance = new Battlemetrics(battlemetricsId);
@@ -291,7 +299,8 @@ module.exports = async (client, interaction) => {
         const tracker = instance.trackers[ids.trackerId];
     
         const trackerName = interaction.fields.getTextInputValue('TrackerName');
-        const trackerBattlemetricsId = interaction.fields.getTextInputValue('TrackerBattlemetricsId');
+        const trackerBattlemetricsInput = interaction.fields.getTextInputValue('TrackerBattlemetricsId').trim();
+        const trackerBattlemetricsId = trackerBattlemetricsInput === '' ? null : trackerBattlemetricsInput;
         const trackerClanTag = interaction.fields.getTextInputValue('TrackerClanTag');
         const trackerNewId = interaction.fields.getTextInputValue('TrackerId');
     
@@ -308,13 +317,21 @@ module.exports = async (client, interaction) => {
         }
     
         if (trackerBattlemetricsId !== tracker.battlemetricsId) {
-            if (client.battlemetricsInstances.hasOwnProperty(trackerBattlemetricsId)) {
+            if (trackerBattlemetricsId === null) {
+                tracker.battlemetricsId = null;
+            }
+            else if (client.battlemetricsInstances.hasOwnProperty(trackerBattlemetricsId) &&
+                client.battlemetricsInstances[trackerBattlemetricsId].lastUpdateSuccessful) {
                 const bmInstance = client.battlemetricsInstances[trackerBattlemetricsId];
                 tracker.battlemetricsId = trackerBattlemetricsId;
                 tracker.serverId = `${bmInstance.server_ip}-${bmInstance.server_port}`;
                 tracker.img = Constants.DEFAULT_SERVER_IMG;
                 tracker.title = bmInstance.server_name;
-            } else {
+            }
+            else if (!hasBattlemetricsToken(Config.battlemetrics.token)) {
+                tracker.battlemetricsId = trackerBattlemetricsId;
+            }
+            else {
                 const bmInstance = new Battlemetrics(trackerBattlemetricsId);
                 await bmInstance.setup();
     
@@ -389,6 +406,13 @@ module.exports = async (client, interaction) => {
 
         const bmInstance = client.battlemetricsInstances[tracker.battlemetricsId];
 
+        if (!isSteamId64 && (!bmInstance || !bmInstance.lastUpdateSuccessful)) {
+            const str = 'BattleMetrics player IDs require an available authorized BattleMetrics source. ' +
+                'Use a SteamID64 or Steam profile URL for A2S fallback tracking.';
+            await client.interactionReply(interaction, DiscordEmbeds.getActionInfoEmbed(1, str));
+            return;
+        }
+
         if ((isSteamId64 && tracker.players.some(e => e.steamId === id)) ||
             (!isSteamId64 && tracker.players.some(e => e.playerId === id))) {
             interaction.deferUpdate();
@@ -403,7 +427,7 @@ module.exports = async (client, interaction) => {
             steamId = id;
             name = await Scrape.scrapeSteamProfileName(client, id);
 
-            if (name && bmInstance) {
+            if (name && bmInstance && bmInstance.lastUpdateSuccessful) {
                 playerId = Object.keys(bmInstance.players).find(e => bmInstance.players[e]['name'] === name);
                 if (!playerId) playerId = null;
             }

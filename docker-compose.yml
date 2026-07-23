@@ -5,9 +5,12 @@ services:
     environment:
       - RPP_DISCORD_TOKEN=TOKEN
       - RPP_DISCORD_CLIENT_ID=CLIENT_ID
+      - RPP_BATTLEMETRICS_TOKEN=
+      - RPP_TEAM_DETECTOR_REF=feature/resilient-teamfinder-fetching
     volumes:
       - ./logs:/app/logs
       - ./instances:/app/instances
       - ./credentials:/app/credentials
       - ./maps:/app/maps
+      - ./database:/app/database
     restart: unless-stopped

@@ -311,8 +311,9 @@ module.exports = {
             new Discord.ActionRowBuilder().addComponents(TextInput.getTextInput({
                 customId: 'TrackerBattlemetricsId',
                 label: Client.client.intlGet(guildId, 'battlemetricsId'),
-                value: tracker.battlemetricsId,
-                style: Discord.TextInputStyle.Short
+                value: tracker.battlemetricsId || '',
+                style: Discord.TextInputStyle.Short,
+                required: false
             })),
             new Discord.ActionRowBuilder().addComponents(TextInput.getTextInput({
                 customId: 'TrackerClanTag',

@@ -27,6 +27,17 @@ const InstanceUtils = require('../util/instanceUtils.js');
 const ServerRestrictions = require('../util/serverRestrictions.js');
 const Timer = require('../util/timer');
 
+function formatRosterSource(source, upstreamSource = null) {
+    if (source === 'battlemetrics_api') return 'BattleMetrics API';
+    if (source === 'a2s') return 'A2S';
+    if (source === 'local_cache') {
+        const upstream = upstreamSource === 'battlemetrics_api' ? 'BattleMetrics API' :
+            (upstreamSource === 'a2s' ? 'A2S' : upstreamSource);
+        return upstream ? `Local cache (${upstream})` : 'Local cache';
+    }
+    return 'Unavailable';
+}
+
 module.exports = {
     getEmbed: function (options = {}) {
         const embed = new Discord.EmbedBuilder();
@@ -126,19 +137,21 @@ module.exports = {
         const bmInstance = Client.client.battlemetricsInstances[battlemetricsId];
 
         const successful = bmInstance && bmInstance.lastUpdateSuccessful ? true : false;
-        const a2sSuccessful = tracker.rosterSource === 'a2s' && tracker.rosterAvailable === true;
+        const fallbackSuccessful = !successful && tracker.rosterAvailable === true;
 
-        const battlemetricsLink = `[${battlemetricsId}](${Constants.BATTLEMETRICS_SERVER_URL}${battlemetricsId})`;
+        const battlemetricsLink = battlemetricsId ?
+            `[${battlemetricsId}](${Constants.BATTLEMETRICS_SERVER_URL}${battlemetricsId})` : Constants.NOT_FOUND_EMOJI;
         const serverStatus = successful ? (bmInstance.server_status ? Constants.ONLINE_EMOJI : Constants.OFFLINE_EMOJI) :
-            (a2sSuccessful ? Constants.ONLINE_EMOJI : Constants.NOT_FOUND_EMOJI);
+            (fallbackSuccessful ? Constants.ONLINE_EMOJI : Constants.NOT_FOUND_EMOJI);
 
         let description = `__**Tracker ID:**__ \`${tracker.trackerId}\`\n`;
         description += `__**Battlemetrics ID:**__ ${battlemetricsLink}\n`;
         description += `__**${Client.client.intlGet(guildId, 'serverId')}:**__ ${tracker.serverId}\n`;
-        description += `__**Roster source:**__ ${successful ? 'BattleMetrics' : (a2sSuccessful ? 'A2S' : 'Unavailable')}\n`;
+        description += `__**Roster source:**__ ${successful ? 'BattleMetrics API' :
+            formatRosterSource(tracker.rosterSource, tracker.rosterUpstreamSource)}\n`;
         description += `__**${Client.client.intlGet(guildId, 'serverStatus')}:**__ ${serverStatus}\n`;
         description += `__**${Client.client.intlGet(guildId, 'streamerMode')}:**__ `;
-        description += (!bmInstance ? Constants.NOT_FOUND_EMOJI : (bmInstance.streamerMode ?
+        description += (!successful ? Constants.NOT_FOUND_EMOJI : (bmInstance.streamerMode ?
             Client.client.intlGet(guildId, 'onCap') : Client.client.intlGet(guildId, 'offCap'))) + '\n';
         description += `__**${Client.client.intlGet(guildId, 'clanTag')}:**__ `;
         description += tracker.clanTag !== '' ? `\`${tracker.clanTag}\`` : '';
@@ -168,7 +181,7 @@ module.exports = {
                 Client.client.intlGet(guildId, 'empty') : ''}`;
             id += '\n';
 
-            if (!successful && a2sSuccessful) {
+            if (fallbackSuccessful) {
                 if (player.a2sAmbiguous) status += `${Constants.NOT_FOUND_EMOJI}\n`;
                 else if (player.a2sStatus === 'online') status += `${Constants.ONLINE_EMOJI}\n`;
                 else if (player.a2sStatus === 'offline') status += `${Constants.OFFLINE_EMOJI}\n`;
@@ -935,7 +948,8 @@ module.exports = {
             return module.exports.getEmbed({
                 title: Client.client.intlGet(guildId, 'battlemetricsOnlinePlayers'),
                 color: Constants.COLOR_DEFAULT,
-                description: `Roster source: A2S · ${roster.players.length} names`,
+                description: `Roster source: ${formatRosterSource(roster.source, roster.upstreamSource)} · ` +
+                    `${roster.players.length} names`,
                 footer: { text: server ? server.title : roster.queryAddress },
                 fields: fields.map((field, index) => ({
                     name: index === 0 ? Client.client.intlGet(guildId, 'players') : '\u200B',

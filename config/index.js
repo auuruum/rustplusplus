@@ -92,6 +92,7 @@ module.exports = {
         autoSetup: getBoolean('RPP_TEAM_DETECTOR_AUTO_SETUP', true),
         autoUpdate: getBoolean('RPP_TEAM_DETECTOR_AUTO_UPDATE', true),
         repo: getString('RPP_TEAM_DETECTOR_REPO', 'https://github.com/auuruum/team-detector.git'),
+        ref: getString('RPP_TEAM_DETECTOR_REF', 'feature/resilient-teamfinder-fetching'),
         path: getString('RPP_TEAM_DETECTOR_PATH', path.resolve(__dirname, '..', 'vendor', 'team-detector')),
         command: getString('RPP_TEAM_DETECTOR_COMMAND', 'uv run python'),
         timeoutMs: getNumber('RPP_TEAM_DETECTOR_TIMEOUT_MS', 180000),

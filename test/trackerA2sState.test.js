@@ -50,3 +50,29 @@ Test('unavailable roster preserves previous state', () => {
     Assert.deepEqual(result.events, []);
     Assert.deepEqual(result.state, previous);
 });
+
+Test('cached roster never emits live transitions', () => {
+    const previous = { '1': { online: false, initialized: true } };
+    const result = TrackerA2sState.evaluate(previous, [{ key: '1', name: 'Alice' }], {
+        available: true,
+        complete: true,
+        cached: true,
+        liveTransitionEligible: false,
+        nameCounts: { Alice: 1 }
+    });
+
+    Assert.deepEqual(result.events, []);
+    Assert.deepEqual(result.state, previous);
+});
+
+Test('incomplete roster never emits offline transitions', () => {
+    const previous = { '1': { online: true, initialized: true } };
+    const result = TrackerA2sState.evaluate(previous, [{ key: '1', name: 'Alice' }], {
+        available: true,
+        complete: false,
+        nameCounts: {}
+    });
+
+    Assert.deepEqual(result.events, []);
+    Assert.deepEqual(result.state, previous);
+});

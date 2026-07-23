@@ -1,5 +1,6 @@
 function evaluate(previousState, trackedPlayers, roster) {
-    if (!roster || !roster.available) {
+    if (!roster || !roster.available || roster.complete === false || roster.cached === true ||
+        roster.liveTransitionEligible === false) {
         return { state: previousState, events: [], ambiguous: [] };
     }
 

@@ -3,6 +3,10 @@ function normalizeBattlemetricsToken(token) {
     return token.trim();
 }
 
+function hasBattlemetricsToken(token) {
+    return normalizeBattlemetricsToken(token) !== '';
+}
+
 function buildBattlemetricsRequestConfig(token) {
     const normalizedToken = normalizeBattlemetricsToken(token);
     if (!normalizedToken) return undefined;
@@ -23,6 +27,7 @@ function getBattlemetricsRequestFailureDetails(error) {
 }
 
 module.exports = {
+    hasBattlemetricsToken,
     buildBattlemetricsRequestConfig,
     getBattlemetricsRequestFailureDetails
 };
