@@ -19,7 +19,7 @@ async function getRosterSnapshot(context, dependencies = {}) {
         context.maxCacheAgeMs : DEFAULT_LOCAL_CACHE_MAX_AGE_MS;
 
     const battlemetricsRoster = buildBattlemetricsRoster(context.battlemetrics, now, battlemetricsMaxAgeMs);
-    if (battlemetricsRoster) {
+    if (battlemetricsRoster && battlemetricsRoster.complete) {
         return persistSnapshot(store, context, battlemetricsRoster, dependencies);
     }
 
@@ -34,6 +34,8 @@ async function getRosterSnapshot(context, dependencies = {}) {
         const normalized = normalizeSnapshot(a2sRoster, now);
         return persistSnapshot(store, context, normalized, dependencies);
     }
+
+    if (battlemetricsRoster && battlemetricsRoster.available) return battlemetricsRoster;
 
     let cached = null;
     try {
@@ -77,14 +79,20 @@ function buildBattlemetricsRoster(battlemetrics, now, maxAgeMs) {
     const players = onlinePlayers
         .map(playerId => playersById[playerId] && playersById[playerId].name)
         .filter(name => typeof name === 'string');
+    const reportedPopulation = Number(battlemetrics.server_players);
+    const hasReportedPopulation = Number.isFinite(reportedPopulation) && reportedPopulation >= 0;
+    const complete = !hasReportedPopulation || players.length === reportedPopulation;
 
     return normalizeSnapshot({
         source: 'battlemetrics_api',
         capability: 'names_only',
         available: true,
-        complete: true,
+        complete,
         observedAt,
-        players
+        players,
+        population: hasReportedPopulation ? reportedPopulation : players.length,
+        reason: complete ? null :
+            `BattleMetrics returned ${players.length} of ${reportedPopulation} online player names.`
     }, now);
 }
 
@@ -97,7 +105,7 @@ function normalizeSnapshot(roster, fallbackObservedAt) {
         observedAt: Number.isFinite(Number(roster.observedAt)) ? Number(roster.observedAt) : fallbackObservedAt,
         players,
         nameCounts: buildNameCounts(players),
-        population: players.length,
+        population: Number.isFinite(Number(roster.population)) ? Number(roster.population) : players.length,
         liveTransitionEligible: roster.liveTransitionEligible !== false && roster.cached !== true
     });
 }

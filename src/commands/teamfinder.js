@@ -28,6 +28,8 @@ const DiscordEmbeds = require('../discordTools/discordEmbeds.js');
 const RosterProvider = require('../util/rosterProvider.js');
 const Scrape = require('../util/scrape.js');
 const TeamDetectorBridge = require('../util/teamDetectorBridge.js');
+const TeamfinderDiscoveryPolicy = require('../util/teamfinderDiscoveryPolicy.js');
+const TeamfinderReport = require('../util/teamfinderReport.js');
 const TeamfinderRosterSemantics = require('../util/teamfinderRosterSemantics.js');
 const TeamfinderServerTarget = require('../util/teamfinderServerTarget.js');
 const TrackerInputParser = require('../util/trackerInputParser.js');
@@ -121,30 +123,27 @@ async function discoverHandler(client, interaction) {
     const playerRoster = prepareRosterForTeamFinder(
         await getPlayerRosterSnapshot(client, interaction, target));
 
-    const options = {
+    const options = Object.assign({
         battlemetricsId: target.battlemetricsId,
         steamIds: [seedSteamId],
-        comments: interaction.options.getBoolean('comments') ?? false,
-        commentPages: interaction.options.getInteger('commentpages') ?? 1,
-        maxProfiles: interaction.options.getInteger('maxprofiles') ?? 75,
-        minScore: interaction.options.getInteger('minscore') ?? 4,
-        recursiveDepth: interaction.options.getInteger('depth') ?? 5,
-        requestDelay: interaction.options.getNumber('delay') ?? 0,
         playerRoster: playerRoster,
         includeNetwork: false
-    };
+    }, TeamfinderDiscoveryPolicy.fromInteraction(interaction));
 
     try {
         const result = await TeamDetectorBridge.runAutoDiscovery(options);
         const embed = buildResultEmbed(client, guildId, result);
         const reply = {
-            embeds: [embed]
+            embeds: [embed],
+            files: [new Discord.AttachmentBuilder(Buffer.from(TeamfinderReport.buildText(result), 'utf8'), {
+                name: 'teamfinder_full_report.txt'
+            })]
         };
 
         const graphImage = await buildConnectionGraphImage(result);
         if (graphImage) {
             embed.setImage('attachment://teamfinder_graph.png');
-            reply.files = [new Discord.AttachmentBuilder(graphImage, { name: 'teamfinder_graph.png' })];
+            reply.files.push(new Discord.AttachmentBuilder(graphImage, { name: 'teamfinder_graph.png' }));
         }
 
         await client.interactionEditReply(interaction, reply);
@@ -251,9 +250,17 @@ function buildResultEmbed(client, guildId, result) {
     if (result.roster) {
         const rosterSource = result.roster.source || 'unavailable';
         const rosterSize = result.roster.size || 0;
-        description += result.roster.available ?
-            `\nPlayer roster: ${rosterSource} (${rosterSize} names).` :
-            `\nPlayer roster unavailable: ${result.roster.reason || rosterSource}.`;
+        const rosterPopulation = Number(result.roster.population);
+        if (result.roster.available && result.roster.complete === false) {
+            description += `\nPartial player roster: ${rosterSource} (${rosterSize}` +
+                `${Number.isFinite(rosterPopulation) ? ` of ${rosterPopulation}` : ''} names).`;
+        }
+        else if (result.roster.available) {
+            description += `\nPlayer roster: ${rosterSource} (${rosterSize} names).`;
+        }
+        else {
+            description += `\nPlayer roster unavailable: ${result.roster.reason || rosterSource}.`;
+        }
     }
     if (result.partial) {
         const skipped = Array.isArray(result.skipped_profiles) ? result.skipped_profiles.length : 0;
@@ -264,6 +271,12 @@ function buildResultEmbed(client, guildId, result) {
     if (result.fetch_stats) {
         description += `\nCache: ${result.fetch_stats.cache || 0} fresh, ` +
             `${result.fetch_stats.stale || 0} stale; network: ${result.fetch_stats.network || 0}.`;
+    }
+    if (result.crawl) {
+        description += `\nCrawl: comments ${result.crawl.comments_enabled ? 'on' : 'off'} ` +
+            `(${result.crawl.comment_pages || 0} page(s), ${result.crawl.comment_profiles || 0} profiles); ` +
+            `depth ${result.crawl.recursive_depth}, min score ${result.crawl.min_score}, ` +
+            `limit ${result.crawl.max_profiles}.`;
     }
     if (shownCandidates.length > 0) {
         description += '\nConnection graph attached as image.';
@@ -293,13 +306,16 @@ function buildCandidateField(candidate, roster) {
     const name = escapeMarkdown(candidate.name || 'Unknown');
     const ambiguous = candidate.online_confidence === 'exact_ambiguous';
     const liveRoster = isLiveRoster(roster);
-    const recentlyObserved = candidate.online && !liveRoster;
+    const partialLiveRoster = candidate.online && roster && roster.available && roster.complete === false &&
+        roster.cached !== true && roster.source !== 'local_cache';
+    const recentlyObserved = candidate.online && !liveRoster && !partialLiveRoster;
     const confirmedOnline = candidate.online && liveRoster;
-    const status = ambiguous ? Constants.NOT_FOUND_EMOJI :
-        (confirmedOnline ? Constants.ONLINE_EMOJI : Constants.OFFLINE_EMOJI);
+    const status = ambiguous || !candidate.online ? Constants.NOT_FOUND_EMOJI : Constants.ONLINE_EMOJI;
     const statusText = ambiguous ? 'Ambiguous duplicate-name match' :
         (confirmedOnline ? 'Online now (unique exact name match)' :
-            (recentlyObserved ? 'Recently observed in cached roster; not confirmed online now' : 'Not confirmed online'));
+            (partialLiveRoster ? 'Present in current partial roster (unique exact name match)' :
+                (recentlyObserved ? 'Recently observed in cached roster; not confirmed online now' :
+                    'Not confirmed online')));
     const fieldName = truncate(`${status} ${name} | score ${candidate.score}`, 256);
 
     const steamValue = candidate.steam_id && candidate.profile_url ?
@@ -336,8 +352,12 @@ function formatEvidence(candidate, roster) {
             return 'Current Steam display name uniquely matched the selected live player roster.';
         }
         if (candidate.online) {
+            if (roster && roster.available && roster.cached !== true && roster.source !== 'local_cache') {
+                return 'Current Steam display name matched the selected partial live roster; absence from it is not offline proof.';
+            }
             return 'Current Steam display name matched a cached roster; this is recent evidence, not live proof.';
         }
+        if (candidate.seed) return 'Seed profile was inspected; no stronger public connection evidence was confirmed.';
         return 'Matched discovery score threshold.';
     }
 

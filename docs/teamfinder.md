@@ -52,6 +52,21 @@ BattleMetrics player IDs are resolved to SteamID64 before the detector runs. If
 BattleMetrics only exposes name history for that player and no Steam identifier,
 use the player's SteamID64 or Steam profile URL instead.
 
+Plain `/teamfinder discover seed:<profile>` uses a bounded smart crawl by default:
+
+- public friends and two pages of profile comments are checked immediately;
+- direct friends are eligible for traversal at score `2`;
+- comment-heavy/high-confidence branches are inspected before plain friend branches;
+- at most 75 profiles and five graph levels are inspected;
+- requests use a 200 ms host delay, persistent SQLite cache, stale fallback, retry/backoff,
+  and a shared serial execution queue;
+- comments are expanded only for the seed and high-confidence profiles instead of every
+  profile in the budget.
+
+Advanced slash options override these defaults. Every run attaches
+`teamfinder_full_report.txt`, so candidates outside the ten-player Discord preview are
+still visible and searchable.
+
 The optional `battlemetricsid` server option is not required when Rust+ is connected.
 Team Finder uses the active Rust server and its local/A2S roster sources. An internal
 `rustplus:<serverId>` label satisfies the detector CLI without claiming that it is a
@@ -74,6 +89,10 @@ permanent identity binding.
 
 Some Rust servers disable or censor `A2S_PLAYER`. Population-only `A2S_INFO` data is
 never presented as a player roster.
+BattleMetrics snapshots are also marked incomplete when the API reports fewer included
+player names than the server population, for example 87 names while the population is
+1145. Names present in such a partial live snapshot are positive evidence; absence from
+the capped list is not offline evidence.
 Cached snapshots never add an online score, say "online now", or drive live Team Finder expansion.
 
 BattleMetrics website scraping is not used. See [Local Roster Intelligence](local-roster-intelligence.md)

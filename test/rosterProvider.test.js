@@ -66,6 +66,49 @@ Test('uses and records A2S when BattleMetrics is unavailable', async () => {
     Assert.equal(store.recorded.length, 1);
 });
 
+Test('does not treat a capped BattleMetrics player list as a complete roster', async () => {
+    const store = fakeStore();
+    let a2sCalls = 0;
+    const players = {};
+    const onlinePlayers = [];
+    for (let index = 0; index < 87; index += 1) {
+        players[`${index}`] = { name: `Player ${index}` };
+        onlinePlayers.push(`${index}`);
+    }
+
+    const roster = await RosterProvider.getRosterSnapshot({
+        guildId: 'guild-1',
+        serverId: 'server-1',
+        server: {},
+        battlemetrics: {
+            lastUpdateSuccessful: true,
+            updatedAt: new Date(1000).toISOString(),
+            server_players: 1145,
+            onlinePlayers,
+            players
+        },
+        now: 1000
+    }, {
+        store,
+        fetchA2s: async () => {
+            a2sCalls += 1;
+            return {
+                source: 'a2s', available: false, complete: false, observedAt: 1000,
+                players: [], reason: 'A2S player names are censored'
+            };
+        }
+    });
+
+    Assert.equal(a2sCalls, 1);
+    Assert.equal(roster.source, 'battlemetrics_api');
+    Assert.equal(roster.available, true);
+    Assert.equal(roster.complete, false);
+    Assert.equal(roster.players.length, 87);
+    Assert.equal(roster.population, 1145);
+    Assert.match(roster.reason, /87 of 1145/);
+    Assert.equal(store.recorded.length, 0);
+});
+
 Test('falls back to a fresh local snapshot after a transient source failure', async () => {
     const cached = {
         source: 'local_cache', upstreamSource: 'a2s', available: true, complete: true,
