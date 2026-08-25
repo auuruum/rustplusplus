@@ -144,25 +144,27 @@ module.exports = {
             return;
         }
 
+        /* All market subcommands need the same fresh vending snapshot. The
+           normal polling path may be between cycles, so update the MapMarkers
+           cache before search/shops/price inspect it. */
+        try {
+            const freshMapMarkers = await rustplus.getMapMarkersAsync();
+            if (await rustplus.isResponseValid(freshMapMarkers)) {
+                rustplus.mapMarkers.updateMapMarkers(freshMapMarkers.mapMarkers);
+            }
+        }
+        catch (error) {
+            client.log(client.intlGet(null, 'warningCap'),
+                `Unable to refresh vending machines for market command: ${error.message}`);
+        }
+
         switch (interaction.options.getSubcommand()) {
             case 'price': {
                 const itemName = interaction.options.getString('item');
                 const currencyName = interaction.options.getString('currency');
                 const itemBlueprint = interaction.options.getBoolean('item_blueprint') ?? false;
                 const currencyBlueprint = interaction.options.getBoolean('currency_blueprint') ?? false;
-                let vendingMachines = rustplus.mapMarkers.vendingMachines;
-                try {
-                    const freshMapMarkers = await rustplus.getMapMarkersAsync();
-                    if (await rustplus.isResponseValid(freshMapMarkers)) {
-                        const vendingMachineType = rustplus.mapMarkers.types.VendingMachine;
-                        vendingMachines = freshMapMarkers.mapMarkers.markers.filter(marker =>
-                            marker.type === vendingMachineType);
-                    }
-                }
-                catch (error) {
-                    client.log(client.intlGet(null, 'warningCap'),
-                        `Unable to refresh vending machines for market price analysis: ${error.message}`);
-                }
+                const vendingMachines = rustplus.mapMarkers.vendingMachines;
                 const analysis = MarketPriceAnalysis.analyzeMarketPrice({
                     client,
                     vendingMachines,
