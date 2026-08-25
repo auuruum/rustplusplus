@@ -23,6 +23,7 @@ const Builder = require('@discordjs/builders');
 const Constants = require('../util/constants.js');
 const DiscordEmbeds = require('../discordTools/discordEmbeds.js');
 const MarketPriceAnalysis = require('../util/marketPriceAnalysis.js');
+const MapMarkers = require('../structures/MapMarkers.js');
 
 module.exports = {
     name: 'market',
@@ -151,7 +152,12 @@ module.exports = {
         try {
             const freshMapMarkers = await rustplus.getMapMarkersAsync();
             if (await rustplus.isResponseValid(freshMapMarkers)) {
-                rustplus.mapMarkers.updateMapMarkers(freshMapMarkers.mapMarkers);
+                if (rustplus.mapMarkers === null || rustplus.mapMarkers === undefined) {
+                    rustplus.mapMarkers = new MapMarkers(freshMapMarkers.mapMarkers, rustplus, client);
+                }
+                else {
+                    rustplus.mapMarkers.updateMapMarkers(freshMapMarkers.mapMarkers);
+                }
             }
             else {
                 mapMarkersRefreshError = freshMapMarkers?.error ?? 'invalid Rust+ response';
