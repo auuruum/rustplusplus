@@ -148,7 +148,8 @@ const RUSTLABS_ALL_OTHER_REGEX = /\/entity\/(.*?)">(.*?)</gm
 
 /* Global variables */
 
-const ITEMS = JSON.parse(Fs.readFileSync(Path.join(__dirname, '..', 'data', 'static-json', 'items.json'), 'utf8'));
+const ITEMS_PATH = Path.join(__dirname, '..', 'data', 'static-json', 'items.json');
+const ITEMS = JSON.parse(Fs.readFileSync(ITEMS_PATH, 'utf8'));
 
 const rustlabsLootContainers = new Object();
 const rustlabsBuildingBlocks = new Object();
@@ -662,10 +663,24 @@ async function processAllItems() {
 
         await sleep(SLEEP_TIMEOUT_MS);
     }
-}
 
-async function processAllLootContainers() {
-
+    let itemsChanged = false;
+    for (const [rustlabsName, shortname, name] of rustlabsItemNames) {
+        const itemId = String(rustlabsName);
+        const existing = ITEMS[itemId];
+        if (existing === undefined || existing.name !== name || existing.shortname !== shortname) {
+            ITEMS[itemId] = {
+                ...(existing ?? {}),
+                shortname,
+                name
+            };
+            itemsChanged = true;
+        }
+    }
+    if (itemsChanged) {
+        Fs.writeFileSync(ITEMS_PATH, `${JSON.stringify(ITEMS, null, 4)}\n`);
+        console.log(`Item catalogue updated: ${ITEMS_PATH}`);
+    }
 }
 
 async function processAllBuildingBlocks() {
