@@ -48,8 +48,20 @@ function responseSummary(response) {
   if (response.teamInfo) result.teamPlayers = response.teamInfo.players?.length ?? 0;
   if (response.mapMarkers) {
     const markers = response.mapMarkers.markers || [];
-    result.markerTypes = markers.map(m => ({ type: m.type, id: m.id, x: m.x, y: m.y, name: m.name, keys: Object.keys(m) }));
-    const vending = markers.filter(m => m.type === 3);
+    result.markerTypes = markers.map(m => ({
+      type: m.type,
+      typeOf: typeof m.type,
+      id: m.id,
+      x: m.x,
+      y: m.y,
+      name: m.name,
+      keys: Object.keys(m),
+      hasSellOrders: Object.prototype.hasOwnProperty.call(m, 'sellOrders'),
+      sellOrderCount: Array.isArray(m.sellOrders) ? m.sellOrders.length : 0
+    }));
+    const vending = markers.filter(m =>
+      m.type === 3 || m.type === 'VendingMachine' ||
+      Array.isArray(m.sellOrders) && m.sellOrders.length > 0);
     result.markerCount = markers.length;
     result.vendingMachineCount = vending.length;
     result.vendingMachines = vending.map(m => ({

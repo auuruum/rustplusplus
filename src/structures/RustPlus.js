@@ -2321,8 +2321,9 @@ class RustPlus extends RustPlusLib {
         try {
             const freshMapMarkers = await this.getMapMarkersAsync();
             if (await this.isResponseValid(freshMapMarkers)) {
-                vendingMachines = freshMapMarkers.mapMarkers.markers.filter(marker =>
-                    marker.type === this.mapMarkers.types.VendingMachine);
+                vendingMachines = this.mapMarkers.getMarkersOfType(
+                    this.mapMarkers.types.VendingMachine,
+                    freshMapMarkers.mapMarkers.markers);
             }
         }
         catch (error) {
