@@ -164,13 +164,13 @@ module.exports = {
         }
 
         const cachedVendingMachines = rustplus.mapMarkers?.vendingMachines ?? [];
-        if (mapMarkersRefreshError !== null && cachedVendingMachines.length === 0) {
-            const message = `Rust+ did not return map markers for this server (${mapMarkersRefreshError}). ` +
-                'Market data is unavailable until Rust+ map markers work.';
+        if (mapMarkersRefreshError !== null) {
+            const message = `Rust+ did not return live map markers for this server (${mapMarkersRefreshError}). ` +
+                'Market data is unavailable until Rust+ map markers work; cached vending data was not used.';
             await client.interactionEditReply(interaction,
                 DiscordEmbeds.getActionInfoEmbed(1, message));
             client.log(client.intlGet(null, 'warningCap'),
-                `Market command aborted: getMapMarkers failed with ${mapMarkersRefreshError}`);
+                `Market command aborted: getMapMarkers failed with ${mapMarkersRefreshError}; cachedVendingMachines=${cachedVendingMachines.length}`);
             return;
         }
 
