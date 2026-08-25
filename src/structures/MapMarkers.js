@@ -152,9 +152,30 @@ class MapMarkers {
             return [];
         }
 
+        const typeNames = {
+            [this.types.Player]: 'Player',
+            [this.types.Explosion]: 'Explosion',
+            [this.types.VendingMachine]: 'VendingMachine',
+            [this.types.CH47]: 'CH47',
+            [this.types.CargoShip]: 'CargoShip',
+            [this.types.Crate]: 'Crate',
+            [this.types.GenericRadius]: 'GenericRadius',
+            [this.types.PatrolHelicopter]: 'PatrolHelicopter',
+            [this.types.TravelingVendor]: 'TravelingVendor'
+        };
+
         let markersOfType = [];
         for (let marker of markers) {
-            if (marker.type === type) {
+            /* Some Rust+ server versions encode vending machines as marker
+               type 1 (Player), but retain the authoritative sellOrders
+               payload. Prefer the payload shape for vending detection and
+               keep those markers out of the player collection. */
+            const isVendingMarker = Array.isArray(marker.sellOrders) && marker.sellOrders.length > 0;
+            const markerMatchesType = marker.type === type || marker.type === typeNames[type];
+            const matchesType = type === this.types.VendingMachine
+                ? markerMatchesType || isVendingMarker
+                : markerMatchesType && !(type === this.types.Player && isVendingMarker);
+            if (matchesType) {
                 markersOfType.push(marker);
             }
         }
@@ -206,7 +227,7 @@ class MapMarkers {
     getRemainingMarkersOfTypeId(type, markers) {
         let remainingMarkersOfType = [];
 
-        for (let marker of markers) {
+        for (let marker of this.getMarkersOfType(type, markers)) {
             if (this.isMarkerPresentByTypeId(type, marker.id)) {
                 remainingMarkersOfType.push(marker);
             }
@@ -251,7 +272,7 @@ class MapMarkers {
     getRemainingMarkersOfTypeXY(type, markers) {
         let remainingMarkersOfType = [];
 
-        for (let marker of markers) {
+        for (let marker of this.getMarkersOfType(type, markers)) {
             if (this.isMarkerPresentByTypeXY(type, marker.x, marker.y)) {
                 remainingMarkersOfType.push(marker);
             }
