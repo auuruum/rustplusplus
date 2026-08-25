@@ -545,8 +545,13 @@ module.exports = {
                 const vendingMachines = rustplus.mapMarkers.vendingMachines;
 
                 if (!vendingMachines || vendingMachines.length === 0) {
-                    const str = client.intlGet(interaction.guildId, 'noItemFound');
+                    /* A valid Rust+ map response can still omit every vending marker.
+                       Do not present that upstream-data condition as an item search miss. */
+                    const str = 'Rust+ returned live map markers, but no Vending Machine markers for this server. ' +
+                        'Market listings are unavailable from Rust+ right now.';
                     await client.interactionEditReply(interaction, DiscordEmbeds.getActionInfoEmbed(1, str));
+                    client.log(client.intlGet(null, 'warningCap'),
+                        `Market shops unavailable: Rust+ returned ${rustplus.mapMarkers.markers?.length ?? 0} marker(s), 0 vending machines.`);
                     return;
                 }
 
