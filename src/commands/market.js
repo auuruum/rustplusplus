@@ -150,9 +150,22 @@ module.exports = {
                 const currencyName = interaction.options.getString('currency');
                 const itemBlueprint = interaction.options.getBoolean('item_blueprint') ?? false;
                 const currencyBlueprint = interaction.options.getBoolean('currency_blueprint') ?? false;
+                let vendingMachines = rustplus.mapMarkers.vendingMachines;
+                try {
+                    const freshMapMarkers = await rustplus.getMapMarkersAsync();
+                    if (await rustplus.isResponseValid(freshMapMarkers)) {
+                        const vendingMachineType = rustplus.mapMarkers.types.VendingMachine;
+                        vendingMachines = freshMapMarkers.mapMarkers.markers.filter(marker =>
+                            marker.type === vendingMachineType);
+                    }
+                }
+                catch (error) {
+                    client.log(client.intlGet(null, 'warningCap'),
+                        `Unable to refresh vending machines for market price analysis: ${error.message}`);
+                }
                 const analysis = MarketPriceAnalysis.analyzeMarketPrice({
                     client,
-                    vendingMachines: rustplus.mapMarkers.vendingMachines,
+                    vendingMachines,
                     itemName,
                     currencyName,
                     itemBlueprint,

@@ -5,7 +5,7 @@ const { analyzeMarketPrice, normalizeSearchName, summarizeOrders } =
     require('../src/util/marketPriceAnalysis.js');
 
 function createClient() {
-    const items = { '1': 'Basic', '2': 'Sulfur', '3': 'Wood' };
+    const items = { '1': 'Basic', '2': 'Sulfur', '3': 'Wood', '4': 'Basic Blueprint Fragment' };
     return {
         items: {
             getClosestItemIdByName(name) {
@@ -45,6 +45,25 @@ Test('summarizes matching item/currency blueprint orders and ignores unavailable
         { count: result.summary.count, average: result.summary.average, low: result.summary.low, high: result.summary.high },
         { count: 2, average: 150, low: 100, high: 200 }
     );
+});
+
+Test('treats item as the product being sold and currency as the payment item', () => {
+    const result = analyzeMarketPrice({
+        client: createClient(),
+        itemName: 'Basic Blueprint Fragment',
+        currencyName: 'Sulfur',
+        vendingMachines: [
+            { sellOrders: [
+                { itemId: 4, currencyId: 2, itemIsBlueprint: false, currencyIsBlueprint: false, costPerItem: 75, amountInStock: 1 },
+                { itemId: 2, currencyId: 4, itemIsBlueprint: false, currencyIsBlueprint: false, costPerItem: 900, amountInStock: 1 }
+            ] }
+        ]
+    });
+
+    Assert.equal(result.item.name, 'Basic Blueprint Fragment');
+    Assert.equal(result.currency.name, 'Sulfur');
+    Assert.equal(result.summary.count, 1);
+    Assert.equal(result.summary.average, 75);
 });
 
 Test('returns no summary when there are no live matching listings', () => {
