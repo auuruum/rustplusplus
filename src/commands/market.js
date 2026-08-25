@@ -22,6 +22,7 @@ const Builder = require('@discordjs/builders');
 
 const Constants = require('../util/constants.js');
 const DiscordEmbeds = require('../discordTools/discordEmbeds.js');
+const MarketPriceAnalysis = require('../util/marketPriceAnalysis.js');
 
 module.exports = {
     name: 'market',
@@ -104,6 +105,25 @@ module.exports = {
                 .addBooleanOption(option => option
                     .setName('outofstock')
                     .setDescription(client.intlGet(guildId, 'commandsMarketShopsOutOfStockDesc'))
+                    .setRequired(false)))
+            .addSubcommand(subcommand => subcommand
+                .setName('price')
+                .setDescription('Analyse live vending-machine prices on this server.')
+                .addStringOption(option => option
+                    .setName('item')
+                    .setDescription('The item being sold, for example rocket or rifle body.')
+                    .setRequired(true))
+                .addStringOption(option => option
+                    .setName('currency')
+                    .setDescription('The currency requested by the seller, for example sulfur or scrap.')
+                    .setRequired(true))
+                .addBooleanOption(option => option
+                    .setName('item_blueprint')
+                    .setDescription('Only include listings selling the item as a blueprint.')
+                    .setRequired(false))
+                .addBooleanOption(option => option
+                    .setName('currency_blueprint')
+                    .setDescription('Only include listings requesting the currency as a blueprint.')
                     .setRequired(false)));
     },
 
@@ -125,6 +145,65 @@ module.exports = {
         }
 
         switch (interaction.options.getSubcommand()) {
+            case 'price': {
+                const itemName = interaction.options.getString('item');
+                const currencyName = interaction.options.getString('currency');
+                const itemBlueprint = interaction.options.getBoolean('item_blueprint') ?? false;
+                const currencyBlueprint = interaction.options.getBoolean('currency_blueprint') ?? false;
+                const analysis = MarketPriceAnalysis.analyzeMarketPrice({
+                    client,
+                    vendingMachines: rustplus.mapMarkers.vendingMachines,
+                    itemName,
+                    currencyName,
+                    itemBlueprint,
+                    currencyBlueprint
+                });
+
+                if (analysis.error === 'item-not-found') {
+                    await client.interactionEditReply(interaction, DiscordEmbeds.getActionInfoEmbed(1,
+                        `No item found for "${itemName}".`));
+                    return;
+                }
+                if (analysis.error === 'currency-not-found') {
+                    await client.interactionEditReply(interaction, DiscordEmbeds.getActionInfoEmbed(1,
+                        `No currency item found for "${currencyName}".`));
+                    return;
+                }
+                if (analysis.summary === null) {
+                    await client.interactionEditReply(interaction, DiscordEmbeds.getActionInfoEmbed(1,
+                        `No live listings found for ${analysis.item.name}${analysis.itemBlueprint ? ' (BP)' : ''} ` +
+                        `priced in ${analysis.currency.name}${analysis.currencyBlueprint ? ' (BP)' : ''}.`));
+                    return;
+                }
+
+                const summary = analysis.summary;
+                const formatPrice = value => Number.isInteger(value) ? `${value}` : value.toFixed(2);
+                const locations = new Set(summary.orders.map(order => {
+                    const location = order.vendingMachine.location;
+                    return location?.string ?? `${order.vendingMachine.x ?? '?'}:${order.vendingMachine.y ?? '?'}`;
+                }));
+                const description = [
+                    `**Item:** ${analysis.item.name}${analysis.itemBlueprint ? ' (BP)' : ''}`,
+                    `**Currency:** ${analysis.currency.name}${analysis.currencyBlueprint ? ' (BP)' : ''}`,
+                    '',
+                    `**Average:** ${formatPrice(summary.average)} ${analysis.currency.name}`,
+                    `**Low:** ${formatPrice(summary.low)} ${analysis.currency.name}`,
+                    `**High:** ${formatPrice(summary.high)} ${analysis.currency.name}`,
+                    '',
+                    `Based on ${summary.count} live listing${summary.count === 1 ? '' : 's'} ` +
+                    `across ${locations.size} vending machine${locations.size === 1 ? '' : 's'}.`,
+                    'Average is the market baseline; use Low to sell quickly or High to test the market.'
+                ].join('\n');
+
+                const embed = DiscordEmbeds.getEmbed({
+                    color: Constants.COLOR_DEFAULT,
+                    title: 'Rust market price analysis',
+                    description,
+                    footer: { text: `${instance.serverList[rustplus.serverId].title}` }
+                });
+                await client.interactionEditReply(interaction, { embeds: [embed] });
+            } break;
+
             case 'search': {
                 const searchItemName = interaction.options.getString('name');
                 const searchItemId = interaction.options.getString('id');

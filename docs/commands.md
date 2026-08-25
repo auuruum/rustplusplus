@@ -215,6 +215,13 @@ Subcommand | Options | Description | Required
 &nbsp; | `name` | The name of the item to unsubscribe to. | `False`
 &nbsp; | `id` | The ID of the item to unsubscribe to. | `False`
 `list` | &nbsp; | Display the subscription list. | &nbsp;
+`price` | &nbsp; | Analyse live prices for one item/currency pair on the connected server. | &nbsp;
+&nbsp; | `item` | The item being sold (for example `rocket`). Add `blueprint` to the name or enable `item_blueprint` for blueprint listings. | `True`
+&nbsp; | `currency` | The currency requested by sellers (for example `sulfur`). Add `blueprint` to the name or enable `currency_blueprint` for blueprint currency. | `True`
+&nbsp; | `item_blueprint` | Only include listings selling the item as a blueprint. | `False`
+&nbsp; | `currency_blueprint` | Only include listings requesting the currency as a blueprint. | `False`
+
+The `price` result reports the arithmetic average, lowest, and highest live `costPerItem`, excluding empty vending-machine listings. Use the average as the baseline, the low price to sell quickly, and the high price to test the market.
 
 ![Discord Slash Command market Image](images/slash_commands/market.png)
 
