@@ -2310,9 +2310,26 @@ class RustPlus extends RustPlusLib {
         return null;
     }
 
-    getCommandMarket(command) {
+    async getCommandMarket(command) {
         const instance = Client.client.getInstance(this.guildId);
         const prefix = this.generalSettings.prefix;
+
+        /* Prefix market commands historically read the cached marker list. Refresh
+           it first so vending orders are not one polling cycle (or a reconnect)
+           behind the server. Keep the cache fallback when Rust+ is unavailable. */
+        let vendingMachines = this.mapMarkers.vendingMachines;
+        try {
+            const freshMapMarkers = await this.getMapMarkersAsync();
+            if (await this.isResponseValid(freshMapMarkers)) {
+                vendingMachines = freshMapMarkers.mapMarkers.markers.filter(marker =>
+                    marker.type === this.mapMarkers.types.VendingMachine);
+            }
+        }
+        catch (error) {
+            this.log(Client.client.intlGet(null, 'warningCap'),
+                `Unable to refresh vending machines for market command: ${error.message}`);
+        }
+
         const commandMarket = `${prefix}${Client.client.intlGet(this.guildId, 'commandSyntaxMarket')}`;
         const commandMarketEn = `${prefix}${Client.client.intlGet('en', 'commandSyntaxMarket')}`;
         const commandNext = `${Client.client.intlGet(this.guildId, 'commandSyntaxNext')}`;
@@ -2373,7 +2390,7 @@ class RustPlus extends RustPlusLib {
                 }
 
                 
-                for (const vendingMachine of this.mapMarkers.vendingMachines) {
+                for (const vendingMachine of vendingMachines) {
                     if (!vendingMachine.hasOwnProperty('sellOrders')) continue;
 
                     for (const order of vendingMachine.sellOrders) {

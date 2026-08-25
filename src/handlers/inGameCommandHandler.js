@@ -117,7 +117,7 @@ module.exports = {
         }
         else if (commandLowerCase.startsWith(`${prefix}${client.intlGet('en', 'commandSyntaxMarket')} `) ||
             commandLowerCase.startsWith(`${prefix}${client.intlGet(guildId, 'commandSyntaxMarket')} `)) {
-                let response = rustplus.getCommandMarket(command);
+                let response = await rustplus.getCommandMarket(command);
                 if (typeof response === 'string' && response.length > 0) {
                     rustplus.sendInGameMessage(response);
                 }
