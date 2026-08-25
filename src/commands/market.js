@@ -147,15 +147,31 @@ module.exports = {
         /* All market subcommands need the same fresh vending snapshot. The
            normal polling path may be between cycles, so update the MapMarkers
            cache before search/shops/price inspect it. */
+        let mapMarkersRefreshError = null;
         try {
             const freshMapMarkers = await rustplus.getMapMarkersAsync();
             if (await rustplus.isResponseValid(freshMapMarkers)) {
                 rustplus.mapMarkers.updateMapMarkers(freshMapMarkers.mapMarkers);
             }
+            else {
+                mapMarkersRefreshError = freshMapMarkers?.error ?? 'invalid Rust+ response';
+            }
         }
         catch (error) {
+            mapMarkersRefreshError = error.message;
             client.log(client.intlGet(null, 'warningCap'),
                 `Unable to refresh vending machines for market command: ${error.message}`);
+        }
+
+        const cachedVendingMachines = rustplus.mapMarkers?.vendingMachines ?? [];
+        if (mapMarkersRefreshError !== null && cachedVendingMachines.length === 0) {
+            const message = `Rust+ did not return map markers for this server (${mapMarkersRefreshError}). ` +
+                'Market data is unavailable until Rust+ map markers work.';
+            await client.interactionEditReply(interaction,
+                DiscordEmbeds.getActionInfoEmbed(1, message));
+            client.log(client.intlGet(null, 'warningCap'),
+                `Market command aborted: getMapMarkers failed with ${mapMarkersRefreshError}`);
+            return;
         }
 
         switch (interaction.options.getSubcommand()) {
